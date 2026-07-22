@@ -95,6 +95,21 @@ def init_db():
         )
     ''')
     
+    # Create Staff Inbox / Notifications Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS staff_inbox (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            staff_id INTEGER,
+            appointment_id INTEGER,
+            message TEXT NOT NULL,
+            notification_type TEXT DEFAULT 'New Booking',
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            is_read INTEGER DEFAULT 0,
+            FOREIGN KEY(staff_id) REFERENCES staff(id) ON DELETE CASCADE,
+            FOREIGN KEY(appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+        )
+    ''')
+    
     # Create Purposes Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS visit_purposes (
@@ -141,7 +156,7 @@ def init_db():
 init_db()
 
 # -------------------------------------------------------------------
-# Authentication Helper Decorators
+# Authentication Helper Decorators & Notification Function
 # -------------------------------------------------------------------
 def login_required(f):
     @wraps(f)
@@ -159,7 +174,31 @@ def super_admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Helper to fetch staff and availability
+def add_notification(staff_id, appointment_id, message, n_type='New Booking'):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO staff_inbox (staff_id, appointment_id, message, notification_type)
+        VALUES (?, ?, ?, ?)
+    ''', (staff_id, appointment_id, message, n_type))
+    conn.commit()
+    conn.close()
+
+def notify_appointment_staff(appointment_id, message, n_type='Update'):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('SELECT staff_id FROM appointment_staff WHERE appointment_id = ?', (appointment_id,))
+    staff_rows = cursor.fetchall()
+    for row in staff_rows:
+        s_id = row[0]
+        cursor.execute('''
+            INSERT INTO staff_inbox (staff_id, appointment_id, message, notification_type)
+            VALUES (?, ?, ?, ?)
+        ''', (s_id, appointment_id, message, n_type))
+    conn.commit()
+    conn.close()
+
+# Helper to fetch staff, availability, and inbox notifications
 def get_staff_data():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -168,15 +207,38 @@ def get_staff_data():
     
     staff_list = []
     staff_availability_dict = {}
+    staff_inbox_dict = {}
     
     for s_id, s_name in staff_rows:
         staff_list.append((s_id, s_name))
+        
+        # Slots
         cursor.execute('SELECT id, time_slot FROM staff_availability WHERE staff_id = ? ORDER BY time_slot ASC', (s_id,))
         slots = cursor.fetchall()
         staff_availability_dict[s_name] = [{'id': slot[0], 'time': slot[1]} for slot in slots]
         
+        # Inbox notifications
+        cursor.execute('''
+            SELECT id, appointment_id, message, notification_type, timestamp, is_read 
+            FROM staff_inbox 
+            WHERE staff_id = ? 
+            ORDER BY timestamp DESC 
+            LIMIT 15
+        ''', (s_id,))
+        inbox_items = cursor.fetchall()
+        staff_inbox_dict[s_id] = [
+            {
+                'id': item[0],
+                'appointment_id': item[1],
+                'message': item[2],
+                'type': item[3],
+                'timestamp': item[4],
+                'is_read': item[5]
+            } for item in inbox_items
+        ]
+        
     conn.close()
-    return staff_list, staff_availability_dict
+    return staff_list, staff_availability_dict, staff_inbox_dict
 
 def generate_conf_number():
     return f"HB-{secrets.token_hex(3).upper()}"
@@ -694,9 +756,9 @@ ADMIN_TEMPLATE = '''
                 </div>
                 {% endif %}
 
-                <!-- Manage Staff & Availability Panel -->
+                <!-- Manage Staff, Availability & Building Inbox Panel -->
                 <div class="card p-3 shadow-sm bg-light mb-4">
-                    <h4 class="fw-bold mb-3 text-secondary">Manage Building Numbers & Availability</h4>
+                    <h4 class="fw-bold mb-3 text-secondary">Manage Building Numbers & Inbox</h4>
                     <form method="POST" action="/admin/add-staff" class="mb-3">
                         <div class="input-group">
                             <input type="text" name="staff_name" class="form-control" placeholder="e.g., Building 103" required>
@@ -704,16 +766,50 @@ ADMIN_TEMPLATE = '''
                         </div>
                     </form>
 
-                    <div style="max-height: 350px; overflow-y: auto;" class="pe-1">
+                    <div style="max-height: 500px; overflow-y: auto;" class="pe-1">
                         {% for s_id, s_name in staff_list %}
-                            <div class="card mb-3 p-2 bg-white shadow-sm border">
+                            <div class="card mb-3 p-3 bg-white shadow-sm border">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="fw-bold text-primary">{{ s_name }}</span>
+                                    <span class="fw-bold text-primary fs-5">{{ s_name }}</span>
                                     <form method="POST" action="/admin/delete-staff/{{ s_id }}" style="margin:0;">
                                         <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="return confirm('Remove building and schedule?');">Delete</button>
                                     </form>
                                 </div>
-                                <div class="mb-2">
+
+                                <!-- Building Inbox Section -->
+                                <div class="mb-3 border-top pt-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="text-secondary small fw-bold">Building Inbox / Notifications</span>
+                                        <span class="badge bg-danger inbox-badge-{{ s_id }}" style="display: none;">New</span>
+                                    </div>
+                                    <div class="list-group inbox-container-{{ s_id }}" style="max-height: 160px; overflow-y: auto;">
+                                        {% set items = staff_inbox[s_id] %}
+                                        {% if items %}
+                                            {% for item in items %}
+                                                <div class="list-group-item list-group-item-action py-2 px-2 {% if not item.is_read %}bg-light border-start border-primary border-4{% endif %}" style="font-size: 0.85rem;">
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <span class="badge bg-info text-dark" style="font-size: 0.65rem;">{{ item.type }}</span>
+                                                        <small class="text-muted" style="font-size: 0.65rem;">{{ item.timestamp }}</small>
+                                                    </div>
+                                                    <p class="mb-1 text-dark text-break">{{ item.message }}</p>
+                                                    <div class="d-flex justify-content-end gap-1">
+                                                        {% if item.appointment_id %}
+                                                            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size: 0.7rem;" onclick="openModalForAppointment({{ item.appointment_id }})">View Booking</button>
+                                                        {% endif %}
+                                                        {% if not item.is_read %}
+                                                            <a href="/admin/inbox/read/{{ item.id }}" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size: 0.7rem;">Mark Read</a>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="text-muted small fst-italic p-1">No notifications in inbox.</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Time Slots Section -->
+                                <div class="mb-2 border-top pt-2">
                                     <span class="text-muted small fw-bold d-block mb-1">Available Time Slots:</span>
                                     <div class="d-flex flex-wrap gap-1">
                                         {% for slot in staff_availability[s_name] %}
@@ -728,7 +824,7 @@ ADMIN_TEMPLATE = '''
                                         {% endfor %}
                                     </div>
                                 </div>
-                                <form method="POST" action="/admin/add-slot/{{ s_id }}" class="input-group input-group-sm">
+                                <form method="POST" action="/admin/add-slot/{{ s_id }}" class="input-group input-group-sm mt-2">
                                     <input type="time" name="time_slot" class="form-control" required>
                                     <button type="submit" class="btn btn-outline-primary">Add Slot</button>
                                 </form>
@@ -844,6 +940,7 @@ ADMIN_TEMPLATE = '''
         var allStaffList = {{ all_staff_json | safe }};
         var searchParam = "{{ search_query }}";
         var autoOpened = false;
+        var calendarInstance = null;
 
         function openBookingModal(props, eventId) {
             document.getElementById('updateApptForm').action = '/admin/update-appointment/' + eventId;
@@ -877,11 +974,60 @@ ADMIN_TEMPLATE = '''
             modal.show();
         }
 
+        function openModalForAppointment(appointmentId) {
+            fetch('/api/appointment/' + appointmentId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.id) {
+                        openBookingModal(data.extendedProps, data.id);
+                    }
+                });
+        }
+
+        // Live polling to keep inboxes updated with changes automatically every 15 seconds
+        function pollInboxUpdates() {
+            fetch('/api/inbox-updates')
+                .then(response => response.json())
+                .then(data => {
+                    for (const [staffId, items] of Object.entries(data)) {
+                        var container = document.querySelector('.inbox-container-' + staffId);
+                        if (!container) continue;
+                        
+                        var html = '';
+                        var hasUnread = false;
+                        if (items.length > 0) {
+                            items.forEach(item => {
+                                if (!item.is_read) hasUnread = true;
+                                var unreadClass = !item.is_read ? 'bg-light border-start border-primary border-4' : '';
+                                html += `
+                                    <div class="list-group-item list-group-item-action py-2 px-2 ${unreadClass}" style="font-size: 0.85rem;">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="badge bg-info text-dark" style="font-size: 0.65rem;">${item.type}</span>
+                                            <small class="text-muted" style="font-size: 0.65rem;">${item.timestamp}</small>
+                                        </div>
+                                        <p class="mb-1 text-dark text-break">${item.message}</p>
+                                        <div class="d-flex justify-content-end gap-1">
+                                            ${item.appointment_id ? `<button type="button" class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size: 0.7rem;" onclick="openModalForAppointment(${item.appointment_id})">View Booking</button>` : ''}
+                                            ${!item.is_read ? `<a href="/admin/inbox/read/${item.id}" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size: 0.7rem;">Mark Read</a>` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            html = '<div class="text-muted small fst-italic p-1">No notifications in inbox.</div>';
+                        }
+                        container.innerHTML = html;
+                    }
+                });
+        }
+
+        setInterval(pollInboxUpdates, 15000);
+
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendar');
             var calendarEventsUrl = '/api/appointments' + (searchParam ? '?search=' + encodeURIComponent(searchParam) : '');
 
-            var calendar = new FullCalendar.Calendar(calendarEl, {
+            calendarInstance = new FullCalendar.Calendar(calendarEl, {
                 initialView: window.innerWidth < 768 ? 'listWeek' : 'dayGridMonth',
                 handleWindowResize: true,
                 headerToolbar: {
@@ -903,7 +1049,7 @@ ADMIN_TEMPLATE = '''
                     }
                 }
             });
-            calendar.render();
+            calendarInstance.render();
         });
     </script>
 </body>
@@ -916,7 +1062,7 @@ ADMIN_TEMPLATE = '''
 
 @app.route('/')
 def home():
-    staff_list, _ = get_staff_data()
+    staff_list, _, _ = get_staff_data()
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM visit_purposes ORDER BY name ASC')
@@ -956,6 +1102,11 @@ def book():
     
     if staff_id:
         cursor.execute('INSERT OR IGNORE INTO appointment_staff (appointment_id, staff_id) VALUES (?, ?)', (appt_id, staff_id))
+        # Add notification to assigned building's inbox
+        cursor.execute('''
+            INSERT INTO staff_inbox (staff_id, appointment_id, message, notification_type)
+            VALUES (?, ?, ?, ?)
+        ''', (staff_id, appt_id, f"New booking: {request.form['sm_name']} ({request.form['branch']}) on {combined_date_time}", 'New Booking'))
         
     conn.commit()
     conn.close()
@@ -965,7 +1116,7 @@ def book():
     print(f"Subject: Housing Appointment Confirmation ({conf_num})")
     print(f"Body: Hello {request.form['sm_name']}, your appointment is scheduled for {combined_date_time}. Confirmation #: {conf_num}\n")
     
-    staff_list, _ = get_staff_data()
+    staff_list, _, _ = get_staff_data()
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM visit_purposes ORDER BY name ASC')
@@ -1029,28 +1180,46 @@ def update_booking_public(conf_num):
     
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute('''
-        UPDATE appointments 
-        SET date_time = ?, status = 'Rescheduled'
-        WHERE confirmation_number = ?
-    ''', (new_date_time, conf_num))
-    conn.commit()
-    conn.close()
+    cursor.execute('SELECT id, sm_name FROM appointments WHERE confirmation_number = ?', (conf_num,))
+    row = cursor.fetchone()
     
+    if row:
+        appt_id = row[0]
+        sm_name = row[1]
+        cursor.execute('''
+            UPDATE appointments 
+            SET date_time = ?, status = 'Rescheduled'
+            WHERE confirmation_number = ?
+        ''', (new_date_time, conf_num))
+        conn.commit()
+        
+        # Notify assigned staff of reschedule
+        notify_appointment_staff(appt_id, f"Rescheduled: {sm_name} changed date/time to {new_date_time}", 'Reschedule')
+        
+    conn.close()
     return redirect(url_for('manage_booking_public', conf_num=conf_num))
 
 @app.route('/manage/<conf_num>/cancel', methods=['POST'])
 def cancel_booking_public(conf_num):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute('''
-        UPDATE appointments 
-        SET status = 'Cancelled'
-        WHERE confirmation_number = ?
-    ''', (conf_num,))
-    conn.commit()
-    conn.close()
+    cursor.execute('SELECT id, sm_name FROM appointments WHERE confirmation_number = ?', (conf_num,))
+    row = cursor.fetchone()
     
+    if row:
+        appt_id = row[0]
+        sm_name = row[1]
+        cursor.execute('''
+            UPDATE appointments 
+            SET status = 'Cancelled'
+            WHERE confirmation_number = ?
+        ''', (conf_num,))
+        conn.commit()
+        
+        # Notify assigned staff of cancellation
+        notify_appointment_staff(appt_id, f"Cancelled: Booking for {sm_name} ({conf_num}) was cancelled.", 'Cancellation')
+        
+    conn.close()
     return redirect(url_for('manage_booking_public', conf_num=conf_num))
 
 # --- Authentication & Profile Setup Routes ---
@@ -1080,7 +1249,6 @@ def login():
             else:
                 session.permanent = False
                 
-            # If first login, force them to change password & set recovery email
             if row[3] == 1:
                 return redirect(url_for('setup_profile'))
                 
@@ -1173,7 +1341,7 @@ def logout():
 @login_required
 def admin():
     search_query = request.args.get('search', '').strip().upper()
-    staff_list, staff_availability_dict = get_staff_data()
+    staff_list, staff_availability_dict, staff_inbox_dict = get_staff_data()
     
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -1193,6 +1361,7 @@ def admin():
         ADMIN_TEMPLATE, 
         staff_list=staff_list, 
         staff_availability=staff_availability_dict,
+        staff_inbox=staff_inbox_dict,
         purpose_list=purpose_list,
         admin_users=admin_users,
         current_user=session.get('username'),
@@ -1200,6 +1369,16 @@ def admin():
         all_staff_json=json.dumps(all_staff_json),
         search_query=search_query
     )
+
+@app.route('/admin/inbox/read/<int:inbox_id>')
+@login_required
+def mark_inbox_read(inbox_id):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE staff_inbox SET is_read = 1 WHERE id = ?', (inbox_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin'))
 
 @app.route('/admin/add-user', methods=['POST'])
 @super_admin_required
@@ -1244,6 +1423,10 @@ def update_appointment(appt_id):
     
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
+    cursor.execute('SELECT sm_name FROM appointments WHERE id = ?', (appt_id,))
+    appt_row = cursor.fetchone()
+    sm_name = appt_row[0] if appt_row else 'Service Member'
+    
     cursor.execute('''
         UPDATE appointments 
         SET status = ?, notes = ? 
@@ -1253,6 +1436,11 @@ def update_appointment(appt_id):
     cursor.execute('DELETE FROM appointment_staff WHERE appointment_id = ?', (appt_id,))
     for s_id in staff_ids:
         cursor.execute('INSERT OR IGNORE INTO appointment_staff (appointment_id, staff_id) VALUES (?, ?)', (appt_id, s_id))
+        # Add notification for assigned staff
+        cursor.execute('''
+            INSERT INTO staff_inbox (staff_id, appointment_id, message, notification_type)
+            VALUES (?, ?, ?, ?)
+        ''', (s_id, appt_id, f"Appointment status updated to '{status}' for {sm_name}.", 'Status Update'))
         
     conn.commit()
     conn.close()
@@ -1280,6 +1468,7 @@ def delete_staff(staff_id):
     cursor = conn.cursor()
     cursor.execute('DELETE FROM staff WHERE id = ?', (staff_id,))
     cursor.execute('DELETE FROM staff_availability WHERE staff_id = ?', (staff_id,))
+    cursor.execute('DELETE FROM staff_inbox WHERE staff_id = ?', (staff_id,))
     conn.commit()
     conn.close()
     return redirect(url_for('admin'))
@@ -1403,6 +1592,54 @@ def api_appointments():
             }
         })
     return jsonify(events)
+
+@app.route('/api/appointment/<int:appt_id>')
+@login_required
+def api_single_appointment(appt_id):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT a.id, a.confirmation_number, a.sm_name, a.branch, a.email, a.date_time, a.purpose, a.status, a.notes,
+               GROUP_CONCAT(s.name, ', ') as staff_names,
+               GROUP_CONCAT(s.id) as staff_ids_csv
+        FROM appointments a
+        LEFT JOIN appointment_staff ast ON a.id = ast.appointment_id
+        LEFT JOIN staff s ON ast.staff_id = s.id
+        WHERE a.id = ?
+        GROUP BY a.id
+    ''', (appt_id,))
+    r = cursor.fetchone()
+    conn.close()
+    
+    if not r:
+        return jsonify({})
+        
+    conf_num = r[1] if r[1] else 'N/A'
+    status_val = r[7] if r[7] else 'Pending'
+    staff_str = r[9] if r[9] else 'Unassigned'
+    staff_ids = [int(sid) for sid in r[10].split(',')] if r[10] else []
+    
+    return jsonify({
+        'id': r[0],
+        'extendedProps': {
+            'conf_number': conf_num,
+            'sm_name': r[2],
+            'branch': r[3],
+            'email': r[4],
+            'date_time': r[5],
+            'purpose': r[6],
+            'status': status_val,
+            'notes': r[8] if r[8] else '',
+            'staff_names': staff_str,
+            'staff_ids': staff_ids
+        }
+    })
+
+@app.route('/api/inbox-updates')
+@login_required
+def api_inbox_updates():
+    _, _, staff_inbox_dict = get_staff_data()
+    return jsonify(staff_inbox_dict)
 
 # -------------------------------------------------------------------
 # Main
