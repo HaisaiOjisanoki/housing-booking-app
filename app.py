@@ -208,7 +208,6 @@ def get_staff_data():
     
     staff_list = []
     staff_availability_dict = {}
-    staff_inbox_dict = {}
     
     for s_id, s_name in staff_rows:
         staff_list.append((s_id, s_name))
@@ -220,38 +219,8 @@ def get_staff_data():
         staff_availability_dict[s_id] = slot_list
         staff_availability_dict[str(s_id)] = slot_list
         
-        # Inbox notifications (only unread or limited recent read)
-        cursor.execute('''
-            SELECT id, appointment_id, message, notification_type, timestamp, is_read 
-            FROM staff_inbox 
-            WHERE staff_id = ? AND is_read = 0
-            ORDER BY timestamp DESC 
-            LIMIT 15
-        ''', (s_id,))
-        inbox_items = cursor.fetchall()
-        
-        items_list = []
-        unread_count = 0
-        for item in inbox_items:
-            unread_count += 1
-            items_list.append({
-                'id': item[0],
-                'appointment_id': item[1],
-                'message': item[2],
-                'type': item[3],
-                'timestamp': item[4],
-                'is_read': item[5]
-            })
-            
-        inbox_payload = {
-            'items': items_list,
-            'unread_count': unread_count
-        }
-        staff_inbox_dict[s_id] = inbox_payload
-        staff_inbox_dict[str(s_id)] = inbox_payload
-        
     conn.close()
-    return staff_list, staff_availability_dict, staff_inbox_dict
+    return staff_list, staff_availability_dict
 
 def get_global_unread_inbox():
     conn = sqlite3.connect(DB_NAME)
@@ -794,7 +763,7 @@ ADMIN_TEMPLATE = '''
                 {% endif %}
 
                 <div class="card p-3 shadow-sm bg-light mb-4">
-                    <h4 class="fw-bold mb-3 text-secondary">Manage Building Numbers & Inbox</h4>
+                    <h4 class="fw-bold mb-3 text-secondary">Manage Buildings</h4>
                     <form method="POST" action="/admin/add-staff" class="mb-3">
                         <div class="input-group">
                             <input type="text" name="staff_name" class="form-control" placeholder="e.g., Building 103" required>
@@ -807,49 +776,9 @@ ADMIN_TEMPLATE = '''
                             <div class="card mb-3 p-3 bg-white shadow-sm border">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <span class="fw-bold text-primary fs-5">{{ s_name }}</span>
-                                    <div class="d-flex align-items-center gap-2">
-                                        {% set inbox_data = staff_inbox[s_id] %}
-                                        <button type="button" class="btn btn-outline-primary btn-sm position-relative py-1 px-2 mail-btn-{{ s_id }}" onclick="scrollToInbox('{{ s_id }}')" title="View Booking Inbox">
-                                            <i class="bi bi-envelope-fill {% if inbox_data['unread_count'] > 0 %}text-danger{% endif %}" id="mail-icon-{{ s_id }}"></i>
-                                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger inbox-count-badge-{{ s_id }}" style="font-size: 0.6rem; {% if inbox_data['unread_count'] == 0 %}display: none;{% endif %}">
-                                                {{ inbox_data['unread_count'] }}
-                                            </span>
-                                        </button>
-                                        <form method="POST" action="/admin/delete-staff/{{ s_id }}" style="margin:0;">
-                                            <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="return confirm('Remove building and schedule?');">Delete</button>
-                                        </form>
-                                    </div>
-                                </div>
-
-                                <div class="mb-3 border rounded p-2 bg-light inbox-section-{{ s_id }}" id="inbox-div-{{ s_id }}">
-                                    <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
-                                        <span class="text-dark small fw-bold d-flex align-items-center gap-1">
-                                            <i class="bi bi-bell-fill text-primary"></i> Booking Notifications Inbox
-                                        </span>
-                                        <span class="badge bg-secondary" style="font-size: 0.65rem;">Live Feed</span>
-                                    </div>
-                                    <div class="list-group inbox-container-{{ s_id }}" style="max-height: 150px; overflow-y: auto;">
-                                        {% set items = inbox_data['items'] %}
-                                        {% if items %}
-                                            {% for item in items %}
-                                                <div class="list-group-item list-group-item-action py-2 px-2 bg-white border-start border-danger border-4" style="font-size: 0.82rem;" id="inbox-item-{{ item.id }}">
-                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                        <span class="badge bg-info text-dark" style="font-size: 0.6rem;">{{ item.type }}</span>
-                                                        <small class="text-muted" style="font-size: 0.6rem;">{{ item.timestamp }}</small>
-                                                    </div>
-                                                    <p class="mb-1 text-dark text-break">{{ item.message }}</p>
-                                                    <div class="d-flex justify-content-end gap-1">
-                                                        {% if item.appointment_id %}
-                                                            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size: 0.68rem;" onclick="openModalForAppointment({{ item.appointment_id }})">View Booking</button>
-                                                        {% endif %}
-                                                        <a href="/admin/inbox/read/{{ item.id }}" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size: 0.68rem;">Mark Read</a>
-                                                    </div>
-                                                </div>
-                                            {% endfor %}
-                                        {% else %}
-                                            <div class="text-muted small fst-italic p-1">No unread notifications.</div>
-                                        {% endif %}
-                                    </div>
+                                    <form method="POST" action="/admin/delete-staff/{{ s_id }}" style="margin:0;">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="return confirm('Remove building and schedule?');">Delete</button>
+                                    </form>
                                 </div>
 
                                 <div class="mb-2 border-top pt-2">
@@ -1069,65 +998,10 @@ ADMIN_TEMPLATE = '''
                 });
         }
 
-        function scrollToInbox(staffId) {
-            var inboxEl = document.getElementById('inbox-div-' + staffId);
-            if (inboxEl) {
-                inboxEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                inboxEl.classList.add('border-primary');
-                setTimeout(() => {
-                    inboxEl.classList.remove('border-primary');
-                }, 2000);
-            }
-        }
-
         function pollInboxUpdates() {
             fetch('/api/inbox-updates')
                 .then(response => response.json())
                 .then(data => {
-                    // Update staff cards
-                    for (const [staffId, staffData] of Object.entries(data.staff)) {
-                        var container = document.querySelector('.inbox-container-' + staffId);
-                        var badge = document.querySelector('.inbox-count-badge-' + staffId);
-                        var mailIcon = document.getElementById('mail-icon-' + staffId);
-                        
-                        if (!container) continue;
-                        
-                        if (staffData.unread_count > 0) {
-                            if (badge) {
-                                badge.textContent = staffData.unread_count;
-                                badge.style.display = 'inline-block';
-                            }
-                            if (mailIcon) mailIcon.classList.add('text-danger');
-                        } else {
-                            if (badge) badge.style.display = 'none';
-                            if (mailIcon) mailIcon.classList.remove('text-danger');
-                        }
-                        
-                        var html = '';
-                        var items = staffData.items;
-                        if (items && items.length > 0) {
-                            items.forEach(item => {
-                                html += `
-                                    <div class="list-group-item list-group-item-action py-2 px-2 bg-white border-start border-danger border-4" style="font-size: 0.82rem;" id="inbox-item-${item.id}">
-                                        <div class="d-flex justify-content-between align-items-center mb-1">
-                                            <span class="badge bg-info text-dark" style="font-size: 0.6rem;">${item.type}</span>
-                                            <small class="text-muted" style="font-size: 0.6rem;">${item.timestamp}</small>
-                                        </div>
-                                        <p class="mb-1 text-dark text-break">${item.message}</p>
-                                        <div class="d-flex justify-content-end gap-1">
-                                            ${item.appointment_id ? `<button type="button" class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size: 0.68rem;" onclick="openModalForAppointment(${item.appointment_id})">View Booking</button>` : ''}
-                                            <a href="/admin/inbox/read/${item.id}" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size: 0.68rem;">Mark Read</a>
-                                        </div>
-                                    </div>
-                                `;
-                            });
-                        } else {
-                            html = '<div class="text-muted small fst-italic p-1">No unread notifications.</div>';
-                        }
-                        container.innerHTML = html;
-                    }
-
-                    // Update global notifications modal and badge
                     var globalBadge = document.querySelector('.global-inbox-badge');
                     var globalList = document.querySelector('.global-inbox-modal-list');
                     if (data.global_unread_count > 0) {
@@ -1207,7 +1081,7 @@ ADMIN_TEMPLATE = '''
 
 @app.route('/')
 def home():
-    staff_list, _, _ = get_staff_data()
+    staff_list, _ = get_staff_data()
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM visit_purposes ORDER BY name ASC')
@@ -1259,7 +1133,7 @@ def book():
     print(f"Subject: Housing Appointment Confirmation ({conf_num})")
     print(f"Body: Hello {request.form['sm_name']}, your appointment is scheduled for {combined_date_time}. Confirmation #: {conf_num}\n")
     
-    staff_list, _, _ = get_staff_data()
+    staff_list, _ = get_staff_data()
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM visit_purposes ORDER BY name ASC')
@@ -1477,7 +1351,7 @@ def logout():
 def admin():
     try:
         search_query = request.args.get('search', '').strip().upper()
-        staff_list, staff_availability_dict, staff_inbox_dict = get_staff_data()
+        staff_list, staff_availability_dict = get_staff_data()
         global_unread_items = get_global_unread_inbox()
         
         conn = sqlite3.connect(DB_NAME)
@@ -1498,7 +1372,6 @@ def admin():
             ADMIN_TEMPLATE, 
             staff_list=staff_list, 
             staff_availability=staff_availability_dict,
-            staff_inbox=staff_inbox_dict,
             global_unread_items=global_unread_items,
             purpose_list=purpose_list,
             admin_users=admin_users,
@@ -1779,10 +1652,8 @@ def api_single_appointment(appt_id):
 @app.route('/api/inbox-updates')
 @login_required
 def api_inbox_updates():
-    _, _, staff_inbox_dict = get_staff_data()
     global_items = get_global_unread_inbox()
     return jsonify({
-        'staff': staff_inbox_dict,
         'global_items': global_items,
         'global_unread_count': len(global_items)
     })
