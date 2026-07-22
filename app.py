@@ -107,9 +107,9 @@ def init_db():
     cursor.execute('SELECT COUNT(*) FROM staff')
     if cursor.fetchone()[0] == 0:
         cursor.executemany('INSERT INTO staff (name) VALUES (?)', [
-            ('Staff Sergeant Miller',),
-            ('Petty Officer Davis',),
-            ('Housing Desk A',)
+            ('Building 100 - Check-In Desk',),
+            ('Building 101 - Main Office',),
+            ('Building 102 - Inspection Desk',)
         ])
         
     # Seed default staff availability if table is empty
@@ -696,11 +696,11 @@ ADMIN_TEMPLATE = '''
 
                 <!-- Manage Staff & Availability Panel -->
                 <div class="card p-3 shadow-sm bg-light mb-4">
-                    <h4 class="fw-bold mb-3 text-secondary">Manage Staff & Availability</h4>
+                    <h4 class="fw-bold mb-3 text-secondary">Manage Building Numbers & Availability</h4>
                     <form method="POST" action="/admin/add-staff" class="mb-3">
                         <div class="input-group">
-                            <input type="text" name="staff_name" class="form-control" placeholder="e.g., Sergeant Adams" required>
-                            <button type="submit" class="btn btn-success">Add Staff</button>
+                            <input type="text" name="staff_name" class="form-control" placeholder="e.g., Building 103" required>
+                            <button type="submit" class="btn btn-success">Add Building</button>
                         </div>
                     </form>
 
@@ -710,7 +710,7 @@ ADMIN_TEMPLATE = '''
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <span class="fw-bold text-primary">{{ s_name }}</span>
                                     <form method="POST" action="/admin/delete-staff/{{ s_id }}" style="margin:0;">
-                                        <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="return confirm('Remove staff member and schedule?');">Delete</button>
+                                        <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="return confirm('Remove building and schedule?');">Delete</button>
                                     </form>
                                 </div>
                                 <div class="mb-2">
@@ -734,7 +734,7 @@ ADMIN_TEMPLATE = '''
                                 </form>
                             </div>
                         {% else %}
-                            <p class="text-muted">No staff configured.</p>
+                            <p class="text-muted">No buildings configured.</p>
                         {% endfor %}
                     </div>
                 </div>
@@ -843,6 +843,39 @@ ADMIN_TEMPLATE = '''
     <script>
         var allStaffList = {{ all_staff_json | safe }};
         var searchParam = "{{ search_query }}";
+        var autoOpened = false;
+
+        function openBookingModal(props, eventId) {
+            document.getElementById('updateApptForm').action = '/admin/update-appointment/' + eventId;
+            document.getElementById('modalSmName').textContent = props.sm_name;
+            document.getElementById('modalBranch').textContent = props.branch;
+            document.getElementById('modalEmail').textContent = props.email;
+            document.getElementById('modalDateTime').textContent = props.date_time.replace('T', ' ');
+            document.getElementById('modalPurpose').textContent = props.purpose;
+            document.getElementById('modalNotes').value = props.notes || '';
+            document.getElementById('modalStatusSelect').value = props.status;
+            document.getElementById('modalConfBadge').textContent = props.conf_number;
+            
+            var staffContainer = document.getElementById('modalStaffContainer');
+            staffContainer.innerHTML = '';
+            var assignedIds = props.staff_ids || [];
+
+            allStaffList.forEach(function(s) {
+                var isChecked = assignedIds.includes(s.id) ? 'checked' : '';
+                var div = document.createElement('div');
+                div.className = 'form-check';
+                div.innerHTML = `
+                    <input class="form-check-input" type="checkbox" name="staff_ids" value="${s.id}" id="modal_staff_${s.id}" ${isChecked}>
+                    <label class="form-check-label" for="modal_staff_${s.id}">
+                        ${s.name}
+                    </label>
+                `;
+                staffContainer.appendChild(div);
+            });
+            
+            var modal = new bootstrap.Modal(document.getElementById('bookingModal'));
+            modal.show();
+        }
 
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendar');
@@ -858,37 +891,16 @@ ADMIN_TEMPLATE = '''
                 },
                 events: calendarEventsUrl,
                 eventClick: function(info) {
-                    var props = info.event.extendedProps;
-                    
-                    document.getElementById('updateApptForm').action = '/admin/update-appointment/' + info.event.id;
-                    document.getElementById('modalSmName').textContent = props.sm_name;
-                    document.getElementById('modalBranch').textContent = props.branch;
-                    document.getElementById('modalEmail').textContent = props.email;
-                    document.getElementById('modalDateTime').textContent = props.date_time.replace('T', ' ');
-                    document.getElementById('modalPurpose').textContent = props.purpose;
-                    document.getElementById('modalNotes').value = props.notes || '';
-                    document.getElementById('modalStatusSelect').value = props.status;
-                    document.getElementById('modalConfBadge').textContent = props.conf_number;
-                    
-                    var staffContainer = document.getElementById('modalStaffContainer');
-                    staffContainer.innerHTML = '';
-                    var assignedIds = props.staff_ids || [];
-
-                    allStaffList.forEach(function(s) {
-                        var isChecked = assignedIds.includes(s.id) ? 'checked' : '';
-                        var div = document.createElement('div');
-                        div.className = 'form-check';
-                        div.innerHTML = `
-                            <input class="form-check-input" type="checkbox" name="staff_ids" value="${s.id}" id="modal_staff_${s.id}" ${isChecked}>
-                            <label class="form-check-label" for="modal_staff_${s.id}">
-                                ${s.name}
-                            </label>
-                        `;
-                        staffContainer.appendChild(div);
-                    });
-                    
-                    var modal = new bootstrap.Modal(document.getElementById('bookingModal'));
-                    modal.show();
+                    openBookingModal(info.event.extendedProps, info.event.id);
+                },
+                eventsSet: function(events) {
+                    if (searchParam && events.length > 0 && !autoOpened) {
+                        autoOpened = true;
+                        var targetEvent = events.find(e => e.extendedProps.conf_number.toUpperCase().includes(searchParam)) || events[0];
+                        if (targetEvent) {
+                            openBookingModal(targetEvent.extendedProps, targetEvent.id);
+                        }
+                    }
                 }
             });
             calendar.render();
