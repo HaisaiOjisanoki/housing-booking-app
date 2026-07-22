@@ -220,11 +220,11 @@ def get_staff_data():
         staff_availability_dict[s_id] = slot_list
         staff_availability_dict[str(s_id)] = slot_list
         
-        # Inbox notifications
+        # Inbox notifications (only unread or limited recent read)
         cursor.execute('''
             SELECT id, appointment_id, message, notification_type, timestamp, is_read 
             FROM staff_inbox 
-            WHERE staff_id = ? 
+            WHERE staff_id = ? AND is_read = 0
             ORDER BY timestamp DESC 
             LIMIT 15
         ''', (s_id,))
@@ -233,8 +233,7 @@ def get_staff_data():
         items_list = []
         unread_count = 0
         for item in inbox_items:
-            if item[5] == 0:
-                unread_count += 1
+            unread_count += 1
             items_list.append({
                 'id': item[0],
                 'appointment_id': item[1],
@@ -253,6 +252,32 @@ def get_staff_data():
         
     conn.close()
     return staff_list, staff_availability_dict, staff_inbox_dict
+
+def get_global_unread_inbox():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT si.id, si.staff_id, s.name, si.appointment_id, si.message, si.notification_type, si.timestamp, si.is_read
+        FROM staff_inbox si
+        JOIN staff s ON si.staff_id = s.id
+        WHERE si.is_read = 0
+        ORDER BY si.timestamp DESC
+    ''')
+    rows = cursor.fetchall()
+    conn.close()
+    items = []
+    for r in rows:
+        items.append({
+            'id': r[0],
+            'staff_id': r[1],
+            'staff_name': r[2],
+            'appointment_id': r[3],
+            'message': r[4],
+            'type': r[5],
+            'timestamp': r[6],
+            'is_read': r[7]
+        })
+    return items
 
 def generate_conf_number():
     return f"HB-{secrets.token_hex(3).upper()}"
@@ -703,15 +728,21 @@ ADMIN_TEMPLATE = '''
             </div>
         </div>
 
-        <div class="row mb-4">
-            <div class="col-12 col-md-6">
-                <form method="GET" action="/admin" class="input-group">
+        <div class="row mb-4 align-items-center">
+            <div class="col-12 col-md-8 d-flex flex-column flex-md-row gap-3 align-items-stretch align-items-md-center">
+                <form method="GET" action="/admin" class="input-group flex-grow-1">
                     <input type="text" name="search" class="form-control text-uppercase" placeholder="Search by Confirmation Number (e.g. HB-123XYZ)" value="{{ search_query }}">
                     <button type="submit" class="btn btn-primary">Search</button>
                     {% if search_query %}
                         <a href="/admin" class="btn btn-outline-secondary">Clear</a>
                     {% endif %}
                 </form>
+                <button type="button" class="btn btn-outline-primary position-relative px-3 py-2 fw-bold text-nowrap" data-bs-toggle="modal" data-bs-target="#globalInboxModal">
+                    <i class="bi bi-bell-fill me-1 text-danger"></i> Notifications
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger global-inbox-badge" style="font-size: 0.65rem; {% if not global_unread_items %}display: none;{% endif %}">
+                        {{ global_unread_items|length }}
+                    </span>
+                </button>
             </div>
         </div>
 
@@ -801,7 +832,7 @@ ADMIN_TEMPLATE = '''
                                         {% set items = inbox_data['items'] %}
                                         {% if items %}
                                             {% for item in items %}
-                                                <div class="list-group-item list-group-item-action py-2 px-2 {% if not item.is_read %}bg-white border-start border-danger border-4{% endif %}" style="font-size: 0.82rem;">
+                                                <div class="list-group-item list-group-item-action py-2 px-2 bg-white border-start border-danger border-4" style="font-size: 0.82rem;" id="inbox-item-{{ item.id }}">
                                                     <div class="d-flex justify-content-between align-items-center mb-1">
                                                         <span class="badge bg-info text-dark" style="font-size: 0.6rem;">{{ item.type }}</span>
                                                         <small class="text-muted" style="font-size: 0.6rem;">{{ item.timestamp }}</small>
@@ -811,14 +842,12 @@ ADMIN_TEMPLATE = '''
                                                         {% if item.appointment_id %}
                                                             <button type="button" class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size: 0.68rem;" onclick="openModalForAppointment({{ item.appointment_id }})">View Booking</button>
                                                         {% endif %}
-                                                        {% if not item.is_read %}
-                                                            <a href="/admin/inbox/read/{{ item.id }}" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size: 0.68rem;">Mark Read</a>
-                                                        {% endif %}
+                                                        <a href="/admin/inbox/read/{{ item.id }}" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size: 0.68rem;">Mark Read</a>
                                                     </div>
                                                 </div>
                                             {% endfor %}
                                         {% else %}
-                                            <div class="text-muted small fst-italic p-1">No booking notifications yet.</div>
+                                            <div class="text-muted small fst-italic p-1">No unread notifications.</div>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -870,6 +899,49 @@ ADMIN_TEMPLATE = '''
                             <li class="list-group-item text-muted">No visit options configured.</li>
                         {% endfor %}
                     </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Inbox Modal Pop-Out -->
+    <div class="modal fade" id="globalInboxModal" tabindex="-1" aria-labelledby="globalInboxModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+            <div class="modal-content shadow">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold" id="globalInboxModalLabel">
+                        <i class="bi bi-bell-fill me-2"></i>All New Booking Notifications
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3 p-md-4 bg-light">
+                    <div class="list-group global-inbox-modal-list">
+                        {% if global_unread_items %}
+                            {% for item in global_unread_items %}
+                                <div class="list-group-item list-group-item-action py-3 px-3 mb-2 bg-white rounded shadow-sm border-start border-danger border-4" id="global-inbox-item-{{ item.id }}">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <div>
+                                            <span class="badge bg-primary text-white me-1" style="font-size: 0.7rem;">{{ item.staff_name }}</span>
+                                            <span class="badge bg-info text-dark" style="font-size: 0.7rem;">{{ item.type }}</span>
+                                        </div>
+                                        <small class="text-muted" style="font-size: 0.7rem;">{{ item.timestamp }}</small>
+                                    </div>
+                                    <p class="mb-2 text-dark text-break fw-medium">{{ item.message }}</p>
+                                    <div class="d-flex justify-content-end gap-2">
+                                        {% if item.appointment_id %}
+                                            <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" onclick="openModalForAppointment({{ item.appointment_id }})">View Booking</button>
+                                        {% endif %}
+                                        <a href="/admin/inbox/read/{{ item.id }}" class="btn btn-sm btn-outline-secondary py-1 px-2">Mark Read</a>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-muted fst-italic py-4">No new unread notifications.</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer bg-white">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -1012,7 +1084,8 @@ ADMIN_TEMPLATE = '''
             fetch('/api/inbox-updates')
                 .then(response => response.json())
                 .then(data => {
-                    for (const [staffId, staffData] of Object.entries(data)) {
+                    // Update staff cards
+                    for (const [staffId, staffData] of Object.entries(data.staff)) {
                         var container = document.querySelector('.inbox-container-' + staffId);
                         var badge = document.querySelector('.inbox-count-badge-' + staffId);
                         var mailIcon = document.getElementById('mail-icon-' + staffId);
@@ -1034,9 +1107,8 @@ ADMIN_TEMPLATE = '''
                         var items = staffData.items;
                         if (items && items.length > 0) {
                             items.forEach(item => {
-                                var unreadClass = !item.is_read ? 'bg-white border-start border-danger border-4' : '';
                                 html += `
-                                    <div class="list-group-item list-group-item-action py-2 px-2 ${unreadClass}" style="font-size: 0.82rem;">
+                                    <div class="list-group-item list-group-item-action py-2 px-2 bg-white border-start border-danger border-4" style="font-size: 0.82rem;" id="inbox-item-${item.id}">
                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                             <span class="badge bg-info text-dark" style="font-size: 0.6rem;">${item.type}</span>
                                             <small class="text-muted" style="font-size: 0.6rem;">${item.timestamp}</small>
@@ -1044,16 +1116,53 @@ ADMIN_TEMPLATE = '''
                                         <p class="mb-1 text-dark text-break">${item.message}</p>
                                         <div class="d-flex justify-content-end gap-1">
                                             ${item.appointment_id ? `<button type="button" class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size: 0.68rem;" onclick="openModalForAppointment(${item.appointment_id})">View Booking</button>` : ''}
-                                            ${!item.is_read ? `<a href="/admin/inbox/read/${item.id}" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size: 0.68rem;">Mark Read</a>` : ''}
+                                            <a href="/admin/inbox/read/${item.id}" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size: 0.68rem;">Mark Read</a>
                                         </div>
                                     </div>
                                 `;
                             });
                         } else {
-                            html = '<div class="text-muted small fst-italic p-1">No booking notifications yet.</div>';
+                            html = '<div class="text-muted small fst-italic p-1">No unread notifications.</div>';
                         }
                         container.innerHTML = html;
                     }
+
+                    // Update global notifications modal and badge
+                    var globalBadge = document.querySelector('.global-inbox-badge');
+                    var globalList = document.querySelector('.global-inbox-modal-list');
+                    if (data.global_unread_count > 0) {
+                        if (globalBadge) {
+                            globalBadge.textContent = data.global_unread_count;
+                            globalBadge.style.display = 'inline-block';
+                        }
+                    } else {
+                        if (globalBadge) globalBadge.style.display = 'none';
+                    }
+
+                    var globalHtml = '';
+                    if (data.global_items && data.global_items.length > 0) {
+                        data.global_items.forEach(item => {
+                            globalHtml += `
+                                <div class="list-group-item list-group-item-action py-3 px-3 mb-2 bg-white rounded shadow-sm border-start border-danger border-4" id="global-inbox-item-${item.id}">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <div>
+                                            <span class="badge bg-primary text-white me-1" style="font-size: 0.7rem;">${item.staff_name}</span>
+                                            <span class="badge bg-info text-dark" style="font-size: 0.7rem;">${item.type}</span>
+                                        </div>
+                                        <small class="text-muted" style="font-size: 0.7rem;">${item.timestamp}</small>
+                                    </div>
+                                    <p class="mb-2 text-dark text-break fw-medium">${item.message}</p>
+                                    <div class="d-flex justify-content-end gap-2">
+                                        ${item.appointment_id ? `<button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" onclick="openModalForAppointment(${item.appointment_id})">View Booking</button>` : ''}
+                                        <a href="/admin/inbox/read/${item.id}" class="btn btn-sm btn-outline-secondary py-1 px-2">Mark Read</a>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        globalHtml = '<div class="text-center text-muted fst-italic py-4">No new unread notifications.</div>';
+                    }
+                    if (globalList) globalList.innerHTML = globalHtml;
                 });
         }
 
@@ -1369,6 +1478,7 @@ def admin():
     try:
         search_query = request.args.get('search', '').strip().upper()
         staff_list, staff_availability_dict, staff_inbox_dict = get_staff_data()
+        global_unread_items = get_global_unread_inbox()
         
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
@@ -1389,6 +1499,7 @@ def admin():
             staff_list=staff_list, 
             staff_availability=staff_availability_dict,
             staff_inbox=staff_inbox_dict,
+            global_unread_items=global_unread_items,
             purpose_list=purpose_list,
             admin_users=admin_users,
             current_user=session.get('username'),
@@ -1669,7 +1780,12 @@ def api_single_appointment(appt_id):
 @login_required
 def api_inbox_updates():
     _, _, staff_inbox_dict = get_staff_data()
-    return jsonify(staff_inbox_dict)
+    global_items = get_global_unread_inbox()
+    return jsonify({
+        'staff': staff_inbox_dict,
+        'global_items': global_items,
+        'global_unread_count': len(global_items)
+    })
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
