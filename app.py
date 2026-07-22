@@ -5,10 +5,14 @@ import sqlite3
 import json
 import secrets
 import os
+import traceback
 
 app = Flask(__name__)
-app.secret_key = "change-this-to-a-secure-secret-key"  # Required for admin login sessions
-DB_NAME = "housing.db"
+app.secret_key = "change-this-to-a-secure-secret-key"
+
+# Absolute path configuration for robust SQLite file storage on Render
+basedir = os.path.abspath(os.path.dirname(__file__))
+DB_NAME = os.path.join(basedir, "housing.db")
 
 # -------------------------------------------------------------------
 # Database Initialization & Auto-Migration
@@ -84,7 +88,7 @@ def init_db():
         )
     ''')
 
-    # Create Appointment-Staff Bridge Table (Supports Multiple Staff per Appointment)
+    # Create Appointment-Staff Bridge Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS appointment_staff (
             appointment_id INTEGER,
@@ -161,7 +165,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Run database initialization immediately so Gunicorn creates tables on startup
 init_db()
 
 # -------------------------------------------------------------------
@@ -197,7 +200,6 @@ def notify_appointment_staff(appointment_id, message, n_type='Update'):
     conn.commit()
     conn.close()
 
-# Helper to fetch staff, availability, and inbox notifications
 def get_staff_data():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -211,10 +213,13 @@ def get_staff_data():
     for s_id, s_name in staff_rows:
         staff_list.append((s_id, s_name))
         
-        # Slots
+        # Slots (keyed by both staff name and staff id for absolute safety)
         cursor.execute('SELECT id, time_slot FROM staff_availability WHERE staff_id = ? ORDER BY time_slot ASC', (s_id,))
         slots = cursor.fetchall()
-        staff_availability_dict[s_name] = [{'id': slot[0], 'time': slot[1]} for slot in slots]
+        slot_list = [{'id': slot[0], 'time': slot[1]} for slot in slots]
+        staff_availability_dict[s_name] = slot_list
+        staff_availability_dict[s_id] = slot_list
+        staff_availability_dict[str(s_id)] = slot_list
         
         # Inbox notifications
         cursor.execute('''
@@ -244,9 +249,9 @@ def get_staff_data():
             'items': items_list,
             'unread_count': unread_count
         }
-        # Store with both int and string keys to prevent type lookup mismatches
         staff_inbox_dict[s_id] = inbox_payload
         staff_inbox_dict[str(s_id)] = inbox_payload
+        staff_inbox_dict[s_name] = inbox_payload
         
     conn.close()
     return staff_list, staff_availability_dict, staff_inbox_dict
@@ -305,7 +310,6 @@ BOOK_TEMPLATE = '''
                     <input type="email" name="email" class="form-control" placeholder="name@mail.mil" required>
                 </div>
                 
-                <!-- Building Number Selection Dropdown for Public Form -->
                 <div class="mb-3">
                     <label class="form-label fw-bold">Building Number</label>
                     <select name="staff_id" class="form-select" required>
@@ -316,7 +320,6 @@ BOOK_TEMPLATE = '''
                     </select>
                 </div>
                 
-                <!-- Date & 24-Hr Time Selector -->
                 <div class="row mb-3">
                     <div class="col-12 col-md-7 mb-3 mb-md-0">
                         <label class="form-label fw-bold">Date</label>
@@ -351,7 +354,6 @@ BOOK_TEMPLATE = '''
                     </div>
                 </div>
 
-                <!-- Purpose Dropdown -->
                 <div class="mb-4">
                     <label class="form-label fw-bold">Purpose of Visit</label>
                     <select name="purpose" class="form-select" required>
@@ -375,7 +377,6 @@ BOOK_TEMPLATE = '''
         </div>
     </div>
 
-    <!-- Admin Login Modal Triggered from Bottom Link -->
     <div class="modal fade" id="adminLoginModal" tabindex="-1" aria-labelledby="adminLoginModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
             <div class="modal-content shadow">
@@ -693,7 +694,6 @@ ADMIN_TEMPLATE = '''
 </head>
 <body class="bg-light p-2 p-md-4">
     <div class="container-fluid bg-white p-3 p-md-4 rounded shadow-sm">
-        <!-- Header Nav -->
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
             <div>
                 <h2 class="fw-bold m-0 text-center text-md-start">Unaccompanied Housing Admin</h2>
@@ -705,7 +705,6 @@ ADMIN_TEMPLATE = '''
             </div>
         </div>
 
-        <!-- Search Bar for Confirmation Number -->
         <div class="row mb-4">
             <div class="col-12 col-md-6">
                 <form method="GET" action="/admin" class="input-group">
@@ -719,17 +718,14 @@ ADMIN_TEMPLATE = '''
         </div>
 
         <div class="row g-4">
-            <!-- Calendar View (Left Column) -->
             <div class="col-12 col-lg-7">
                 <h4 class="mb-2 fw-bold text-secondary">Appointment Schedule</h4>
                 <p class="text-muted small mb-3">Click any appointment to manage status, assign staff, or add notes.</p>
                 <div id="calendar" class="w-100"></div>
             </div>
 
-            <!-- Management Panels (Right Column) -->
             <div class="col-12 col-lg-5">
                 {% if current_role == 'super_admin' %}
-                <!-- Super Admin: Manage System Users Panel -->
                 <div class="card p-3 shadow-sm bg-light mb-4 border-primary">
                     <h4 class="fw-bold mb-3 text-primary">Manage Admin Users</h4>
                     <form method="POST" action="/admin/add-user" class="mb-3">
@@ -768,7 +764,6 @@ ADMIN_TEMPLATE = '''
                 </div>
                 {% endif %}
 
-                <!-- Manage Staff, Availability & Building Inbox Panel -->
                 <div class="card p-3 shadow-sm bg-light mb-4">
                     <h4 class="fw-bold mb-3 text-secondary">Manage Building Numbers & Inbox</h4>
                     <form method="POST" action="/admin/add-staff" class="mb-3">
@@ -784,8 +779,7 @@ ADMIN_TEMPLATE = '''
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <span class="fw-bold text-primary fs-5">{{ s_name }}</span>
                                     <div class="d-flex align-items-center gap-2">
-                                        <!-- Email Icon with Live Counter Badge Linking to Inbox Section -->
-                                        {% set inbox_data = staff_inbox.get(s_id, staff_inbox.get(s_id|string, {'items': [], 'unread_count': 0})) %}
+                                        {% set inbox_data = staff_inbox.get(s_id, staff_inbox.get(s_id|string, staff_inbox.get(s_name, {'items': [], 'unread_count': 0}))) %}
                                         <button type="button" class="btn btn-outline-primary btn-sm position-relative py-1 px-2 mail-btn-{{ s_id }}" onclick="scrollToInbox('{{ s_id }}')" title="View Booking Inbox">
                                             <i class="bi bi-envelope-fill {% if inbox_data.unread_count > 0 %}text-danger{% endif %}" id="mail-icon-{{ s_id }}"></i>
                                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger inbox-count-badge-{{ s_id }}" style="font-size: 0.6rem; {% if inbox_data.unread_count == 0 %}display: none;{% endif %}">
@@ -798,7 +792,6 @@ ADMIN_TEMPLATE = '''
                                     </div>
                                 </div>
 
-                                <!-- Separate Dedicated Section for Booking Notifications / Inbox -->
                                 <div class="mb-3 border rounded p-2 bg-light inbox-section-{{ s_id }}" id="inbox-div-{{ s_id }}">
                                     <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
                                         <span class="text-dark small fw-bold d-flex align-items-center gap-1">
@@ -832,11 +825,11 @@ ADMIN_TEMPLATE = '''
                                     </div>
                                 </div>
 
-                                <!-- Time Slots Section -->
                                 <div class="mb-2 border-top pt-2">
                                     <span class="text-muted small fw-bold d-block mb-1">Available Time Slots:</span>
                                     <div class="d-flex flex-wrap gap-1">
-                                        {% for slot in staff_availability[s_name] %}
+                                        {% set slots_list = staff_availability.get(s_name, staff_availability.get(s_id, staff_availability.get(s_id|string, []))) %}
+                                        {% for slot in slots_list %}
                                             <span class="badge bg-secondary d-flex align-items-center gap-1">
                                                 {{ slot.time }}
                                                 <form method="POST" action="/admin/delete-slot/{{ slot.id }}" style="display:inline; margin:0;">
@@ -859,7 +852,6 @@ ADMIN_TEMPLATE = '''
                     </div>
                 </div>
 
-                <!-- Manage Visit Purposes Panel -->
                 <div class="card p-3 shadow-sm bg-light">
                     <h4 class="fw-bold mb-3 text-secondary">Manage Visit Purposes</h4>
                     <form method="POST" action="/admin/add-purpose" class="mb-3">
@@ -885,7 +877,6 @@ ADMIN_TEMPLATE = '''
         </div>
     </div>
 
-    <!-- Booking Details Pop-out Modal -->
     <div class="modal fade" id="bookingModal" tabindex="-1" aria-labelledby="bookingModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
             <div class="modal-content shadow">
@@ -1043,7 +1034,7 @@ ADMIN_TEMPLATE = '''
                         
                         var html = '';
                         var items = staffData.items;
-                        if (items.length > 0) {
+                        if (items && items.length > 0) {
                             items.forEach(item => {
                                 var unreadClass = !item.is_read ? 'bg-white border-start border-danger border-4' : '';
                                 html += `
@@ -1377,35 +1368,40 @@ def logout():
 @app.route('/admin')
 @login_required
 def admin():
-    search_query = request.args.get('search', '').strip().upper()
-    staff_list, staff_availability_dict, staff_inbox_dict = get_staff_data()
-    
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM visit_purposes ORDER BY name ASC')
-    purpose_list = cursor.fetchall()
-    
-    admin_users = []
-    if session.get('role') == 'super_admin':
-        cursor.execute('SELECT id, username, role FROM users ORDER BY username ASC')
-        admin_users = cursor.fetchall()
+    try:
+        search_query = request.args.get('search', '').strip().upper()
+        staff_list, staff_availability_dict, staff_inbox_dict = get_staff_data()
         
-    conn.close()
-    
-    all_staff_json = [{'id': s[0], 'name': s[1]} for s in staff_list]
-    
-    return render_template_string(
-        ADMIN_TEMPLATE, 
-        staff_list=staff_list, 
-        staff_availability=staff_availability_dict,
-        staff_inbox=staff_inbox_dict,
-        purpose_list=purpose_list,
-        admin_users=admin_users,
-        current_user=session.get('username'),
-        current_role=session.get('role'),
-        all_staff_json=json.dumps(all_staff_json),
-        search_query=search_query
-    )
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM visit_purposes ORDER BY name ASC')
+        purpose_list = cursor.fetchall()
+        
+        admin_users = []
+        if session.get('role') == 'super_admin':
+            cursor.execute('SELECT id, username, role FROM users ORDER BY username ASC')
+            admin_users = cursor.fetchall()
+            
+        conn.close()
+        
+        all_staff_json = [{'id': s[0], 'name': s[1]} for s in staff_list]
+        
+        return render_template_string(
+            ADMIN_TEMPLATE, 
+            staff_list=staff_list, 
+            staff_availability=staff_availability_dict,
+            staff_inbox=staff_inbox_dict,
+            purpose_list=purpose_list,
+            admin_users=admin_users,
+            current_user=session.get('username'),
+            current_role=session.get('role'),
+            all_staff_json=json.dumps(all_staff_json),
+            search_query=search_query
+        )
+    except Exception as e:
+        print(f"\n[ADMIN ROUTE EXCEPTION]: {e}")
+        traceback.print_exc()
+        return f"Internal Admin Error: {e}", 500
 
 @app.route('/admin/inbox/read/<int:inbox_id>')
 @login_required
