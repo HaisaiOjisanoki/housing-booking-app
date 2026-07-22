@@ -137,6 +137,9 @@ def init_db():
     conn.commit()
     conn.close()
 
+# Run database initialization immediately so Gunicorn creates tables on startup
+init_db()
+
 # -------------------------------------------------------------------
 # Authentication Helper Decorators
 # -------------------------------------------------------------------
@@ -1197,7 +1200,6 @@ def add_user():
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
         try:
-            # Set must_change_password = 1 so newly created users also set their password/email on first login
             cursor.execute('INSERT INTO users (username, password, role, must_change_password) VALUES (?, ?, ?, 1)', 
                            (new_username, new_password, new_role))
             conn.commit()
@@ -1214,7 +1216,6 @@ def delete_user(user_id):
     cursor.execute('SELECT username FROM users WHERE id = ?', (user_id,))
     row = cursor.fetchone()
     
-    # Prevent deleting currently logged-in user
     if row and row[0] != session.get('username'):
         cursor.execute('DELETE FROM users WHERE id = ?', (user_id,))
         conn.commit()
@@ -1395,6 +1396,5 @@ def api_appointments():
 # Main
 # -------------------------------------------------------------------
 if __name__ == '__main__':
-    init_db()
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
