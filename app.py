@@ -109,6 +109,15 @@ def init_db():
             FOREIGN KEY(appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
         )
     ''')
+
+    # Auto-migration check: Ensure columns exist in staff_inbox
+    cursor.execute("PRAGMA table_info(staff_inbox)")
+    inbox_columns = [column[1] for column in cursor.fetchall()]
+    if inbox_columns:
+        if 'is_read' not in inbox_columns:
+            cursor.execute("ALTER TABLE staff_inbox ADD COLUMN is_read INTEGER DEFAULT 0")
+        if 'notification_type' not in inbox_columns:
+            cursor.execute("ALTER TABLE staff_inbox ADD COLUMN notification_type TEXT DEFAULT 'New Booking'")
     
     # Create Purposes Table
     cursor.execute('''
@@ -231,10 +240,13 @@ def get_staff_data():
                 'is_read': item[5]
             })
             
-        staff_inbox_dict[s_id] = {
+        inbox_payload = {
             'items': items_list,
             'unread_count': unread_count
         }
+        # Store with both int and string keys to prevent type lookup mismatches
+        staff_inbox_dict[s_id] = inbox_payload
+        staff_inbox_dict[str(s_id)] = inbox_payload
         
     conn.close()
     return staff_list, staff_availability_dict, staff_inbox_dict
@@ -773,7 +785,7 @@ ADMIN_TEMPLATE = '''
                                     <span class="fw-bold text-primary fs-5">{{ s_name }}</span>
                                     <div class="d-flex align-items-center gap-2">
                                         <!-- Email Icon with Live Counter Badge Linking to Inbox Section -->
-                                        {% set inbox_data = staff_inbox[s_id] %}
+                                        {% set inbox_data = staff_inbox.get(s_id, staff_inbox.get(s_id|string, {'items': [], 'unread_count': 0})) %}
                                         <button type="button" class="btn btn-outline-primary btn-sm position-relative py-1 px-2 mail-btn-{{ s_id }}" onclick="scrollToInbox('{{ s_id }}')" title="View Booking Inbox">
                                             <i class="bi bi-envelope-fill {% if inbox_data.unread_count > 0 %}text-danger{% endif %}" id="mail-icon-{{ s_id }}"></i>
                                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger inbox-count-badge-{{ s_id }}" style="font-size: 0.6rem; {% if inbox_data.unread_count == 0 %}display: none;{% endif %}">
@@ -996,7 +1008,6 @@ ADMIN_TEMPLATE = '''
                 });
         }
 
-        // Smooth scroll to the inbox section when clicking the email icon
         function scrollToInbox(staffId) {
             var inboxEl = document.getElementById('inbox-div-' + staffId);
             if (inboxEl) {
@@ -1008,7 +1019,6 @@ ADMIN_TEMPLATE = '''
             }
         }
 
-        // Live polling to keep inboxes and email notification indicators updated every 15 seconds
         function pollInboxUpdates() {
             fetch('/api/inbox-updates')
                 .then(response => response.json())
@@ -1020,7 +1030,6 @@ ADMIN_TEMPLATE = '''
                         
                         if (!container) continue;
                         
-                        // Update unread count badge & mail icon
                         if (staffData.unread_count > 0) {
                             if (badge) {
                                 badge.textContent = staffData.unread_count;
@@ -1032,7 +1041,6 @@ ADMIN_TEMPLATE = '''
                             if (mailIcon) mailIcon.classList.remove('text-danger');
                         }
                         
-                        // Rebuild inbox item list
                         var html = '';
                         var items = staffData.items;
                         if (items.length > 0) {
@@ -1149,7 +1157,6 @@ def book():
     conn.commit()
     conn.close()
     
-    # Simulate Email Dispatch (Printed to Console Log)
     print(f"\n[EMAIL SIMULATION] Sent to: {request.form['email']}")
     print(f"Subject: Housing Appointment Confirmation ({conf_num})")
     print(f"Body: Hello {request.form['sm_name']}, your appointment is scheduled for {combined_date_time}. Confirmation #: {conf_num}\n")
@@ -1168,8 +1175,6 @@ def book():
         message="Appointment successfully booked!",
         conf_num=conf_num
     )
-
-# --- User Booking Lookup & Self-Management Routes ---
 
 @app.route('/lookup', methods=['GET', 'POST'])
 def lookup():
@@ -1257,8 +1262,6 @@ def cancel_booking_public(conf_num):
         
     conn.close()
     return redirect(url_for('manage_booking_public', conf_num=conf_num))
-
-# --- Authentication & Profile Setup Routes ---
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -1370,8 +1373,6 @@ def reset_password():
 def logout():
     session.clear()
     return redirect(url_for('login'))
-
-# --- Admin Dashboard & Management Routes ---
 
 @app.route('/admin')
 @login_required
@@ -1591,12 +1592,12 @@ def api_appointments():
     conn.close()
     
     color_map = {
-        'Pending': '#ffc107',      # Yellow
-        'Confirmed': '#0d6efd',    # Blue
-        'Rescheduled': '#0dcaf0',  # Cyan
-        'Complete': '#198754',     # Green
-        'Incomplete': '#6c757d',   # Gray
-        'Cancelled': '#dc3545'      # Red
+        'Pending': '#ffc107',
+        'Confirmed': '#0d6efd',
+        'Rescheduled': '#0dcaf0',
+        'Complete': '#198754',
+        'Incomplete': '#6c757d',
+        'Cancelled': '#dc3545'
     }
     
     events = []
@@ -1676,9 +1677,6 @@ def api_inbox_updates():
     _, _, staff_inbox_dict = get_staff_data()
     return jsonify(staff_inbox_dict)
 
-# -------------------------------------------------------------------
-# Main
-# -------------------------------------------------------------------
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
