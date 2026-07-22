@@ -213,11 +213,10 @@ def get_staff_data():
     for s_id, s_name in staff_rows:
         staff_list.append((s_id, s_name))
         
-        # Slots (keyed by both staff name and staff id for absolute safety)
+        # Slots
         cursor.execute('SELECT id, time_slot FROM staff_availability WHERE staff_id = ? ORDER BY time_slot ASC', (s_id,))
         slots = cursor.fetchall()
         slot_list = [{'id': slot[0], 'time': slot[1]} for slot in slots]
-        staff_availability_dict[s_name] = slot_list
         staff_availability_dict[s_id] = slot_list
         staff_availability_dict[str(s_id)] = slot_list
         
@@ -251,7 +250,6 @@ def get_staff_data():
         }
         staff_inbox_dict[s_id] = inbox_payload
         staff_inbox_dict[str(s_id)] = inbox_payload
-        staff_inbox_dict[s_name] = inbox_payload
         
     conn.close()
     return staff_list, staff_availability_dict, staff_inbox_dict
@@ -779,7 +777,7 @@ ADMIN_TEMPLATE = '''
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <span class="fw-bold text-primary fs-5">{{ s_name }}</span>
                                     <div class="d-flex align-items-center gap-2">
-                                        {% set inbox_data = staff_inbox.get(s_id, staff_inbox.get(s_id|string, staff_inbox.get(s_name, {'items': [], 'unread_count': 0}))) %}
+                                        {% set inbox_data = staff_inbox[s_id] %}
                                         <button type="button" class="btn btn-outline-primary btn-sm position-relative py-1 px-2 mail-btn-{{ s_id }}" onclick="scrollToInbox('{{ s_id }}')" title="View Booking Inbox">
                                             <i class="bi bi-envelope-fill {% if inbox_data.unread_count > 0 %}text-danger{% endif %}" id="mail-icon-{{ s_id }}"></i>
                                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger inbox-count-badge-{{ s_id }}" style="font-size: 0.6rem; {% if inbox_data.unread_count == 0 %}display: none;{% endif %}">
@@ -828,7 +826,7 @@ ADMIN_TEMPLATE = '''
                                 <div class="mb-2 border-top pt-2">
                                     <span class="text-muted small fw-bold d-block mb-1">Available Time Slots:</span>
                                     <div class="d-flex flex-wrap gap-1">
-                                        {% set slots_list = staff_availability.get(s_name, staff_availability.get(s_id, staff_availability.get(s_id|string, []))) %}
+                                        {% set slots_list = staff_availability[s_id] %}
                                         {% for slot in slots_list %}
                                             <span class="badge bg-secondary d-flex align-items-center gap-1">
                                                 {{ slot.time }}
