@@ -779,9 +779,9 @@ ADMIN_TEMPLATE = '''
                                     <div class="d-flex align-items-center gap-2">
                                         {% set inbox_data = staff_inbox[s_id] %}
                                         <button type="button" class="btn btn-outline-primary btn-sm position-relative py-1 px-2 mail-btn-{{ s_id }}" onclick="scrollToInbox('{{ s_id }}')" title="View Booking Inbox">
-                                            <i class="bi bi-envelope-fill {% if inbox_data.unread_count > 0 %}text-danger{% endif %}" id="mail-icon-{{ s_id }}"></i>
-                                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger inbox-count-badge-{{ s_id }}" style="font-size: 0.6rem; {% if inbox_data.unread_count == 0 %}display: none;{% endif %}">
-                                                {{ inbox_data.unread_count }}
+                                            <i class="bi bi-envelope-fill {% if inbox_data['unread_count'] > 0 %}text-danger{% endif %}" id="mail-icon-{{ s_id }}"></i>
+                                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger inbox-count-badge-{{ s_id }}" style="font-size: 0.6rem; {% if inbox_data['unread_count'] == 0 %}display: none;{% endif %}">
+                                                {{ inbox_data['unread_count'] }}
                                             </span>
                                         </button>
                                         <form method="POST" action="/admin/delete-staff/{{ s_id }}" style="margin:0;">
@@ -798,7 +798,7 @@ ADMIN_TEMPLATE = '''
                                         <span class="badge bg-secondary" style="font-size: 0.65rem;">Live Feed</span>
                                     </div>
                                     <div class="list-group inbox-container-{{ s_id }}" style="max-height: 150px; overflow-y: auto;">
-                                        {% set items = inbox_data.items %}
+                                        {% set items = inbox_data['items'] %}
                                         {% if items %}
                                             {% for item in items %}
                                                 <div class="list-group-item list-group-item-action py-2 px-2 {% if not item.is_read %}bg-white border-start border-danger border-4{% endif %}" style="font-size: 0.82rem;">
