@@ -71,24 +71,61 @@
                     
                     <!-- 1. OVERVIEW SECTION -->
                     <div class="tab-pane fade show active" id="overviewSection" role="tabpanel">
-                        <h2 class="fw-bold mb-4">Dashboard Overview</h2>
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+                            <div>
+                                <h2 class="fw-bold mb-1">Dashboard Overview</h2>
+                                <p class="text-muted small mb-0">System metrics filtered by camp and appointment types.</p>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <label class="form-label small fw-bold mb-0 text-nowrap">Filter Camp:</label>
+                                <select id="overviewCampFilter" class="form-select form-select-sm" style="min-width: 180px;" onchange="renderOverview()">
+                                    <option value="ALL">All Camps</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- General Stats Row -->
                         <div class="row g-4 mb-4">
                             <div class="col-md-4">
-                                <div class="card shadow-sm p-3 bg-white">
-                                    <h6 class="text-muted fw-bold small">TOTAL APPOINTMENTS</h6>
-                                    <h2 id="statTotalAppointments" class="fw-bold text-primary mb-0">0</h2>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="card shadow-sm p-3 bg-white">
+                                <div class="card shadow-sm p-3 bg-white border-start border-primary border-4">
                                     <h6 class="text-muted fw-bold small">TOTAL CAMPS</h6>
-                                    <h2 id="statTotalCamps" class="fw-bold text-success mb-0">0</h2>
+                                    <h2 id="statTotalCamps" class="fw-bold text-primary mb-0">0</h2>
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <div class="card shadow-sm p-3 bg-white">
-                                    <h6 class="text-muted fw-bold small">UH BUILDING MANAGERS</h6>
+                                <div class="card shadow-sm p-3 bg-white border-start border-success border-4">
+                                    <h6 class="text-muted fw-bold small">TOTAL APPOINTMENTS</h6>
+                                    <h2 id="statTotalAppointments" class="fw-bold text-success mb-0">0</h2>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card shadow-sm p-3 bg-white border-start border-info border-4">
+                                    <h6 class="text-muted fw-bold small">TOTAL MANAGERS</h6>
                                     <h2 id="statTotalStaff" class="fw-bold text-info mb-0">0</h2>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Appointments Breakdown by Type -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header bg-dark text-white py-3">
+                                <h5 class="mb-0 fw-bold fs-6"><i class="bi bi-list-task me-2"></i>Appointments Breakdown by Type</h5>
+                            </div>
+                            <div class="card-body p-4">
+                                <div id="overviewAppointmentTypesContainer" class="row g-3">
+                                    <!-- Dynamic appointment type counts -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- UH Building Managers Breakdown by Camp & Sites -->
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-primary text-white py-3">
+                                <h5 class="mb-0 fw-bold fs-6"><i class="bi bi-building-check me-2"></i>UH Building Managers by Camp & Sites</h5>
+                            </div>
+                            <div class="card-body p-4">
+                                <div id="overviewManagersContainer" class="row g-3">
+                                    <!-- Dynamic managers breakdown by camp and site -->
                                 </div>
                             </div>
                         </div>
@@ -263,6 +300,7 @@
                 if (!appState.staff_users) appState.staff_users = [];
                 if (!appState.purposes) appState.purposes = ['Check-in / In-processing', 'Out-processing Inspection'];
 
+                populateOverviewCampFilter();
                 renderOverview();
                 renderAppointments();
                 renderPurposes();
@@ -275,10 +313,101 @@
             }
         }
 
+        function populateOverviewCampFilter() {
+            const filterSelect = document.getElementById('overviewCampFilter');
+            const currentVal = filterSelect.value;
+            filterSelect.innerHTML = '<option value="ALL">All Camps</option>';
+            appState.camps.forEach(c => {
+                filterSelect.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+            filterSelect.value = appState.camps.includes(currentVal) ? currentVal : 'ALL';
+        }
+
         function renderOverview() {
-            document.getElementById('statTotalAppointments').textContent = appState.bookings.length;
+            const selectedCamp = document.getElementById('overviewCampFilter').value;
+            
+            // Filter bookings by camp if selected
+            const filteredBookings = selectedCamp === 'ALL' 
+                ? (appState.bookings || []) 
+                : (appState.bookings || []).filter(b => b.camp === selectedCamp);
+
             document.getElementById('statTotalCamps').textContent = appState.camps.length;
-            document.getElementById('statTotalStaff').textContent = appState.staff_users.length;
+            document.getElementById('statTotalAppointments').textContent = filteredBookings.length;
+            
+            // Total staff count (filtered by camp if selected)
+            const filteredStaff = selectedCamp === 'ALL'
+                ? (appState.staff_users || [])
+                : (appState.staff_users || []).filter(s => s.camp === selectedCamp);
+            document.getElementById('statTotalStaff').textContent = filteredStaff.length;
+
+            // 1. Render appointment counts grouped by type (purpose)
+            const typeContainer = document.getElementById('overviewAppointmentTypesContainer');
+            typeContainer.innerHTML = '';
+
+            const purposes = appState.purposes || [];
+            if (purposes.length === 0) {
+                typeContainer.innerHTML = `<div class="col-12 text-muted small">No purpose categories defined.</div>`;
+            } else {
+                purposes.forEach(purpose => {
+                    const count = filteredBookings.filter(b => b.purpose === purpose).log || filteredBookings.filter(b => b.purpose === purpose).length;
+                    typeContainer.innerHTML += `
+                        <div class="col-md-4">
+                            <div class="p-3 border rounded bg-light">
+                                <span class="text-muted small fw-bold d-block text-truncate" title="${purpose}">${purpose}</span>
+                                <h3 class="fw-bold text-primary mb-0 mt-1">${count}</h3>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            // 2. Render UH Building Managers count by camp assignment and display each site
+            const managersContainer = document.getElementById('overviewManagersContainer');
+            managersContainer.innerHTML = '';
+
+            const campsToDisplay = selectedCamp === 'ALL' ? appState.camps : [selectedCamp];
+
+            if (campsToDisplay.length === 0) {
+                managersContainer.innerHTML = `<div class="col-12 text-muted small">No camps available.</div>`;
+                return;
+            }
+
+            campsToDisplay.forEach(camp => {
+                const campManagers = (appState.staff_users || []).filter(s => s.camp === camp);
+                
+                // Group managers and their sites
+                let sitesHtml = '';
+                if (campManagers.length === 0) {
+                    sitesHtml = `<p class="text-muted small mb-0 fst-italic">No managers assigned to this camp.</p>`;
+                } else {
+                    campManagers.forEach(m => {
+                        const bldgs = m.buildings ? m.buildings.join(', ') : (m.building ? m.building : 'None');
+                        const roleBadge = m.role === 'camp_admin' ? '<span class="badge bg-dark ms-1">Camp Admin</span>' : '<span class="badge bg-secondary ms-1">Manager</span>';
+                        sitesHtml += `
+                            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                                <div>
+                                    <strong class="text-dark">${m.username}</strong> ${roleBadge}
+                                </div>
+                                <span class="badge bg-info text-dark">Sites: Bldg ${bldgs}</span>
+                            </div>
+                        `;
+                    });
+                }
+
+                managersContainer.innerHTML += `
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 bg-light h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                <h6 class="fw-bold text-primary mb-0"><i class="bi bi-building me-1"></i> ${camp}</h6>
+                                <span class="badge bg-primary rounded-pill">Total Managers: ${campManagers.length}</span>
+                            </div>
+                            <div class="manager-sites-list">
+                                ${sitesHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
         }
 
         function renderAppointments() {
@@ -306,12 +435,14 @@
             input.value = '';
             await saveStateToServer();
             renderPurposes();
+            renderOverview();
         }
 
         async function removePurpose(idx) {
             appState.purposes.splice(idx, 1);
             await saveStateToServer();
             renderPurposes();
+            renderOverview();
         }
 
         function renderCamps() {
@@ -335,6 +466,7 @@
             renderCamps();
             renderOverview();
             populateStaffCampDropdown();
+            populateOverviewCampFilter();
         }
 
         function populateStaffCampDropdown() {
@@ -351,7 +483,7 @@
             container.innerHTML = '';
 
             if (!camp || !appState.camp_buildings || !appState.camp_buildings[camp] || appState.camp_buildings[camp].length === 0) {
-                container.innerHTML = '<span class="text-muted small">No buildings available for this camp.</span>';
+                container.innerHTML = '<span class="text-muted small">Please select a camp first.</span>';
                 return;
             }
 
