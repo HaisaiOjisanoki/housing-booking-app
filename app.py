@@ -1,5 +1,6 @@
 import os
 import json
+import traceback
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 
 app = Flask(__name__)
@@ -58,7 +59,7 @@ def load_state():
                 if isinstance(data, dict):
                     return data
         except Exception as e:
-            print(f"Warning: Error loading state file, resetting to default: {e}")
+            print(f"Warning: Error loading state file: {e}")
     return default_state
 
 def save_state(state):
@@ -70,14 +71,16 @@ def save_state(state):
 
 app_state = load_state()
 
-# Global Error Handlers to prevent raw 500 crashes
-@app.errorhandler(400)
-def bad_request(e):
-    return jsonify({'error': 'Bad Request', 'message': str(e)}), 400
-
+# Expose exact Python traceback on 500 errors for instant debugging
 @app.errorhandler(500)
 def internal_error(e):
-    return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
+    tb = traceback.format_exc()
+    print("\n--- CRITICAL 500 ERROR TRACEBACK ---\n", tb)
+    return jsonify({
+        'error': 'Internal Server Error',
+        'message': str(e),
+        'traceback': tb
+    }), 500
 
 @app.route('/')
 def index():
