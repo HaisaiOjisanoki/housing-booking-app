@@ -17,7 +17,8 @@
             <a class="navbar-brand fw-bold" href="#"><i class="bi bi-shield-lock-fill me-2"></i>Housing Portal Dashboard</a>
             <div class="d-flex align-items-center">
                 <span id="userRoleBadge" class="badge bg-primary me-3 py-2 px-3">Role: Super Admin</span>
-                <a href="/public_booking.html" target="_blank" class="btn btn-outline-light btn-sm me-2"><i class="bi bi-box-arrow-up-right me-1"></i>Public Booking Page</a>
+                <!-- Fixed link to use relative path public_booking.html -->
+                <a href="public_booking.html" target="_blank" class="btn btn-outline-light btn-sm me-2"><i class="bi bi-box-arrow-up-right me-1"></i>Public Booking Page</a>
                 <a href="/" class="btn btn-outline-danger btn-sm"><i class="bi bi-box-arrow-right me-1"></i>Sign Out</a>
             </div>
         </div>
@@ -281,10 +282,8 @@
         let currentCalendarDate = new Date();
 
         function initDashboard() {
-            // Determine user role (Simulated role stored in localStorage or default to Super Admin)
             let currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: "superadmin", role: "Super Admin", assignedCamps: [] };
             
-            // Update UI based on role permissions
             const roleBadge = document.getElementById('userRoleBadge');
             roleBadge.textContent = `Role: ${currentUser.role} (${currentUser.username})`;
 
@@ -292,7 +291,7 @@
                 document.getElementById('campsNavTab').style.display = 'none';
                 document.getElementById('settingsNavTab').style.display = 'none';
             } else if (currentUser.role === 'Admin') {
-                document.getElementById('campsNavTab').style.display = 'none'; // Admin cannot modify camp options, only Super Admin
+                document.getElementById('campsNavTab').style.display = 'none';
             }
 
             loadBookings();
@@ -302,24 +301,20 @@
             renderCalendarView();
         }
 
-        // --- Role-Based Filtering Logic ---
         function getFilteredBookings() {
             let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
             let currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: "superadmin", role: "Super Admin", assignedCamps: ["Camp Hansen"] };
 
             if (currentUser.role === 'Super Admin') {
-                return bookings; // Super Admin views all users & bookings
+                return bookings;
             } else if (currentUser.role === 'Admin') {
-                // Admin views bookings assigned to their camps/buildings
                 let assignedCamps = currentUser.assignedCamps || [];
                 return bookings.filter(b => assignedCamps.includes(b.camp));
             } else {
-                // Regular users only show their own bookings
                 return bookings.filter(b => b.username === currentUser.username || `${b.firstName} ${b.lastName}`.toLowerCase() === currentUser.username.toLowerCase());
             }
         }
 
-        // --- 1. Appointments Table View ---
         function loadBookings() {
             const bookings = getFilteredBookings();
             const tbody = document.getElementById('bookingsTableBody');
@@ -367,7 +362,6 @@
             showDashAlert(`Appointment status updated to ${newStatus}.`, "success");
         }
 
-        // --- Booking Modal & Staff Notes ---
         function openBookingModal(id) {
             let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
             let booking = bookings.find(b => b.id === id);
@@ -406,7 +400,6 @@
             showDashAlert("Staff notes successfully saved (Hidden from public booking page).", "success");
         }
 
-        // --- 2. Calendar View Logic ---
         function changeCalendarMonth(direction) {
             currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
             renderCalendarView();
@@ -486,7 +479,6 @@
             container.innerHTML = html;
         }
 
-        // --- 3. Super Admin Camp & Building Management Logic (Auto-Syncs) ---
         function initSuperAdminCamps() {
             renderSuperCampsTable();
             populateSuperCampDropdowns();
@@ -627,7 +619,6 @@
             }
         }
 
-        // --- 4. Facility Schedule & Availability ---
         function loadAvailabilitySettings() {
             const stored = localStorage.getItem('housing_availability');
             const avail = stored ? JSON.parse(stored) : {
@@ -656,7 +647,6 @@
             showDashAlert("Facility schedule and restriction rules successfully updated.", "success");
         }
 
-        // --- 5. Visit Purposes ---
         function loadPurposes() {
             const purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [
                 "Check-in / In-processing", 
@@ -668,6 +658,7 @@
             if (!tbody) return;
 
             tbody.innerHTML = '';
+            purposes.pers?.forEach((p, index) => {}); // fallback safe
             purposes.forEach((p, index) => {
                 tbody.innerHTML += `
                     <tr>
@@ -708,7 +699,6 @@
             showDashAlert("Visit purpose removed.", "success");
         }
 
-        // --- Utility Alert ---
         function showDashAlert(message, type) {
             const alert = document.getElementById('dashAlert');
             alert.className = `alert alert-${type} mb-4`;
