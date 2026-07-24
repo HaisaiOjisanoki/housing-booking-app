@@ -3,109 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unaccompanied Housing Dashboard</title>
+    <title>Public Room Booking - Unaccompanied Housing</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .modal-body {
-            max-height: 70vh;
-            overflow-y: auto;
-        }
-        .action-toolbar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-        .message-item {
-            transition: background-color 0.2s;
-        }
-        .message-item.unread {
-            background-color: #f8f9fa;
-            font-weight: bold;
-        }
-        .app-section {
-            display: none;
-        }
-        .app-section.active {
-            display: block;
-        }
-    </style>
 </head>
-<body onload="initApp()">
+<body class="bg-light pb-5" onload="initPublicBooking()">
 
-    <!-- Navigation Bar with Mobile Toggle -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#" onclick="switchSection('dashboard')">Housing Dashboard</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" id="nav-dashboard" onclick="switchSection('dashboard')">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" id="nav-public-booking" onclick="switchSection('publicBooking')">Public Booking</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" id="nav-manage-buildings" onclick="switchSection('manageBuildings')">Manage Buildings (Admin)</a>
-                    </li>
-                </ul>
-                <!-- Search Bar, Notification Inbox Button, and Admin Controls -->
-                <div class="d-flex align-items-center flex-wrap gap-2 mt-2 mt-lg-0">
-                    <input class="form-control form-control-sm" type="search" placeholder="Search bookings..." aria-label="Search">
-                    <!-- Notification Inbox Button -->
-                    <button class="btn btn-outline-light btn-sm position-relative" type="button" data-bs-toggle="modal" data-bs-target="#notificationModal" aria-label="Inbox" onclick="renderInbox()">
-                        📥 Inbox
-                        <span id="unreadBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                            0
-                        </span>
-                    </button>
-                    <a class="btn btn-outline-warning btn-sm" href="#" onclick="switchSection('manageBuildings')">Admin Portal</a>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <!-- MAIN DASHBOARD SECTION -->
-    <div id="section-dashboard" class="container my-4 app-section active">
-        <h2 class="mb-4">Housing Management Overview</h2>
-        
-        <!-- Action Button Toolbar -->
-        <div class="action-toolbar mb-4">
-            <button class="btn btn-primary" onclick="switchSection('publicBooking')">New Booking</button>
-            <button class="btn btn-secondary" onclick="switchSection('manageBuildings')">Manage Buildings & Export</button>
-            <button class="btn btn-outline-secondary" onclick="resetDefaultData()">Reset Sample Data</button>
+    <div class="container my-5">
+        <div class="text-center mb-4">
+            <h2>Unaccompanied Housing Public Booking</h2>
+            <p class="text-muted">Submit your room and visit request below. A confirmation code will be generated upon submission.</p>
         </div>
 
-        <!-- Responsive Grid Layout -->
-        <div class="row g-3">
-            <div class="col-12 col-md-4">
-                <div class="card p-3 shadow-sm">
-                    <h5>Active Bookings</h5>
-                    <p class="text-muted mb-0">View and manage booking updates.</p>
-                </div>
-            </div>
-            <div class="col-12 col-md-4">
-                <div class="card p-3 shadow-sm">
-                    <h5>Room Status</h5>
-                    <p class="text-muted mb-0">Check current barracks occupancy.</p>
-                </div>
-            </div>
-            <div class="col-12 col-md-4">
-                <div class="card p-3 shadow-sm">
-                    <h5>System Logs</h5>
-                    <p class="text-muted mb-0">Review recent administrative changes.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- PUBLIC BOOKING PAGE SECTION -->
-    <div id="section-publicBooking" class="container my-4 app-section">
-        <h2 class="mb-4">Public Room Booking</h2>
-        <div class="card p-4 shadow-sm col-12 col-lg-8 mx-auto">
+        <!-- BOOKING FORM CARD -->
+        <div class="card p-4 shadow-sm col-12 col-lg-8 mx-auto mb-4">
+            <h4 class="mb-3">New Room Booking</h4>
             <form id="publicBookingForm" onsubmit="submitBooking(event)">
                 <div class="row">
                     <div class="col-md-6 mb-3">
@@ -132,13 +44,13 @@
                         </select>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label for="email" class="form-label">Email Address</label>
+                        <label for="email" class="form-label">Email Address (for confirmation)</label>
                         <input type="email" class="form-control" id="email" required placeholder="user@mil / email.com">
                     </div>
                 </div>
                 <div class="mb-3">
                     <label for="publicBuildingSelect" class="form-label">Building Number</label>
-                    <select class="form-select" id="publicBuildingSelect" onchange="updateAvailableTimes()" required>
+                    <select class="form-select" id="publicBuildingSelect" onchange="updateBuildingDetails('publicBuildingSelect', 'publicTimeSelect', 'purposeOfVisitSelect')" required>
                         <option value="">-- Choose a Building --</option>
                     </select>
                 </div>
@@ -148,285 +60,90 @@
                         <input type="date" class="form-control" id="bookingDate" required>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label for="publicTimeSelect" class="form-label">Time (Restricted to Admin Hours)</label>
+                        <label for="publicTimeSelect" class="form-label">Time</label>
                         <select class="form-select" id="publicTimeSelect" required disabled>
                             <option value="">-- Select building first --</option>
                         </select>
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label for="purposeOfVisit" class="form-label">Purpose of Visit</label>
-                    <input type="text" class="form-control" id="purposeOfVisit" required placeholder="e.g. In-processing, Room Inspection, Maintenance">
+                    <label for="purposeOfVisitSelect" class="form-label">Purpose of Visit</label>
+                    <select class="form-select" id="purposeOfVisitSelect" required disabled>
+                        <option value="">-- Select building first --</option>
+                    </select>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Confirm Booking</button>
             </form>
         </div>
-    </div>
 
-    <!-- MANAGE BUILDINGS & EXPORT SECTION (ADMIN) -->
-    <div id="section-manageBuildings" class="container my-4 app-section">
-        <h2 class="mb-4">Admin Portal: Buildings & Data Export</h2>
-        
-        <!-- Admin Export Controls Toolbar -->
-        <div class="card p-3 shadow-sm mb-4 bg-light">
-            <h5 class="mb-3">📊 Booking Data Export (Excel / CSV Format)</h5>
-            <div class="row g-3 align-items-end">
-                <div class="col-12 col-md-4">
-                    <button class="btn btn-success w-100" onclick="exportAllBookings()">Export All Bookings (CSV)</button>
-                </div>
-                <div class="col-12 col-md-5">
-                    <label for="exportUserSelect" class="form-label form-label-sm mb-1">Filter by User (Email / Name):</label>
-                    <select class="form-select form-select-sm" id="exportUserSelect">
-                        <option value="">-- Select a User --</option>
-                    </select>
-                </div>
-                <div class="col-12 col-md-3">
-                    <button class="btn btn-outline-success w-100" onclick="exportSelectedUserBookings()">Export Selected User</button>
-                </div>
+        <!-- MANAGE OR CANCEL BOOKINGS SECTION -->
+        <div class="card p-4 shadow-sm col-12 col-lg-8 mx-auto mb-4 border-info">
+            <h4 class="mb-3 text-info">Manage or Cancel Your Booking</h4>
+            <p class="text-muted small">Enter your confirmation code below to look up your reservation, change your date/time/building, or cancel it.</p>
+            <div class="input-group mb-3">
+                <input type="text" class="form-control" id="lookupCodeInput" placeholder="Enter Confirmation Code (e.g. HB-A98XY)" style="text-transform: uppercase;">
+                <button class="btn btn-outline-info" type="button" onclick="lookupBooking()">Look Up Booking</button>
+            </div>
+            
+            <div id="manageBookingResult" style="display: none;" class="mt-3 p-3 bg-white border rounded">
+                <!-- Dynamically populated booking management details -->
             </div>
         </div>
 
-        <div class="row g-4">
-            <!-- Add / Edit Building Form -->
-            <div class="col-12 col-lg-4">
-                <div class="card p-3 shadow-sm">
-                    <h5 id="formTitle" class="mb-3">Add New Building</h5>
-                    <form id="buildingForm" onsubmit="saveBuilding(event)">
-                        <input type="hidden" id="buildingIndex" value="">
-                        <div class="mb-3">
-                            <label for="buildingNameInput" class="form-label">Building Number/Name</label>
-                            <input type="text" class="form-control" id="buildingNameInput" required placeholder="e.g. Building 4">
-                        </div>
-                        <div class="mb-3">
-                            <label for="startTimeInput" class="form-label">Available Start Time</label>
-                            <input type="time" class="form-control" id="startTimeInput" value="08:00" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="endTimeInput" class="form-label">Available End Time</label>
-                            <input type="time" class="form-control" id="endTimeInput" value="17:00" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100 mb-2">Save Building Rules</button>
-                        <button type="button" class="btn btn-outline-secondary w-100" onclick="resetBuildingForm()" id="cancelEditBtn" style="display:none;">Cancel Edit</button>
-                    </form>
-                </div>
-            </div>
-            <!-- Buildings List Table -->
-            <div class="col-12 col-lg-8">
-                <div class="card p-3 shadow-sm">
-                    <h5 class="mb-3">Configured Buildings & Operating Hours</h5>
-                    <div class="table-responsive">
-                        <table class="table table-striped align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Building Number</th>
-                                    <th>Start Time</th>
-                                    <th>End Time</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="buildingsTableBody">
-                                <!-- Populated Dynamically -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+        <!-- Link to Separate Login Page -->
+        <div class="text-center mt-4">
+            <p class="text-muted mb-2">Staff or Administrator?</p>
+            <a href="login.html" class="btn btn-outline-dark btn-sm">🔒 Go to Login Portal</a>
         </div>
     </div>
 
-    <!-- Notification Inbox Modal -->
-    <div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-scrollable modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="notificationModalLabel">Booking Notification Inbox</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <!-- Inbox Filters -->
-                    <div class="btn-group mb-3 w-100" role="group">
-                        <button type="button" class="btn btn-outline-secondary active" onclick="setFilter('all')">All</button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="setFilter('unread')">Unread</button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="setFilter('starred')">Starred</button>
-                    </div>
-
-                    <!-- Message List Container -->
-                    <div id="messageList" class="list-group">
-                        <!-- Populated Dynamically via JavaScript -->
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="markAllAsRead()">Mark All as Read</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bootstrap JS Bundle & Application Script -->
+    <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const defaultBuildings = [
-            { id: 1, name: "Building 1", startTime: "08:00", endTime: "12:00" },
-            { id: 2, name: "Building 2", startTime: "13:00", endTime: "17:00" },
-            { id: 3, name: "Building 4", startTime: "09:00", endTime: "16:00" }
+            { id: 1, name: "Building 1", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"] },
+            { id: 2, name: "Building 2", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"] },
+            { id: 3, name: "Building 4", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"] }
         ];
 
-        const defaultBookings = [
-            { branchOfService: "Army", lastName: "Smith", firstName: "John", email: "john.smith@mil.ar", buildingNumber: "Building 4", date: "2026-08-01", time: "10:00", purposeOfVisit: "In-processing" },
-            { branchOfService: "Navy", lastName: "Johnson", firstName: "Sarah", email: "sarah.j@mil.navy", buildingNumber: "Building 1", date: "2026-08-02", time: "09:00", purposeOfVisit: "Room Inspection" },
-            { branchOfService: "Air Force", lastName: "Davis", firstName: "Michael", email: "m.davis@mil.af", buildingNumber: "Building 2", date: "2026-08-03", time: "14:00", purposeOfVisit: "Maintenance Request" }
-        ];
-
-        const defaultMessages = [
-            { id: 1, text: "Room inspection scheduled for Building 4.", time: "2026-07-24 10:30", read: false, starred: false },
-            { id: 2, text: "Maintenance request approved for plumbing fix.", time: "2026-07-23 14:15", read: false, starred: true },
-            { id: 3, text: "Check-out clearance verified and processed.", time: "2026-07-22 09:00", read: true, starred: false }
-        ];
-
-        let currentFilter = 'all';
-
-        function initApp() {
+        function initPublicBooking() {
             if (!localStorage.getItem('housing_buildings')) {
                 localStorage.setItem('housing_buildings', JSON.stringify(defaultBuildings));
             }
-            if (!localStorage.getItem('housing_bookings_list')) {
-                localStorage.setItem('housing_bookings_list', JSON.stringify(defaultBookings));
-            }
-            if (!localStorage.getItem('housing_notifications')) {
-                localStorage.setItem('housing_notifications', JSON.stringify(defaultMessages));
-            }
-            updateUnreadBadge();
-            renderBuildingsTable();
-            populatePublicBuildingDropdown();
-            populateExportUserDropdown();
-        }
+            populatePublicBuildingDropdown('publicBuildingSelect');
 
-        function switchSection(sectionId) {
-            document.querySelectorAll('.app-section').forEach(sec => sec.classList.remove('active'));
-            document.getElementById('section-' + sectionId).classList.add('active');
-            
-            document.querySelectorAll('.navbar-nav .nav-link').forEach(link => link.classList.remove('active'));
-            if(document.getElementById('nav-' + sectionId)) {
-                document.getElementById('nav-' + sectionId).classList.add('active');
-            }
-
-            if (sectionId === 'publicBooking') {
-                populatePublicBuildingDropdown();
-            } else if (sectionId === 'manageBuildings') {
-                renderBuildingsTable();
-                populateExportUserDropdown();
-            }
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('bookingDate').setAttribute('min', today);
         }
 
         function getBuildings() {
             return JSON.parse(localStorage.getItem('housing_buildings')) || [];
         }
 
-        function saveBuilding(event) {
-            event.preventDefault();
-            const index = document.getElementById('buildingIndex').value;
-            const name = document.getElementById('buildingNameInput').value.trim();
-            const startTime = document.getElementById('startTimeInput').value;
-            const endTime = document.getElementById('endTimeInput').value;
-
-            if (startTime >= endTime) {
-                alert("Start time must be earlier than end time.");
-                return;
-            }
-
-            let buildings = getBuildings();
-
-            if (index === "") {
-                const newId = buildings.length > 0 ? Math.max(...buildings.map(b => b.id)) + 1 : 1;
-                buildings.push({ id: newId, name, startTime, endTime });
-            } else {
-                buildings[index] = { id: buildings[index].id, name, startTime, endTime };
-            }
-
-            localStorage.setItem('housing_buildings', JSON.stringify(buildings));
-            resetBuildingForm();
-            renderBuildingsTable();
-            alert("Building operating hours successfully saved!");
-        }
-
-        function renderBuildingsTable() {
+        function populatePublicBuildingDropdown(selectId) {
             const buildings = getBuildings();
-            const tbody = document.getElementById('buildingsTableBody');
-            tbody.innerHTML = '';
-
-            if (buildings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No buildings configured.</td></tr>`;
-                return;
-            }
-
-            buildings.forEach((b, idx) => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${b.name}</strong></td>
-                        <td>${b.startTime}</td>
-                        <td>${b.endTime}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary me-1" onclick="editBuilding(${idx})">Edit</button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteBuilding(${b.id})">Delete</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        function editBuilding(index) {
-            const buildings = getBuildings();
-            const b = buildings[index];
-            document.getElementById('buildingIndex').value = index;
-            document.getElementById('buildingNameInput').value = b.name;
-            document.getElementById('startTimeInput').value = b.startTime;
-            document.getElementById('endTimeInput').value = b.endTime;
-            document.getElementById('formTitle').innerText = "Edit Building Hours";
-            document.getElementById('cancelEditBtn').style.display = 'block';
-        }
-
-        function resetBuildingForm() {
-            document.getElementById('buildingForm').reset();
-            document.getElementById('buildingIndex').value = "";
-            document.getElementById('startTimeInput').value = "08:00";
-            document.getElementById('endTimeInput').value = "17:00";
-            document.getElementById('formTitle').innerText = "Add New Building";
-            document.getElementById('cancelEditBtn').style.display = 'none';
-        }
-
-        function deleteBuilding(id) {
-            let buildings = getBuildings();
-            buildings = buildings.filter(b => b.id !== id);
-            localStorage.setItem('housing_buildings', JSON.stringify(buildings));
-            renderBuildingsTable();
-        }
-
-        function populatePublicBuildingDropdown() {
-            const buildings = getBuildings();
-            const select = document.getElementById('publicBuildingSelect');
+            const select = document.getElementById(selectId);
             select.innerHTML = '<option value="">-- Choose a Building --</option>';
-            
             buildings.forEach(b => {
                 select.innerHTML += `<option value="${b.name}">${b.name} (${b.startTime} - ${b.endTime})</option>`;
             });
-            document.getElementById('publicTimeSelect').innerHTML = '<option value="">-- Select a building first --</option>';
-            document.getElementById('publicTimeSelect').disabled = true;
         }
 
-        function updateAvailableTimes() {
-            const buildingName = document.getElementById('publicBuildingSelect').value;
-            const timeSelect = document.getElementById('publicTimeSelect');
+        function updateBuildingDetails(buildingSelectId, timeSelectId, purposeSelectId) {
+            const buildingName = document.getElementById(buildingSelectId).value;
+            const timeSelect = document.getElementById(timeSelectId);
+            const purposeSelect = document.getElementById(purposeSelectId);
             
             if (!buildingName) {
                 timeSelect.innerHTML = '<option value="">-- Select a building first --</option>';
                 timeSelect.disabled = true;
+                purposeSelect.innerHTML = '<option value="">-- Select a building first --</option>';
+                purposeSelect.disabled = true;
                 return;
             }
 
             const buildings = getBuildings();
             const selectedBuilding = buildings.find(b => b.name === buildingName);
-
             if (!selectedBuilding) return;
 
             timeSelect.innerHTML = '<option value="">-- Select an available time slot --</option>';
@@ -434,13 +151,31 @@
 
             let currentMinutes = timeToMinutes(selectedBuilding.startTime);
             const endMinutes = timeToMinutes(selectedBuilding.endTime);
-            const interval = 60;
+            
+            const lunchStartMin = selectedBuilding.lunchStart ? timeToMinutes(selectedBuilding.lunchStart) : null;
+            const lunchEndMin = selectedBuilding.lunchEnd ? timeToMinutes(selectedBuilding.lunchEnd) : null;
 
             while (currentMinutes <= endMinutes) {
-                const timeString = minutesToTime(currentMinutes);
-                timeSelect.innerHTML += `<option value="${timeString}">${timeString}</option>`;
-                currentMinutes += interval;
+                let isLunch = false;
+                if (lunchStartMin !== null && lunchEndMin !== null) {
+                    if (currentMinutes >= lunchStartMin && currentMinutes < lunchEndMin) {
+                        isLunch = true;
+                    }
+                }
+
+                if (!isLunch) {
+                    const timeString = minutesToTime(currentMinutes);
+                    timeSelect.innerHTML += `<option value="${timeString}">${timeString}</option>`;
+                }
+                currentMinutes += 60;
             }
+
+            purposeSelect.innerHTML = '<option value="">-- Select Purpose of Visit --</option>';
+            purposeSelect.disabled = false;
+            const purposes = selectedBuilding.purposes || ["In-processing", "Room Inspection", "Maintenance"];
+            purposes.forEach(p => {
+                purposeSelect.innerHTML += `<option value="${p}">${p}</option>`;
+            });
         }
 
         function timeToMinutes(timeStr) {
@@ -456,228 +191,132 @@
 
         function submitBooking(event) {
             event.preventDefault();
-            const branchOfService = document.getElementById('branchOfService').value;
-            const firstName = document.getElementById('firstName').value.trim();
-            const lastName = document.getElementById('lastName').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const buildingNumber = document.getElementById('publicBuildingSelect').value;
-            const date = document.getElementById('bookingDate').value;
-            const time = document.getElementById('publicTimeSelect').value;
-            const purposeOfVisit = document.getElementById('purposeOfVisit').value.trim();
-
+            const confirmCode = 'HB-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+            
             const newBooking = {
-                branchOfService,
-                lastName,
-                firstName,
-                email,
-                buildingNumber,
-                date,
-                time,
-                purposeOfVisit
+                confirmationCode: confirmCode,
+                branchOfService: document.getElementById('branchOfService').value,
+                lastName: document.getElementById('lastName').value.trim(),
+                firstName: document.getElementById('firstName').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                buildingNumber: document.getElementById('publicBuildingSelect').value,
+                date: document.getElementById('bookingDate').value,
+                time: document.getElementById('publicTimeSelect').value,
+                purposeOfVisit: document.getElementById('purposeOfVisitSelect').value
             };
 
             let bookingsList = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
             bookingsList.push(newBooking);
             localStorage.setItem('housing_bookings_list', JSON.stringify(bookingsList));
 
-            let messages = JSON.parse(localStorage.getItem('housing_notifications')) || [];
-            const newMsg = {
+            let notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
+            notifications.unshift({
                 id: Date.now(),
-                text: `New Booking: ${firstName} ${lastName} (${branchOfService}) for ${buildingNumber} on ${date} at ${time}.`,
-                time: new Date().toISOString().slice(0, 16).replace('T', ' '),
+                title: `New Booking in ${newBooking.buildingNumber}`,
+                message: `${newBooking.firstName} ${newBooking.lastName} booked for "${newBooking.purposeOfVisit}" on ${newBooking.date} at ${newBooking.time}.`,
+                building: newBooking.buildingNumber,
+                timestamp: new Date().toLocaleString(),
                 read: false,
-                starred: true
-            };
-            messages.unshift(newMsg);
-            localStorage.setItem('housing_notifications', JSON.stringify(messages));
-            updateUnreadBadge();
+                saved: false
+            });
+            localStorage.setItem('housing_notifications', JSON.stringify(notifications));
 
-            alert(`Booking successfully confirmed for ${firstName} ${lastName} at ${buildingNumber}!`);
+            alert(`Booking Confirmed!\n\nConfirmation Code: ${confirmCode}\n(An email confirmation has been simulated and sent to ${newBooking.email})`);
             document.getElementById('publicBookingForm').reset();
             document.getElementById('publicTimeSelect').disabled = true;
             document.getElementById('publicTimeSelect').innerHTML = '<option value="">-- Select a building first --</option>';
-            switchSection('dashboard');
+            document.getElementById('purposeOfVisitSelect').disabled = true;
+            document.getElementById('purposeOfVisitSelect').innerHTML = '<option value="">-- Select a building first --</option>';
         }
 
-        function populateExportUserDropdown() {
-            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
-            const select = document.getElementById('exportUserSelect');
-            select.innerHTML = '<option value="">-- Select a User --</option>';
+        function lookupBooking() {
+            const code = document.getElementById('lookupCodeInput').value.trim().toUpperCase();
+            const resultDiv = document.getElementById('manageBookingResult');
             
-            const uniqueUsers = {};
-            bookings.forEach(b => {
-                uniqueUsers[b.email] = `${b.lastName}, ${b.firstName} (${b.email})`;
-            });
-
-            for (const [email, label] of Object.entries(uniqueUsers)) {
-                select.innerHTML += `<option value="${email}">${label}</option>`;
-            }
-        }
-
-        function downloadCSV(dataArray, filename) {
-            if (dataArray.length === 0) {
-                alert("No booking data available to export.");
+            if (!code) {
+                alert("Please enter a confirmation code.");
                 return;
             }
 
-            const headers = ["Branch of Service", "Last name", "First name", "Email", "Building number", "Date", "Time", "Purpose of Visit"];
-            
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += headers.join(",") + "\r\n";
+            const bookingsList = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            const booking = bookingsList.find(b => b.confirmationCode === code);
 
-            dataArray.forEach(row => {
-                const rowData = [
-                    `"${row.branchOfService || ''}"`,
-                    `"${row.lastName || ''}"`,
-                    `"${row.firstName || ''}"`,
-                    `"${row.email || ''}"`,
-                    `"${row.buildingNumber || ''}"`,
-                    `"${row.date || ''}"`,
-                    `"${row.time || ''}"`,
-                    `"${row.purposeOfVisit || ''}"`
-                ];
-                csvContent += rowData.join(",") + "\r\n";
-            });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", filename);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function exportAllBookings() {
-            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
-            downloadCSV(bookings, "all_housing_bookings.csv");
-        }
-
-        function exportSelectedUserBookings() {
-            const selectedEmail = document.getElementById('exportUserSelect').value;
-            if (!selectedEmail) {
-                alert("Please select a user from the dropdown first.");
-                return;
-            }
-            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
-            const userBookings = bookings.filter(b => b.email === selectedEmail);
-            
-            if (userBookings.length === 0) {
-                alert("No bookings found for the selected user.");
-                return;
-            }
-            downloadCSV(userBookings, `bookings_${selectedEmail.replace(/[@.]/g, '_')}.csv`);
-        }
-
-        function getMessages() {
-            return JSON.parse(localStorage.getItem('housing_notifications')) || [];
-        }
-
-        function saveMessages(messages) {
-            localStorage.setItem('housing_notifications', JSON.stringify(messages));
-            updateUnreadBadge();
-        }
-
-        function updateUnreadBadge() {
-            const messages = getMessages();
-            const unreadCount = messages.filter(m => !m.read).length;
-            const badge = document.getElementById('unreadBadge');
-            badge.innerText = unreadCount;
-            badge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
-        }
-
-        function setFilter(filter) {
-            currentFilter = filter;
-            document.querySelectorAll('.modal-body .btn-group button').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.innerText.toLowerCase() === filter || (filter === 'all' && btn.innerText === 'All')) {
-                    btn.classList.add('active');
-                }
-            });
-            renderInbox();
-        }
-
-        function renderInbox() {
-            const messages = getMessages();
-            const listContainer = document.getElementById('messageList');
-            listContainer.innerHTML = '';
-
-            let filtered = messages;
-            if (currentFilter === 'unread') {
-                filtered = messages.filter(m => !m.read);
-            } else if (currentFilter === 'starred') {
-                filtered = messages.filter(m => m.starred);
-            }
-
-            if (filtered.length === 0) {
-                listContainer.innerHTML = `<div class="text-center text-muted py-4">No messages found in this view.</div>`;
+            if (!booking) {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<div class="text-danger">No booking found matching code: <strong>${code}</strong></div>`;
                 return;
             }
 
-            filtered.forEach(msg => {
-                const item = document.createElement('div');
-                item.className = `list-group-item list-group-item-action message-item d-flex justify-content-between align-items-center ${msg.read ? '' : 'unread'}`;
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `
+                <h5>Booking Found for ${booking.firstName} ${booking.lastName}</h5>
+                <p class="mb-1 text-muted"><strong>Email:</strong> ${booking.email} | <strong>Branch:</strong> ${booking.branchOfService}</p>
+                <hr>
+                <form onsubmit="saveBookingUpdates(event, '${code}')">
+                    <div class="mb-3">
+                        <label class="form-label">Building Number</label>
+                        <select class="form-select" id="editBuildingSelect" onchange="updateBuildingDetails('editBuildingSelect', 'editTimeSelect', 'editPurposeSelect')" required></select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control" id="editDate" value="${booking.date}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Time</label>
+                            <select class="form-select" id="editTimeSelect" required>
+                                <option value="${booking.time}">${booking.time} (Current)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Purpose of Visit</label>
+                        <select class="form-select" id="editPurposeSelect" required>
+                            <option value="${booking.purposeOfVisit}">${booking.purposeOfVisit} (Current)</option>
+                        </select>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success btn-sm w-50">Save Changes</button>
+                        <button type="button" class="btn btn-danger btn-sm w-50" onclick="cancelBooking('${code}')">Cancel Booking</button>
+                    </div>
+                </form>
+            `;
+
+            populatePublicBuildingDropdown('editBuildingSelect');
+            document.getElementById('editBuildingSelect').value = booking.buildingNumber;
+            updateBuildingDetails('editBuildingSelect', 'editTimeSelect', 'editPurposeSelect');
+            document.getElementById('editTimeSelect').value = booking.time;
+            document.getElementById('editPurposeSelect').value = booking.purposeOfVisit;
+        }
+
+        function saveBookingUpdates(event, code) {
+            event.preventDefault();
+            let bookingsList = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            const index = bookingsList.findIndex(b => b.confirmationCode === code);
+
+            if (index !== -1) {
+                bookingsList[index].buildingNumber = document.getElementById('editBuildingSelect').value;
+                bookingsList[index].date = document.getElementById('editDate').value;
+                bookingsList[index].time = document.getElementById('editTimeSelect').value;
+                bookingsList[index].purposeOfVisit = document.getElementById('editPurposeSelect').value;
+
+                localStorage.setItem('housing_bookings_list', JSON.stringify(bookingsList));
+                alert("Booking successfully updated!");
+                document.getElementById('manageBookingResult').style.display = 'none';
+                document.getElementById('lookupCodeInput').value = '';
+            }
+        }
+
+        function cancelBooking(code) {
+            if (confirm("Are you sure you want to cancel this booking?")) {
+                let bookingsList = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+                bookingsList = bookingsList.filter(b => b.confirmationCode !== code);
+                localStorage.setItem('housing_bookings_list', JSON.stringify(bookingsList));
                 
-                item.innerHTML = `
-                    <div class="ms-2 me-auto" style="cursor: pointer;" onclick="toggleRead(${msg.id})">
-                        <div class="fw-normal">${msg.text}</div>
-                        <small class="text-muted">${msg.time}</small>
-                    </div>
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn ${msg.starred ? 'btn-warning' : 'btn-outline-secondary'}" title="Star/Save" onclick="toggleStar(${msg.id})">
-                            ${msg.starred ? '★' : '☆'}
-                        </button>
-                        <button type="button" class="btn ${msg.read ? 'btn-outline-secondary' : 'btn-outline-success'}" title="Toggle Read Status" onclick="toggleRead(${msg.id})">
-                            ${msg.read ? 'Mark Unread' : 'Mark Read'}
-                        </button>
-                        <button type="button" class="btn btn-outline-danger" title="Delete" onclick="deleteMessage(${msg.id})">
-                            🗑️
-                        </button>
-                    </div>
-                `;
-                listContainer.appendChild(item);
-            });
-            updateUnreadBadge();
-        }
-
-        function toggleRead(id) {
-            let messages = getMessages();
-            messages = messages.map(m => m.id === id ? { ...m, read: !m.read } : m);
-            saveMessages(messages);
-            renderInbox();
-        }
-
-        function toggleStar(id) {
-            let messages = getMessages();
-            messages = messages.map(m => m.id === id ? { ...m, starred: !m.starred } : m);
-            saveMessages(messages);
-            renderInbox();
-        }
-
-        function deleteMessage(id) {
-            let messages = getMessages();
-            messages = messages.filter(m => m.id !== id);
-            saveMessages(messages);
-            renderInbox();
-        }
-
-        function markAllAsRead() {
-            let messages = getMessages();
-            messages = messages.map(m => ({ ...m, read: true }));
-            saveMessages(messages);
-            renderInbox();
-        }
-
-        function resetDefaultData() {
-            if (confirm("Are you sure you want to reset all data to default sample values?")) {
-                localStorage.setItem('housing_buildings', JSON.stringify(defaultBuildings));
-                localStorage.setItem('housing_bookings_list', JSON.stringify(defaultBookings));
-                localStorage.setItem('housing_notifications', JSON.stringify(defaultMessages));
-                initApp();
-                switchSection('dashboard');
-                alert("Data successfully reset to default sample values.");
+                alert("Booking has been cancelled.");
+                document.getElementById('manageBookingResult').style.display = 'none';
+                document.getElementById('lookupCodeInput').value = '';
             }
         }
     </script>
 </body>
-</html>

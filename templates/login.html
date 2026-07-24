@@ -18,7 +18,7 @@
         <form onsubmit="handleLogin(event)">
             <div class="mb-3">
                 <label for="usernameInput" class="form-label">Username</label>
-                <input type="text" class="form-control" id="usernameInput" required placeholder="e.g. Admin, User">
+                <input type="text" class="form-control" id="usernameInput" required placeholder="e.g. superadmin, Admin, User">
             </div>
             <div class="mb-3">
                 <label for="passwordInput" class="form-label">Password</label>
@@ -69,12 +69,9 @@
 
             if (foundUser) {
                 localStorage.setItem('housing_current_user', JSON.stringify(foundUser));
-                // Redirect to dashboard (update filename if your dashboard is named index.html)
                 window.location.href = 'dashboard.html';
             } else {
                 alert("Invalid username or password. Please check your credentials.");
             }
         }
     </script>
-</body>
-</html>

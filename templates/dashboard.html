@@ -17,8 +17,8 @@
                     🔔 Notifications 
                     <span id="notifBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display:none;">0</span>
                 </button>
-                <a href="/" class="btn btn-outline-light btn-sm">Public Form</a>
-                <a href="/login" class="btn btn-outline-danger btn-sm">Log Out</a>
+                <a href="index.html" class="btn btn-outline-light btn-sm">Public Form</a>
+                <a href="login.html" class="btn btn-outline-danger btn-sm">Log Out</a>
             </div>
         </div>
     </nav>
@@ -48,9 +48,7 @@
                     </tbody>
                 </table>
             </div>
-            <div class="text-muted small mt-2" id="calendarRoleNotice">
-                <!-- Dynamic notice based on role -->
-            </div>
+            <div class="text-muted small mt-2" id="calendarRoleNotice"></div>
         </div>
 
         <!-- Admin Export Controls Toolbar (Visible to Admins / Super Admins only) -->
@@ -73,7 +71,7 @@
 
         <!-- MAIN CONTENT AREA (Role Adaptive) -->
         <div class="row g-4" id="mainContentRow">
-            <!-- Left Column: Building / User Management (Admin vs User) -->
+            <!-- Left Column: Building / User Management -->
             <div class="col-12 col-lg-4" id="leftColumnControls">
                 
                 <!-- ADMIN BUILDING CREATION FORM -->
@@ -109,9 +107,7 @@
                         <!-- Assigned Users for Coverage -->
                         <div class="mb-3" id="assignedUsersWrapper">
                             <label class="form-label">Assign Team Members (Coverage)</label>
-                            <div id="assignedUsersChecklist" class="border rounded p-2 bg-light" style="max-height: 120px; overflow-y: auto;">
-                                <!-- Checkboxes populated dynamically -->
-                            </div>
+                            <div id="assignedUsersChecklist" class="border rounded p-2 bg-light" style="max-height: 120px; overflow-y: auto;"></div>
                             <div class="form-text small">Assign multiple users to cover this building during leave or time off.</div>
                         </div>
 
@@ -122,9 +118,7 @@
                                 <input type="text" class="form-control form-control-sm" id="newPurposeInput" placeholder="e.g. In-processing">
                                 <button class="btn btn-outline-secondary btn-sm" type="button" onclick="addPurposeToForm()">Add</button>
                             </div>
-                            <ul id="purposeListContainer" class="list-group list-group-flush border rounded" style="max-height: 100px; overflow-y: auto;">
-                                <!-- Dynamically populated purposes -->
-                            </ul>
+                            <ul id="purposeListContainer" class="list-group list-group-flush border rounded" style="max-height: 100px; overflow-y: auto;"></ul>
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100 mb-2">Save Building Rules</button>
@@ -134,16 +128,14 @@
 
                 <!-- NORMAL USER: ASSIGNED BUILDING EDIT CARD -->
                 <div class="card p-3 shadow-sm mb-4 border-info" id="userAssignedBuildingCard" style="display: none;">
-                    <h5 class="mb-3 text-info">🏢 My Assigned Buildings</h5>
+                    <h5 class="mb-3 text-info">📌 My Assigned Buildings</h5>
                     <p class="text-muted small">You can manage and update the operating hours and purpose options for the buildings assigned to you.</p>
-                    <div id="userAssignedBuildingsContainer">
-                        <!-- Populated dynamically for normal users -->
-                    </div>
+                    <div id="userAssignedBuildingsContainer"></div>
                 </div>
 
                 <!-- Add User Form (Admin/Super Admin only) -->
                 <div class="card p-3 shadow-sm border-primary" id="adminUserCreationCard">
-                    <h5 class="mb-3 text-primary">👥 Add New User Account</h5>
+                    <h5 class="mb-3 text-primary">👤 Add New User Account</h5>
                     <form id="userForm" onsubmit="saveUser(event)">
                         <div class="mb-3">
                             <label for="newUsername" class="form-label">Username</label>
@@ -166,7 +158,7 @@
                 </div>
             </div>
 
-            <!-- Right Column: Buildings Table & Users Table (Admin) / User Status (Normal) -->
+            <!-- Right Column: Buildings Table & Users Table -->
             <div class="col-12 col-lg-8" id="rightColumnContainer">
                 <div class="card p-3 shadow-sm mb-4" id="adminBuildingsTableCard">
                     <h5 class="mb-3">Configured Buildings, Coverage Staff & Operating Hours</h5>
@@ -181,9 +173,7 @@
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="buildingsTableBody">
-                                <!-- Populated Dynamically -->
-                            </tbody>
+                            <tbody id="buildingsTableBody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -200,9 +190,7 @@
                                     <th>Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="usersTableBody">
-                                <!-- Populated Dynamically -->
-                            </tbody>
+                            <tbody id="usersTableBody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -245,19 +233,14 @@
                                 <input type="time" class="form-control" id="userEditLunchEnd">
                             </div>
                         </div>
-
-                        <!-- Purpose of Visit Manager -->
                         <div class="mb-3">
                             <label class="form-label">Purpose of Visit Options</label>
                             <div class="input-group mb-2">
                                 <input type="text" class="form-control form-control-sm" id="userNewPurposeInput" placeholder="e.g. In-processing">
                                 <button class="btn btn-outline-secondary btn-sm" type="button" onclick="addUserPurposeToForm()">Add</button>
                             </div>
-                            <ul id="userPurposeListContainer" class="list-group list-group-flush border rounded" style="max-height: 120px; overflow-y: auto;">
-                                <!-- Dynamically populated purposes -->
-                            </ul>
+                            <ul id="userPurposeListContainer" class="list-group list-group-flush border rounded" style="max-height: 120px; overflow-y: auto;"></ul>
                         </div>
-
                         <button type="submit" class="btn btn-info text-white w-100">Save Changes</button>
                     </form>
                 </div>
@@ -274,9 +257,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="dayBookingsContainer" class="table-responsive">
-                        <!-- Populated dynamically -->
-                    </div>
+                    <div id="dayBookingsContainer" class="table-responsive"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
@@ -330,7 +311,7 @@
                                 <select class="form-select" id="editBookingPurpose" required></select>
                             </div>
                             <div class="col-md-12">
-                                <label class="form-label text-danger fw-bold">🔒 Staff Internal Notes (Only viewed by staff)</label>
+                                <label class="form-label text-danger fw-bold">📝 Staff Internal Notes (Only viewed by staff)</label>
                                 <textarea class="form-control bg-light" id="editBookingInternalNotes" rows="3" placeholder="Add confidential staff notes regarding this booking..."></textarea>
                             </div>
                         </div>
@@ -364,9 +345,7 @@
                         </div>
                         <button class="btn btn-outline-primary btn-sm" onclick="markAllAsRead()">Mark All as Read</button>
                     </div>
-                    <div id="notificationListContainer" style="max-height: 400px; overflow-y: auto;" class="border rounded p-2 bg-light">
-                        <!-- Populated dynamically -->
-                    </div>
+                    <div id="notificationListContainer" style="max-height: 400px; overflow-y: auto;" class="border rounded p-2 bg-light"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
@@ -378,16 +357,16 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const defaultBuildings = [
-            { id: 1, name: "Building 1", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"], assignedUsers: ["superadmin", "admin", "user"] },
-            { id: 2, name: "Building 2", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"], assignedUsers: ["superadmin", "admin"] },
-            { id: 3, name: "Building 4", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"], assignedUsers: ["superadmin", "user"] }
+            { id: 1, name: "Building 1", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"], assignedUsers: ["superadmin", "Admin", "User"] },
+            { id: 2, name: "Building 2", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"], assignedUsers: ["superadmin", "Admin"] },
+            { id: 3, name: "Building 4", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"], assignedUsers: ["superadmin", "User"] }
         ];
 
         let currentBuildingPurposes = ["In-processing", "Room Inspection", "Maintenance"];
         let currentUserBuildingPurposesTemp = [];
         let currentNotifFilter = 'all';
         let calendarYear = new Date().getFullYear();
-        let calendarMonth = new Date().getMonth(); // 0-11
+        let calendarMonth = new Date().getMonth();
 
         function initDashboard() {
             if (!localStorage.getItem('housing_buildings')) {
@@ -400,7 +379,6 @@
             const isNormalUser = currentUser.role === 'User';
 
             if (isNormalUser) {
-                // Adapt UI for normal user
                 document.getElementById('portalHeaderTitle').innerText = `User Portal - ${currentUser.username}`;
                 document.getElementById('adminExportSection').style.display = 'none';
                 document.getElementById('adminBuildingFormCard').style.display = 'none';
@@ -411,7 +389,6 @@
                 document.getElementById('userAssignedBuildingCard').style.display = 'block';
                 renderUserAssignedBuildings();
             } else {
-                // Admin / Super Admin UI
                 renderPurposeList();
                 renderAssignedUsersChecklist([]);
                 renderBuildingsTable();
@@ -423,9 +400,8 @@
             renderCalendar();
         }
 
-        // --- NORMAL USER BUILDING MANAGEMENT ---
         function renderUserAssignedBuildings() {
-            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'user' };
+            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'User' };
             const buildings = getBuildings();
             const assignedBuildings = buildings.filter(b => b.assignedUsers && b.assignedUsers.includes(currentUser.username));
             const container = document.getElementById('userAssignedBuildingsContainer');
@@ -526,8 +502,7 @@
                 localStorage.setItem('housing_buildings', JSON.stringify(buildings));
                 
                 const modalEl = document.getElementById('editAssignedBuildingModal');
-                const modalInstance = bootstrap.Modal.getInstance(modalEl);
-                modalInstance.hide();
+                bootstrap.Modal.getInstance(modalEl).hide();
 
                 renderUserAssignedBuildings();
                 renderCalendar();
@@ -535,7 +510,6 @@
             }
         }
 
-        // --- CALENDAR VIEW LOGIC ---
         function renderCalendar() {
             const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'superadmin', role: 'Super Admin', email: 'superadmin@housing.mil' };
             const isAdminOrSuper = currentUser.role === 'Super Admin' || currentUser.role === 'Admin';
@@ -558,7 +532,6 @@
             if (!isAdminOrSuper) {
                 const buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [];
                 const assignedBuildingNames = buildings.filter(b => b.assignedUsers && b.assignedUsers.includes(currentUser.username)).map(b => b.name);
-                
                 bookings = bookings.filter(b => (b.email && b.email.toLowerCase() === currentUser.email.toLowerCase()) || assignedBuildingNames.includes(b.buildingNumber));
             }
 
@@ -667,11 +640,9 @@
                 container.innerHTML = html;
             }
 
-            const modal = new bootstrap.Modal(document.getElementById('dayBookingsModal'));
-            modal.show();
+            new bootstrap.Modal(document.getElementById('dayBookingsModal')).show();
         }
 
-        // --- BOOKING MANAGEMENT & DETAILS MODAL ---
         function openBookingDetail(confirmationCode) {
             const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
             const booking = bookings.find(b => b.confirmationCode === confirmationCode);
@@ -691,7 +662,6 @@
                 }
             }
 
-            // Populate form fields
             document.getElementById('detailConfirmationCode').innerText = booking.confirmationCode;
             document.getElementById('editBookingCode').value = booking.confirmationCode;
             document.getElementById('editBookingFirstName').value = booking.firstName || '';
@@ -702,7 +672,6 @@
             document.getElementById('editBookingTime').value = booking.time || '';
             document.getElementById('editBookingInternalNotes').value = booking.internalNotes || '';
 
-            // Populate building dropdown
             const buildingSelect = document.getElementById('editBookingBuilding');
             buildingSelect.innerHTML = '';
             buildings.forEach(b => {
@@ -712,13 +681,11 @@
 
             updateBookingPurposeOptions(booking.purposeOfVisit);
 
-            // Hide day bookings modal and show booking detail modal
             const dayModalEl = document.getElementById('dayBookingsModal');
             const dayModalInstance = bootstrap.Modal.getInstance(dayModalEl);
             if (dayModalInstance) dayModalInstance.hide();
 
-            const detailModal = new bootstrap.Modal(document.getElementById('bookingDetailModal'));
-            detailModal.show();
+            new bootstrap.Modal(document.getElementById('bookingDetailModal')).show();
         }
 
         function updateBookingPurposeOptions(selectedPurpose = '') {
@@ -758,10 +725,7 @@
 
             localStorage.setItem('housing_bookings_list', JSON.stringify(bookings));
 
-            const modalEl = document.getElementById('bookingDetailModal');
-            const modalInstance = bootstrap.Modal.getInstance(modalEl);
-            modalInstance.hide();
-
+            bootstrap.Modal.getInstance(document.getElementById('bookingDetailModal')).hide();
             renderCalendar();
             alert("Booking successfully updated/rescheduled!");
         }
@@ -774,26 +738,16 @@
             bookings = bookings.filter(b => b.confirmationCode !== code);
 
             localStorage.setItem('housing_bookings_list', JSON.stringify(bookings));
-
-            const modalEl = document.getElementById('bookingDetailModal');
-            const modalInstance = bootstrap.Modal.getInstance(modalEl);
-            modalInstance.hide();
-
+            bootstrap.Modal.getInstance(document.getElementById('bookingDetailModal')).hide();
             renderCalendar();
             alert("Booking has been successfully cancelled and removed.");
         }
 
-        // --- MULTI-USER ASSIGNMENT LOGIC ---
         function renderAssignedUsersChecklist(selectedUsers = []) {
             const users = getUsers();
             const container = document.getElementById('assignedUsersChecklist');
             if (!container) return;
             container.innerHTML = '';
-
-            if (users.length === 0) {
-                container.innerHTML = `<span class="text-muted small">No users available.</span>`;
-                return;
-            }
 
             users.forEach(u => {
                 const isChecked = selectedUsers.includes(u.username) ? 'checked' : '';
@@ -815,7 +769,6 @@
             return selected;
         }
 
-        // --- NOTIFICATION INBOX LOGIC ---
         function updateNotificationBadge() {
             const notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
             const unreadCount = notifications.filter(n => !n.read).length;
@@ -830,8 +783,7 @@
 
         function openNotificationModal() {
             renderNotifications();
-            const modal = new bootstrap.Modal(document.getElementById('notificationModal'));
-            modal.show();
+            new bootstrap.Modal(document.getElementById('notificationModal')).show();
         }
 
         function filterNotifications(filter) {
@@ -920,7 +872,6 @@
             updateNotificationBadge();
         }
 
-        // --- BUILDING & USER MANAGEMENT (Admin) ---
         function exportBuildingGroupedBookings() {
             const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
             const buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [];
@@ -931,7 +882,6 @@
             }
 
             let csvContent = "data:text/csv;charset=utf-8,";
-            
             buildings.forEach(b => {
                 const buildingBookings = bookings.filter(item => item.buildingNumber === b.name);
                 const assignedStr = b.assignedUsers ? b.assignedUsers.join(', ') : 'None';
@@ -972,10 +922,6 @@
             const container = document.getElementById('purposeListContainer');
             if (!container) return;
             container.innerHTML = '';
-            if (currentBuildingPurposes.length === 0) {
-                container.innerHTML = '<li class="list-group-item text-muted small">No purposes added.</li>';
-                return;
-            }
             currentBuildingPurposes.forEach((p, idx) => {
                 container.innerHTML += `
                     <li class="list-group-item d-flex justify-content-between align-items-center py-1 px-2">
@@ -1041,11 +987,6 @@
             if (!tbody) return;
             tbody.innerHTML = '';
 
-            if (buildings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No buildings configured.</td></tr>`;
-                return;
-            }
-
             buildings.forEach((b, idx) => {
                 const assignedHtml = (b.assignedUsers && b.assignedUsers.length > 0) ? b.assignedUsers.map(u => `<span class="badge bg-secondary me-1">${u}</span>`).join('') : '<span class="text-muted small">None</span>';
                 const purposesDisplay = (b.purposes && b.purposes.length > 0) ? b.purposes.map(p => `<span class="badge bg-light text-dark border me-1">${p}</span>`).join('') : '<span class="text-muted small">None</span>';
@@ -1106,8 +1047,8 @@
         function getUsers() {
             return JSON.parse(localStorage.getItem('housing_users')) || [
                 { id: 1, username: "superadmin", password: "password123", role: "Super Admin" },
-                { id: 2, username: "admin", password: "password123", role: "Admin" },
-                { id: 3, username: "user", password: "password123", role: "User" }
+                { id: 2, username: "Admin", password: "password123", role: "Admin" },
+                { id: 3, username: "User", password: "password123", role: "User" }
             ];
         }
 
@@ -1116,11 +1057,6 @@
             const tbody = document.getElementById('usersTableBody');
             if (!tbody) return;
             tbody.innerHTML = '';
-
-            if (users.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">No users found.</td></tr>`;
-                return;
-            }
 
             users.forEach((u) => {
                 tbody.innerHTML += `
