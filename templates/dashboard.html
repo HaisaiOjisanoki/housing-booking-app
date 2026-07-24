@@ -29,7 +29,7 @@
     <script>
         function initDashboard() {
             const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'user', role: 'User' };
-            document.getElementById('currentUserRoleBadge.innerText = `${currentUser.role} (${currentUser.username})`;
+            document.getElementById('currentUserRoleBadge').innerText = `${currentUser.role} (${currentUser.username})`;
         }
     </script>
 </body>

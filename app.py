@@ -3,16 +3,20 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 app = Flask(__name__)
 app.secret_key = 'housing_secure_portal_key'
 
+# Route: Public Room Booking & Management Page
 @app.route('/')
 def index():
     return render_template('index.html')
 
+# Route: Login Portal Page
 @app.route('/login')
 def login():
     return render_template('login.html')
 
+# Route: Admin/Staff Dashboard
 @app.route('/dashboard')
 def dashboard():
+    # Optional: Add server-side session checks here if migrating auth from localStorage
     return render_template('dashboard.html')
 
 if __name__ == '__main__':

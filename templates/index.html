@@ -669,11 +669,14 @@
         }
 
         function resetDefaultData() {
-            localStorage.setItem('housing_buildings', JSON.stringify(defaultBuildings));
-            localStorage.setItem('housing_bookings_list', JSON.stringify(defaultBookings));
-            localStorage.setItem('housing_notifications', JSON.stringify(defaultMessages));
-            initApp();
-            alert('Default sample buildings, bookings, and notifications restored.');
+            if (confirm("Are you sure you want to reset all data to default sample values?")) {
+                localStorage.setItem('housing_buildings', JSON.stringify(defaultBuildings));
+                localStorage.setItem('housing_bookings_list', JSON.stringify(defaultBookings));
+                localStorage.setItem('housing_notifications', JSON.stringify(defaultMessages));
+                initApp();
+                switchSection('dashboard');
+                alert("Data successfully reset to default sample values.");
+            }
         }
     </script>
 </body>
