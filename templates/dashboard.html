@@ -10,7 +10,7 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#">Admin Portal</a>
+            <a class="navbar-brand" href="#">Admin Portal <span id="currentUserRoleBadge" class="badge bg-secondary ms-2"></span></a>
             <div class="d-flex align-items-center gap-2">
                 <!-- Notification Bell & Inbox Trigger -->
                 <button class="btn btn-outline-light btn-sm position-relative" type="button" onclick="openNotificationModal()">
@@ -24,8 +24,35 @@
     </nav>
 
     <div class="container my-4">
-        <h2 class="mb-4">Housing Management & Data Export</h2>
+        <h2 class="mb-4">Housing Management & Calendar Portal</h2>
         
+        <!-- CALENDAR VIEW SECTION -->
+        <div class="card p-3 shadow-sm mb-4 bg-white border-primary">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="text-primary mb-0">📅 Bookings Calendar & Schedule</h5>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="changeMonth(-1)">&#9664; Prev</button>
+                    <h5 id="calendarMonthYear" class="mb-0 align-self-center fw-bold">Month Year</h5>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="changeMonth(1)">Next &#9654;</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered text-center align-middle" style="table-layout: fixed; min-width: 700px;">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calendarBody">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-muted small mt-2" id="calendarRoleNotice">
+                <!-- Dynamic notice based on role -->
+            </div>
+        </div>
+
         <!-- Admin Export Controls Toolbar -->
         <div class="card p-3 shadow-sm mb-4 bg-white border-success">
             <h5 class="mb-3 text-success">📊 Booking Data Export (Excel / CSV Format)</h5>
@@ -45,7 +72,7 @@
         </div>
 
         <div class="row g-4">
-            <!-- Add / Edit Building Form -->
+            <!-- Add / Edit Building Form (With Multi-User Assignment for Coverage) -->
             <div class="col-12 col-lg-4">
                 <div class="card p-3 shadow-sm mb-4">
                     <h5 id="formTitle" class="mb-3">Add New Building</h5>
@@ -76,6 +103,15 @@
                             </div>
                         </div>
 
+                        <!-- Assigned Users for Coverage (Sick, Vacation, Time Off) -->
+                        <div class="mb-3">
+                            <label class="form-label">Assign Team Members (Coverage)</label>
+                            <div id="assignedUsersChecklist" class="border rounded p-2 bg-light" style="max-height: 120px; overflow-y: auto;">
+                                <!-- Checkboxes populated dynamically -->
+                            </div>
+                            <div class="form-text small">Assign multiple users to cover this building during leave or time off.</div>
+                        </div>
+
                         <!-- Purpose of Visit Manager for Building -->
                         <div class="mb-3">
                             <label class="form-label">Purpose of Visit Options</label>
@@ -83,7 +119,7 @@
                                 <input type="text" class="form-control form-control-sm" id="newPurposeInput" placeholder="e.g. In-processing">
                                 <button class="btn btn-outline-secondary btn-sm" type="button" onclick="addPurposeToForm()">Add</button>
                             </div>
-                            <ul id="purposeListContainer" class="list-group list-group-flush border rounded" style="max-height: 120px; overflow-y: auto;">
+                            <ul id="purposeListContainer" class="list-group list-group-flush border rounded" style="max-height: 100px; overflow-y: auto;">
                                 <!-- Dynamically populated purposes -->
                             </ul>
                         </div>
@@ -121,14 +157,14 @@
             <!-- Right Column: Buildings Table & Users Table -->
             <div class="col-12 col-lg-8">
                 <div class="card p-3 shadow-sm mb-4">
-                    <h5 class="mb-3">Configured Buildings & Operating Hours</h5>
+                    <h5 class="mb-3">Configured Buildings, Coverage Staff & Operating Hours</h5>
                     <div class="table-responsive">
                         <table class="table table-striped align-middle">
                             <thead>
                                 <tr>
                                     <th>Building Number</th>
                                     <th>Hours</th>
-                                    <th>Lunch Break</th>
+                                    <th>Assigned Coverage Staff</th>
                                     <th>Purpose Options</th>
                                     <th>Actions</th>
                                 </tr>
@@ -162,6 +198,26 @@
         </div>
     </div>
 
+    <!-- DAY BOOKINGS MODAL (Clicked from Calendar) -->
+    <div class="modal fade" id="dayBookingsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="dayModalTitle">Bookings for Date</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="dayBookingsContainer" class="table-responsive">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- NOTIFICATION INBOX MODAL -->
     <div class="modal fade" id="notificationModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -179,7 +235,6 @@
                         </div>
                         <button class="btn btn-outline-primary btn-sm" onclick="markAllAsRead()">Mark All as Read</button>
                     </div>
-
                     <div id="notificationListContainer" style="max-height: 400px; overflow-y: auto;" class="border rounded p-2 bg-light">
                         <!-- Populated dynamically -->
                     </div>
@@ -194,23 +249,201 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const defaultBuildings = [
-            { id: 1, name: "Building 1", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"] },
-            { id: 2, name: "Building 2", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"] },
-            { id: 3, name: "Building 4", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"] }
+            { id: 1, name: "Building 1", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"], assignedUsers: ["superadmin", "admin", "user"] },
+            { id: 2, name: "Building 2", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"], assignedUsers: ["superadmin", "admin"] },
+            { id: 3, name: "Building 4", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"], assignedUsers: ["superadmin", "user"] }
         ];
 
         let currentBuildingPurposes = ["In-processing", "Room Inspection", "Maintenance"];
         let currentNotifFilter = 'all';
+        let calendarYear = new Date().getFullYear();
+        let calendarMonth = new Date().getMonth(); // 0-11
 
         function initDashboard() {
             if (!localStorage.getItem('housing_buildings')) {
                 localStorage.setItem('housing_buildings', JSON.stringify(defaultBuildings));
             }
+            
+            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'superadmin', role: 'Super Admin', email: 'superadmin@housing.mil' };
+            document.getElementById('currentUserRoleBadge').innerText = `${currentUser.role} (${currentUser.username})`;
+
             renderPurposeList();
+            renderAssignedUsersChecklist([]);
             renderBuildingsTable();
             renderUsersTable();
             populateExportUserDropdown();
             updateNotificationBadge();
+            renderCalendar();
+        }
+
+        // --- CALENDAR VIEW LOGIC ---
+        function renderCalendar() {
+            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'superadmin', role: 'Super Admin', email: 'superadmin@housing.mil' };
+            const isAdminOrSuper = currentUser.role === 'Super Admin' || currentUser.role === 'Admin';
+            
+            const noticeEl = document.getElementById('calendarRoleNotice');
+            if (isAdminOrSuper) {
+                noticeEl.innerHTML = '<span class="text-success fw-semibold">Viewing Mode: Super Admin / Admin (Showing all user bookings and team coverages)</span>';
+            } else {
+                noticeEl.innerHTML = '<span class="text-info fw-semibold">Viewing Mode: User (Showing your bookings and assigned building schedules)</span>';
+            }
+
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            document.getElementById('calendarMonthYear').innerText = `${monthNames[calendarMonth]} ${calendarYear}`;
+
+            const firstDayIndex = new Date(calendarYear, calendarMonth, 1).getDay();
+            const totalDays = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            
+            // Filter based on role
+            if (!isAdminOrSuper) {
+                // Normal user: show bookings created by them (email match) OR bookings in buildings assigned to them
+                const buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [];
+                const assignedBuildingNames = buildings.filter(b => b.assignedUsers && b.assignedUsers.includes(currentUser.username)).map(b => b.name);
+                
+                bookings = bookings.filter(b => (b.email && b.email.toLowerCase() === currentUser.email.toLowerCase()) || assignedBuildingNames.includes(b.buildingNumber));
+            }
+
+            const tbody = document.getElementById('calendarBody');
+            tbody.innerHTML = '';
+
+            let date = 1;
+            for (let i = 0; i < 6; i++) {
+                let row = document.createElement('tr');
+
+                for (let j = 0; j < 7; j++) {
+                    let cell = document.createElement('td');
+                    cell.style.height = '90px';
+                    cell.style.verticalAlign = 'top';
+                    cell.style.cursor = 'pointer';
+
+                    if (i === 0 && j < firstDayIndex) {
+                        cell.className = 'bg-light text-muted';
+                        row.appendChild(cell);
+                    } else if (date > totalDays) {
+                        cell.className = 'bg-light text-muted';
+                        row.appendChild(cell);
+                    } else {
+                        const formattedMonth = (calendarMonth + 1).toString().padStart(2, '0');
+                        const formattedDay = date.toString().padStart(2, '0');
+                        const dateString = `${calendarYear}-${formattedMonth}-${formattedDay}`;
+
+                        const dayBookings = bookings.filter(b => b.date === dateString);
+
+                        let badgeHtml = '';
+                        if (dayBookings.length > 0) {
+                            badgeHtml = `<div class="mt-1"><span class="badge bg-primary">${dayBookings.length} booking(s)</span></div>`;
+                        }
+
+                        cell.innerHTML = `<div class="fw-bold small">${date}</div>${badgeHtml}`;
+                        
+                        const capturedDate = dateString;
+                        const capturedCount = dayBookings.length;
+                        cell.onclick = () => showDayBookingsModal(capturedDate, capturedCount);
+
+                        // Highlight today
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        if (dateString === todayStr) {
+                            cell.className = 'table-warning';
+                        }
+
+                        date++;
+                    }
+                    row.appendChild(cell);
+                }
+                tbody.appendChild(row);
+                if (date > totalDays) break;
+            }
+        }
+
+        function changeMonth(direction) {
+            calendarMonth += direction;
+            if (calendarMonth > 11) {
+                calendarMonth = 0;
+                calendarYear++;
+            } else if (calendarMonth < 0) {
+                calendarMonth = 11;
+                calendarYear--;
+            }
+            renderCalendar();
+        }
+
+        function showDayBookingsModal(dateStr, count) {
+            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'superadmin', role: 'Super Admin', email: 'superadmin@housing.mil' };
+            const isAdminOrSuper = currentUser.role === 'Super Admin' || currentUser.role === 'Admin';
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+
+            if (!isAdminOrSuper) {
+                const buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [];
+                const assignedBuildingNames = buildings.filter(b => b.assignedUsers && b.assignedUsers.includes(currentUser.username)).map(b => b.name);
+                bookings = bookings.filter(b => (b.email && b.email.toLowerCase() === currentUser.email.toLowerCase()) || assignedBuildingNames.includes(b.buildingNumber));
+            }
+
+            const dayBookings = bookings.filter(b => b.date === dateStr);
+            document.getElementById('dayModalTitle').innerText = `Bookings for ${dateStr} (${dayBookings.length})`;
+
+            const container = document.getElementById('dayBookingsContainer');
+            if (dayBookings.length === 0) {
+                container.innerHTML = `<p class="text-muted text-center py-3">No bookings on this date.</p>`;
+            } else {
+                let html = `
+                    <table class="table table-striped table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code</th><th>Name</th><th>Building</th><th>Time</th><th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                dayBookings.forEach(b => {
+                    html += `
+                        <tr>
+                            <td><span class="badge bg-secondary">${b.confirmationCode}</span></td>
+                            <td>${b.lastName}, ${b.firstName}</td>
+                            <td><strong>${b.buildingNumber}</strong></td>
+                            <td>${b.time}</td>
+                            <td>${b.purposeOfVisit}</td>
+                        </tr>
+                    `;
+                });
+                html += `</tbody></table>`;
+                container.innerHTML = html;
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('dayBookingsModal'));
+            modal.show();
+        }
+
+        // --- MULTI-USER ASSIGNMENT LOGIC ---
+        function renderAssignedUsersChecklist(selectedUsers = []) {
+            const users = getUsers();
+            const container = document.getElementById('assignedUsersChecklist');
+            container.innerHTML = '';
+
+            if (users.length === 0) {
+                container.innerHTML = `<span class="text-muted small">No users available.</span>`;
+                return;
+            }
+
+            users.forEach(u => {
+                const isChecked = selectedUsers.includes(u.username) ? 'checked' : '';
+                container.innerHTML += `
+                    <div class="form-check">
+                        <input class="form-check-input assigned-user-checkbox" type="checkbox" value="${u.username}" id="userCheck_${u.username}" ${isChecked}>
+                        <label class="form-check-label small" for="userCheck_${u.username}">
+                            ${u.username} <span class="text-muted">(${u.role})</span>
+                        </label>
+                    </div>
+                `;
+            });
+        }
+
+        function getSelectedAssignedUsers() {
+            const checkboxes = document.querySelectorAll('.assigned-user-checkbox:checked');
+            let selected = [];
+            checkboxes.forEach(cb => selected.push(cb.value));
+            return selected;
         }
 
         // --- NOTIFICATION INBOX LOGIC ---
@@ -318,7 +551,7 @@
             updateNotificationBadge();
         }
 
-        // --- BUILDING-SEPARATED EXPORT LOGIC ---
+        // --- BUILDING & USER MANAGEMENT ---
         function exportBuildingGroupedBookings() {
             const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
             const buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [];
@@ -330,11 +563,11 @@
 
             let csvContent = "data:text/csv;charset=utf-8,";
             
-            // Group bookings by building name
             buildings.forEach(b => {
                 const buildingBookings = bookings.filter(item => item.buildingNumber === b.name);
+                const assignedStr = b.assignedUsers ? b.assignedUsers.join(', ') : 'None';
                 
-                csvContent += `"=== BUILDING: ${b.name} (Hours: ${b.startTime} - ${b.endTime}) ==="\r\n`;
+                csvContent += `"=== BUILDING: ${b.name} (Hours: ${b.startTime} - ${b.endTime}) | Assigned Staff: ${assignedStr} ==="\r\n`;
                 csvContent += `"Branch of Service","Last Name","First Name","Email","Date","Time","Purpose of Visit","Confirmation Code"\r\n`;
 
                 if (buildingBookings.length === 0) {
@@ -353,28 +586,8 @@
                         ].join(",") + "\r\n";
                     });
                 }
-                csvContent += "\r\n\r\n"; // Separation space between buildings
+                csvContent += "\r\n\r\n";
             });
-
-            // Also check for any unassigned/other building bookings
-            const assignedBuildingNames = buildings.map(b => b.name);
-            const otherBookings = bookings.filter(item => !assignedBuildingNames.includes(item.buildingNumber));
-            if (otherBookings.length > 0) {
-                csvContent += `"=== BUILDING: Other / Unassigned ==="\r\n`;
-                csvContent += `"Branch of Service","Last Name","First Name","Email","Date","Time","Purpose of Visit","Confirmation Code"\r\n`;
-                otherBookings.forEach(row => {
-                    csvContent += [
-                        `"${row.branchOfService || ''}"`,
-                        `"${row.lastName || ''}"`,
-                        `"${row.firstName || ''}"`,
-                        `"${row.email || ''}"`,
-                        `"${row.date || ''}"`,
-                        `"${row.time || ''}"`,
-                        `"${row.purposeOfVisit || ''}"`,
-                        `"${row.confirmationCode || ''}"`
-                    ].join(",") + "\r\n";
-                });
-            }
 
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
@@ -385,7 +598,6 @@
             document.body.removeChild(link);
         }
 
-        // --- OTHER MANAGEMENT FUNCTIONS ---
         function renderPurposeList() {
             const container = document.getElementById('purposeListContainer');
             container.innerHTML = '';
@@ -430,6 +642,7 @@
             const endTime = document.getElementById('endTimeInput').value;
             const lunchStart = document.getElementById('lunchStartInput').value;
             const lunchEnd = document.getElementById('lunchEndInput').value;
+            const assignedUsers = getSelectedAssignedUsers();
 
             if (startTime >= endTime) {
                 alert("Start time must be earlier than end time.");
@@ -439,15 +652,16 @@
             let buildings = getBuildings();
             if (index === "") {
                 const newId = buildings.length > 0 ? Math.max(...buildings.map(b => b.id)) + 1 : 1;
-                buildings.push({ id: newId, name, startTime, endTime, lunchStart, lunchEnd, purposes: [...currentBuildingPurposes] });
+                buildings.push({ id: newId, name, startTime, endTime, lunchStart, lunchEnd, purposes: [...currentBuildingPurposes], assignedUsers });
             } else {
-                buildings[index] = { id: buildings[index].id, name, startTime, endTime, lunchStart, lunchEnd, purposes: [...currentBuildingPurposes] };
+                buildings[index] = { id: buildings[index].id, name, startTime, endTime, lunchStart, lunchEnd, purposes: [...currentBuildingPurposes], assignedUsers };
             }
 
             localStorage.setItem('housing_buildings', JSON.stringify(buildings));
             resetBuildingForm();
             renderBuildingsTable();
-            alert("Building operating hours and purpose options successfully saved!");
+            renderCalendar();
+            alert("Building operating hours, coverage staff, and purpose options successfully saved!");
         }
 
         function renderBuildingsTable() {
@@ -461,14 +675,14 @@
             }
 
             buildings.forEach((b, idx) => {
-                const lunchDisplay = (b.lunchStart && b.lunchEnd) ? `${b.lunchStart} - ${b.lunchEnd}` : 'None';
+                const assignedHtml = (b.assignedUsers && b.assignedUsers.length > 0) ? b.assignedUsers.map(u => `<span class="badge bg-secondary me-1">${u}</span>`).join('') : '<span class="text-muted small">None</span>';
                 const purposesDisplay = (b.purposes && b.purposes.length > 0) ? b.purposes.map(p => `<span class="badge bg-light text-dark border me-1">${p}</span>`).join('') : '<span class="text-muted small">None</span>';
                 
                 tbody.innerHTML += `
                     <tr>
-                        <td><strong>${b.name}</strong></td>
-                        <td>${b.startTime} - ${b.endTime}</td>
-                        <td><span class="badge bg-warning text-dark">${lunchDisplay}</span></td>
+                        <td><strong>${b.name}</strong><br><small class="text-muted">${b.startTime} - ${b.endTime}</small></td>
+                        <td><span class="badge bg-warning text-dark">${(b.lunchStart && b.lunchEnd) ? `${b.lunchStart} - ${b.lunchEnd}` : 'No Lunch'}</span></td>
+                        <td>${assignedHtml}</td>
                         <td>${purposesDisplay}</td>
                         <td>
                             <button class="btn btn-sm btn-outline-primary me-1" onclick="editBuilding(${idx})">Edit</button>
@@ -490,7 +704,8 @@
             document.getElementById('lunchEndInput').value = b.lunchEnd || "";
             currentBuildingPurposes = [...(b.purposes || ["In-processing", "Room Inspection", "Maintenance"])];
             renderPurposeList();
-            document.getElementById('formTitle').innerText = "Edit Building Hours";
+            renderAssignedUsersChecklist(b.assignedUsers || []);
+            document.getElementById('formTitle').innerText = "Edit Building & Coverage";
             document.getElementById('cancelEditBtn').style.display = 'block';
         }
 
@@ -503,6 +718,7 @@
             document.getElementById('lunchEndInput').value = "13:00";
             currentBuildingPurposes = ["In-processing", "Room Inspection", "Maintenance"];
             renderPurposeList();
+            renderAssignedUsersChecklist([]);
             document.getElementById('formTitle').innerText = "Add New Building";
             document.getElementById('cancelEditBtn').style.display = 'none';
         }
@@ -512,6 +728,7 @@
             buildings = buildings.filter(b => b.id !== id);
             localStorage.setItem('housing_buildings', JSON.stringify(buildings));
             renderBuildingsTable();
+            renderCalendar();
         }
 
         function getUsers() {
@@ -563,6 +780,7 @@
 
             document.getElementById('userForm').reset();
             renderUsersTable();
+            renderAssignedUsersChecklist([]);
             alert(`User account "${username}" successfully created!`);
         }
 
@@ -576,6 +794,7 @@
                 users = users.filter(u => u.id !== id);
                 localStorage.setItem('housing_users', JSON.stringify(users));
                 renderUsersTable();
+                renderAssignedUsersChecklist([]);
             }
         }
 

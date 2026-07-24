@@ -74,7 +74,7 @@
             </div>
         </div>
 
-        <!-- 4. NEW PASSWORD RESET ENTRY VIEW (Simulated via email link click) -->
+        <!-- 4. NEW PASSWORD RESET ENTRY VIEW -->
         <div id="resetConfirmView" style="display: none;">
             <h3 class="text-center mb-3 text-success">Reset Password</h3>
             <p class="text-muted small mb-3">Identity verified via recovery email. Please enter your new password.</p>
@@ -129,14 +129,13 @@
                 return;
             }
 
-            // Check if first-time default password login requires change
             if (foundUser.mustChangePassword) {
                 pendingUserSession = foundUser;
                 switchView('setupView');
                 return;
             }
 
-            proceedToDashboardOrApp(foundUser.role);
+            completeLogin(foundUser);
         }
 
         function saveFirstTimeSetup(event) {
@@ -154,7 +153,7 @@
                 localStorage.setItem('housing_users', JSON.stringify(users));
 
                 alert("Credentials updated successfully!");
-                proceedToDashboardOrApp(users[index].role);
+                completeLogin(users[index]);
             }
         }
 
@@ -172,11 +171,7 @@
             }
 
             resettingUsername = username;
-            
-            // Simulate sending recovery email with a reset link
             alert(`[Simulated Email Sent to ${email}]\n\nA password reset link has been sent to your recovery email.\nClicking the link will now prompt you to enter a new password.`);
-            
-            // Automatically switch to reset confirmation view (simulating clicking the email link)
             switchView('resetConfirmView');
         }
 
@@ -189,7 +184,7 @@
 
             if (index !== -1) {
                 users[index].password = newPassword;
-                users[index].mustChangePassword = false; // cleared
+                users[index].mustChangePassword = false;
                 localStorage.setItem('housing_users', JSON.stringify(users));
 
                 alert("Password successfully reset! You can now log in with your new password.");
@@ -200,7 +195,14 @@
             }
         }
 
-        function proceedToDashboardOrApp(role) {
+        function completeLogin(userObj) {
+            // Save active session for the dashboard
+            localStorage.setItem('housing_current_user', JSON.stringify({
+                username: userObj.username,
+                role: userObj.role,
+                email: userObj.recoveryEmail || `${userObj.username}@housing.mil`
+            }));
+
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '/login';
@@ -208,7 +210,7 @@
             const roleInput = document.createElement('input');
             roleInput.type = 'hidden';
             roleInput.name = 'role';
-            roleInput.value = role;
+            roleInput.value = userObj.role;
             form.appendChild(roleInput);
 
             document.body.appendChild(form);
