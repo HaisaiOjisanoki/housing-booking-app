@@ -319,6 +319,10 @@
         async function refreshState() {
             const res = await fetch('/api/state');
             appState = await res.json();
+            if (!appState.users) appState.users = [];
+            if (!appState.camps) appState.camps = [];
+            if (!appState.camp_buildings) appState.camp_buildings = {};
+            if (!appState.bookings) appState.bookings = [];
             renderAppointmentsView();
             renderCampsManagement();
             renderStaffTable();
@@ -598,17 +602,30 @@
 
         async function createStaffUser(e) {
             e.preventDefault();
+            if (!appState.users) appState.users = [];
+
+            const usernameInput = document.getElementById('newStaffUsername').value.trim();
+            if (appState.users.some(u => u.username === usernameInput)) {
+                alert(`Username "${usernameInput}" already exists!`);
+                return;
+            }
+
             const newU = {
-                username: document.getElementById('newStaffUsername').value.trim(),
+                username: usernameInput,
                 password: document.getElementById('newStaffPassword').value.trim(),
                 recoveryEmail: document.getElementById('newStaffRecoveryEmail').value.trim(),
                 role: document.getElementById('newStaffRole').value,
                 firstLogin: true,
                 assignedBuildings: []
             };
+
             appState.users.push(newU);
             await saveState();
-            bootstrap.Modal.getInstance(document.getElementById('addStaffModal')).hide();
+
+            const modalEl = document.getElementById('addStaffModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+            modalInstance.hide();
+
             document.getElementById('addStaffForm').reset();
             renderStaffTable();
         }
