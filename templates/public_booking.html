@@ -3,17 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Housing Portal - Public Appointment Booking</title>
+    <title>Housing Appointment Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 </head>
-<body class="bg-light" onload="initPublicBooking()">
+<body class="bg-light" onload="initBookingPage()">
 
     <!-- Navigation Bar -->
     <nav class="navbar navbar-dark bg-dark shadow-sm">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="#"><i class="bi bi-building-fill-check me-2"></i>Housing Portal Appointment Booking</a>
-            <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-shield-lock me-1"></i>Staff Sign In</a>
+        <div class="container px-4">
+            <span class="navbar-brand fw-bold">
+                <i class="bi bi-buildings-fill me-2"></i>Housing Appointment Portal
+            </span>
+            <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-shield-lock me-1"></i>Staff Portal
+            </a>
         </div>
     </nav>
 
@@ -22,151 +26,103 @@
         <div class="row justify-content-center">
             <div class="col-lg-8">
                 
-                <!-- Status Alert -->
-                <div id="bookingAlert" class="alert d-none mb-4" role="alert"></div>
-
                 <!-- Booking Card -->
-                <div class="card shadow border-0 mb-5">
-                    <div class="card-header bg-primary text-white py-3">
-                        <h4 class="mb-0 fw-bold"><i class="bi bi-calendar-plus me-2"></i>Schedule an Appointment</h4>
-                        <p class="mb-0 small text-light opacity-75">Select your camp location, building, and time slot. A confirmation code will be emailed to you.</p>
+                <div class="card shadow border-0 p-4 mb-4" id="bookingCard">
+                    <div class="text-center mb-4">
+                        <h3 class="fw-bold text-dark">Schedule a Housing Appointment</h3>
+                        <p class="text-muted small">Select your preferred camp, building, and appointment time.</p>
                     </div>
-                    <div class="card-body p-4">
-                        <form id="publicBookingForm" onsubmit="submitPublicBooking(event)">
-                            
-                            <!-- Personal Information -->
-                            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-person-fill me-2"></i>1. Personal Information</h5>
-                            <div class="row mb-3">
-                                <div class="col-md-6 mb-3 mb-md-0">
-                                    <label class="form-label small text-muted">First Name *</label>
-                                    <input type="text" id="bookFirstName" class="form-control" required placeholder="John">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small text-muted">Last Name *</label>
-                                    <input type="text" id="bookLastName" class="form-control" required placeholder="Doe">
-                                </div>
+
+                    <form id="bookingForm" onsubmit="submitBooking(event)">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small text-muted">First Name *</label>
+                                <input type="text" id="firstName" class="form-control" required placeholder="John">
                             </div>
-
-                            <div class="row mb-3">
-                                <div class="col-md-6 mb-3 mb-md-0">
-                                    <label class="form-label small text-muted">Email Address * (For Confirmation)</label>
-                                    <input type="email" id="bookEmail" class="form-control" required placeholder="john.doe@example.com">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small text-muted">Military Branch / Affiliation *</label>
-                                    <select id="bookBranch" class="form-select" required>
-                                        <option value="">-- Select Branch --</option>
-                                        <option value="USMC">USMC</option>
-                                        <option value="US Navy">US Navy</option>
-                                        <option value="US Army">US Army</option>
-                                        <option value="US Air Force">US Air Force</option>
-                                        <option value="Civilian / Contractor">Civilian / Contractor</option>
-                                    </select>
-                                </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small text-muted">Last Name *</label>
+                                <input type="text" id="lastName" class="form-control" required placeholder="Doe">
                             </div>
+                        </div>
 
-                            <hr class="my-4">
-
-                            <!-- Location & Purpose Selection -->
-                            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-geo-alt-fill me-2"></i>2. Location & Visit Purpose</h5>
-                            
-                            <div class="row mb-3">
-                                <div class="col-md-6 mb-3 mb-md-0">
-                                    <label class="form-label small text-muted">Camp Location *</label>
-                                    <select id="campSelect" class="form-select" required onchange="updateBuildingsDropdown()">
-                                        <option value="">-- Select Camp Location --</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small text-muted">Building Number *</label>
-                                    <select id="buildingSelect" class="form-select" required>
-                                        <option value="">-- Select Camp First --</option>
-                                    </select>
-                                </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small text-muted">Email Address *</label>
+                                <input type="email" id="email" class="form-control" required placeholder="john.doe@example.com">
                             </div>
-
-                            <div class="mb-4">
-                                <label class="form-label small text-muted">Visit Purpose *</label>
-                                <select id="purposeSelect" class="form-select" required>
-                                    <option value="">-- Select Purpose --</option>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small text-muted">Branch / Affiliation *</label>
+                                <select id="branch" class="form-select" required>
+                                    <option value="">-- Select Branch --</option>
+                                    <option value="Marine Corps">Marine Corps</option>
+                                    <option value="Navy">Navy</option>
+                                    <option value="Army">Army</option>
+                                    <option value="Air Force">Air Force</option>
+                                    <option value="Civilian / Contractor">Civilian / Contractor</option>
                                 </select>
                             </div>
+                        </div>
 
-                            <hr class="my-4">
-
-                            <!-- Date & Time Selection -->
-                            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-clock-fill me-2"></i>3. Date & Time</h5>
-                            
-                            <div class="row mb-4">
-                                <div class="col-md-6 mb-3 mb-md-0">
-                                    <label class="form-label small text-muted">Appointment Date *</label>
-                                    <input type="date" id="bookDate" class="form-control" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small text-muted">Time Slot *</label>
-                                    <select id="bookTime" class="form-select" required>
-                                        <option value="">-- Select Time Slot --</option>
-                                        <option value="08:30 AM">08:30 AM</option>
-                                        <option value="09:30 AM">09:30 AM</option>
-                                        <option value="10:30 AM">10:30 AM</option>
-                                        <option value="01:00 PM">01:00 PM</option>
-                                        <option value="02:00 PM">02:00 PM</option>
-                                        <option value="03:00 PM">03:00 PM</option>
-                                        <option value="04:00 PM">04:00 PM</option>
-                                    </select>
-                                </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small text-muted">Select Camp *</label>
+                                <select id="campSelect" class="form-select" required onchange="updateBuildingsList()">
+                                    <option value="">-- Select Camp --</option>
+                                </select>
                             </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small text-muted">Select Building *</label>
+                                <select id="buildingSelect" class="form-select" required>
+                                    <option value="">-- Select Camp First --</option>
+                                </select>
+                            </div>
+                        </div>
 
-                            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">
-                                <i class="bi bi-check-circle-fill me-2"></i>Submit Appointment Request
-                            </button>
-                        </form>
-                    </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label small text-muted">Purpose of Visit *</label>
+                                <select id="purpose" class="form-select" required>
+                                    <option value="Check-in">Check-in</option>
+                                    <option value="Check-out">Check-out</option>
+                                    <option value="Maintenance Request">Maintenance Request</option>
+                                    <option value="General Inquiry">General Inquiry</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label small text-muted">Appointment Date *</label>
+                                <input type="date" id="appointmentDate" class="form-control" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label small text-muted">Appointment Time *</label>
+                                <select id="appointmentTime" class="form-select" required>
+                                    <option value="09:00 AM">09:00 AM</option>
+                                    <option value="10:00 AM">10:00 AM</option>
+                                    <option value="11:00 AM">11:00 AM</option>
+                                    <option value="01:00 PM">01:00 PM</option>
+                                    <option value="02:00 PM">02:00 PM</option>
+                                    <option value="03:00 PM">03:00 PM</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 fw-bold py-2 mt-3">Submit Appointment Request</button>
+                    </form>
                 </div>
 
-                <!-- MANAGE YOUR BOOKING SECTION (Bottom of Page) -->
-                <div class="card shadow border-0" id="manageBookingSection">
-                    <div class="card-header bg-dark text-white py-3">
-                        <h4 class="mb-0 fw-bold"><i class="bi bi-gear-fill me-2"></i>Manage Your Booking</h4>
-                        <p class="mb-0 small text-light opacity-75">Enter your confirmation code to check status, change appointment date/time, or cancel.</p>
+                <!-- Success Confirmation Card (Hidden by Default) -->
+                <div class="card shadow border-0 p-5 text-center d-none" id="successCard">
+                    <div class="mb-3">
+                        <i class="bi bi-check-circle-fill text-success display-1"></i>
                     </div>
-                    <div class="card-body p-4">
-                        <div class="input-group mb-3">
-                            <input type="text" id="lookupCodeInput" class="form-control" placeholder="Enter Confirmation Code (e.g. HB-XYZ123)">
-                            <button class="btn btn-outline-dark" type="button" onclick="lookupBookingCode()">Lookup Booking</button>
-                        </div>
-
-                        <!-- Management Result Area (Hidden initially) -->
-                        <div id="manageResultArea" class="d-none border rounded p-3 bg-light">
-                            <input type="hidden" id="managedBookingId">
-                            <h6 class="fw-bold text-primary mb-2"><i class="bi bi-info-circle-fill me-1"></i>Appointment Details</h6>
-                            <div id="managedBookingSummary" class="small text-dark mb-3"></div>
-
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label small text-muted">Change Date</label>
-                                    <input type="date" id="manageNewDate" class="form-control form-control-sm">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small text-muted">Change Time Slot</label>
-                                    <select id="manageNewTime" class="form-select form-select-sm">
-                                        <option value="08:30 AM">08:30 AM</option>
-                                        <option value="09:30 AM">09:30 AM</option>
-                                        <option value="10:30 AM">10:30 AM</option>
-                                        <option value="01:00 PM">01:00 PM</option>
-                                        <option value="02:00 PM">02:00 PM</option>
-                                        <option value="03:00 PM">03:00 PM</option>
-                                        <option value="04:00 PM">04:00 PM</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="d-flex justify-content-between">
-                                <button type="button" class="btn btn-danger btn-sm" onclick="cancelMyBooking()"><i class="bi bi-x-circle me-1"></i>Cancel Appointment</button>
-                                <button type="button" class="btn btn-success btn-sm" onclick="updateMyBookingTime()"><i class="bi bi-save me-1"></i>Save Date/Time Changes</button>
-                            </div>
-                        </div>
+                    <h3 class="fw-bold text-dark mb-2">Appointment Requested Successfully!</h3>
+                    <p class="text-muted mb-4">Your appointment request has been submitted to the housing office.</p>
+                    
+                    <div class="bg-light p-3 rounded mb-4 border">
+                        <span class="small text-muted d-block">Your Confirmation Code:</span>
+                        <h2 id="displayConfirmationCode" class="fw-bold text-primary mb-0 font-monospace"></h2>
                     </div>
+
+                    <button class="btn btn-outline-primary btn-sm" onclick="resetForm()">Book Another Appointment</button>
                 </div>
 
             </div>
@@ -174,76 +130,64 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
     <script>
-        function initPublicBooking() {
-            loadCampsDropdown();
-            loadPurposesDropdown();
-
-            const todayStr = new Date().toISOString().split('T')[0];
-            const dateInput = document.getElementById('bookDate');
-            if (dateInput) {
-                dateInput.min = todayStr;
-                dateInput.value = todayStr;
+        function initBookingPage() {
+            // Seed default data if missing
+            if (!localStorage.getItem('housing_camps')) {
+                localStorage.setItem('housing_camps', JSON.stringify(["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"]));
             }
-        }
+            if (!localStorage.getItem('housing_camp_buildings')) {
+                localStorage.setItem('housing_camp_buildings', JSON.stringify({
+                    "Camp Hansen": ["Bldg 2304", "Bldg 2305"],
+                    "Camp Schwab": ["Bldg 301", "Bldg 302"],
+                    "Camp Foster": ["Bldg 5700", "Bldg 5710"],
+                    "Camp Courtney": ["Bldg 4300"],
+                    "Camp Kinser": ["Bldg 1200", "Bldg 1250"]
+                }));
+            }
 
-        function loadCampsDropdown() {
-            let camps = JSON.parse(localStorage.getItem('housing_camps')) || ["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"];
-            let select = document.getElementById('campSelect');
-            if (!select) return;
-
-            select.innerHTML = '<option value="">-- Select Camp Location --</option>';
-            camps.forEach(camp => {
-                select.innerHTML += `<option value="${camp}">${camp}</option>`;
+            // Populate camps dropdown
+            const camps = JSON.parse(localStorage.getItem('housing_camps')) || [];
+            const campSelect = document.getElementById('campSelect');
+            campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
+            camps.forEach(c => {
+                campSelect.innerHTML += `<option value="${c}">${c}</option>`;
             });
-            updateBuildingsDropdown();
+
+            // Set minimum date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('appointmentDate').min = today;
         }
 
-        function updateBuildingsDropdown() {
+        function updateBuildingsList() {
             const selectedCamp = document.getElementById('campSelect').value;
             const buildingSelect = document.getElementById('buildingSelect');
-            if (!buildingSelect) return;
-
             buildingSelect.innerHTML = '<option value="">-- Select Building --</option>';
+
             if (!selectedCamp) return;
 
-            let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
-            let buildings = campBuildingsMap[selectedCamp] || [];
+            const campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
+            const buildings = campBuildingsMap[selectedCamp] || [];
 
-            buildings.forEach(bldg => {
-                buildingSelect.innerHTML += `<option value="${bldg}">${bldg}</option>`;
+            buildings.forEach(b => {
+                buildingSelect.innerHTML += `<option value="${b}">${b}</option>`;
             });
         }
 
-        function loadPurposesDropdown() {
-            let purposes = JSON.parse(localStorage.getItem('housing_purposes')) || ["Check-in / In-processing", "Out-processing Inspection", "Maintenance Request", "Room Change Inquiry"];
-            let select = document.getElementById('purposeSelect');
-            if (!select) return;
+        function submitBooking(e) {
+            e.preventDefault();
 
-            select.innerHTML = '<option value="">-- Select Purpose --</option>';
-            purposes.forEach(p => {
-                select.innerHTML += `<option value="${p}">${p}</option>`;
-            });
-        }
-
-        function submitPublicBooking(event) {
-            event.preventDefault();
-
-            const firstName = document.getElementById('bookFirstName').value.trim();
-            const lastName = document.getElementById('bookLastName').value.trim();
-            const email = document.getElementById('bookEmail').value.trim();
-            const branch = document.getElementById('bookBranch').value;
+            const firstName = document.getElementById('firstName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const branch = document.getElementById('branch').value;
             const camp = document.getElementById('campSelect').value;
             const building = document.getElementById('buildingSelect').value;
-            const purpose = document.getElementById('purposeSelect').value;
-            const date = document.getElementById('bookDate').value;
-            const time = document.getElementById('bookTime').value;
+            const purpose = document.getElementById('purpose').value;
+            const date = document.getElementById('appointmentDate').value;
+            const time = document.getElementById('appointmentTime').value;
 
-            // Generate unique confirmation code
-            const confirmationCode = 'HB-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-
-            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
+            const confirmationCode = 'HSG-' + Math.floor(100000 + Math.random() * 900000);
 
             const newBooking = {
                 id: Date.now(),
@@ -257,88 +201,24 @@
                 purpose,
                 date,
                 time,
-                status: "Pending",
-                staffNotes: ""
+                status: 'Pending',
+                staffNotes: ''
             };
 
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
             bookings.push(newBooking);
             localStorage.setItem('housing_bookings', JSON.stringify(bookings));
 
-            document.getElementById('publicBookingForm').reset();
-            const todayStr = new Date().toISOString().split('T')[0];
-            document.getElementById('bookDate').value = todayStr;
-            updateBuildingsDropdown();
-
-            showAlert(`Appointment successfully submitted! A confirmation code (${confirmationCode}) has been emailed to ${email}.`, "success");
+            document.getElementById('displayConfirmationCode').textContent = confirmationCode;
+            document.getElementById('bookingCard').classList.add('d-none');
+            document.getElementById('successCard').classList.remove('d-none');
         }
 
-        function lookupBookingCode() {
-            const code = document.getElementById('lookupCodeInput').value.trim().toUpperCase();
-            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
-            let booking = bookings.find(b => b.confirmationCode === code);
-
-            const resultArea = document.getElementById('manageResultArea');
-            if (!booking) {
-                alert("No appointment found matching that confirmation code.");
-                resultArea.classList.add('d-none');
-                return;
-            }
-
-            document.getElementById('managedBookingId').value = booking.id;
-            document.getElementById('managedBookingSummary').innerHTML = `
-                <strong>Name:</strong> ${booking.firstName} ${booking.lastName} (${booking.email})<br>
-                <strong>Location:</strong> ${booking.camp} - Bldg ${booking.building}<br>
-                <strong>Current Schedule:</strong> ${booking.date} at ${booking.time}<br>
-                <strong>Status:</strong> <span class="badge bg-secondary">${booking.status}</span>
-            `;
-            document.getElementById('manageNewDate').value = booking.date;
-            document.getElementById('manageNewTime').value = booking.time;
-
-            resultArea.classList.remove('d-none');
-        }
-
-        function updateMyBookingTime() {
-            const id = parseInt(document.getElementById('managedBookingId').value, 10);
-            const newDate = document.getElementById('manageNewDate').value;
-            const newTime = document.getElementById('manageNewTime').value;
-
-            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
-            bookings = bookings.map(b => {
-                if (b.id === id) {
-                    b.date = newDate;
-                    b.time = newTime;
-                }
-                return b;
-            });
-
-            localStorage.setItem('housing_bookings', JSON.stringify(bookings));
-            alert("Appointment date and time successfully updated.");
-            lookupBookingCode();
-        }
-
-        function cancelMyBooking() {
-            if (!confirm("Are you sure you want to cancel this appointment?")) return;
-            const id = parseInt(document.getElementById('managedBookingId').value, 10);
-
-            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
-            bookings = bookings.map(b => {
-                if (b.id === id) {
-                    b.status = "Cancelled";
-                }
-                return b;
-            });
-
-            localStorage.setItem('housing_bookings', JSON.stringify(bookings));
-            alert("Appointment has been cancelled.");
-            lookupBookingCode();
-        }
-
-        function showAlert(message, type) {
-            const alert = document.getElementById('bookingAlert');
-            alert.className = `alert alert-${type} mb-4`;
-            alert.textContent = message;
-            alert.classList.remove('d-none');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        function resetForm() {
+            document.getElementById('bookingForm').reset();
+            document.getElementById('successCard').classList.add('d-none');
+            document.getElementById('bookingCard').classList.remove('d-none');
+            initBookingPage();
         }
     </script>
 </body>
