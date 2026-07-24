@@ -16,7 +16,7 @@
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="#"><i class="bi bi-house-door-fill me-2"></i>Housing Portal Dashboard</a>
+            <a class="navbar-brand fw-bold" href="javascript:void(0);" onclick="goToCalendar(event)" style="cursor: pointer;"><i class="bi bi-house-door-fill me-2"></i>Housing Portal Dashboard</a>
             <div class="d-flex align-items-center">
                 <span id="userBadge" class="badge bg-primary me-3 p-2">Role: Loading...</span>
                 <button onclick="handleLogout()" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right me-1"></i>Sign Out</button>
@@ -165,23 +165,19 @@
                                         </div>
                                     </div>
 
-                                    <!-- Blocked Time Categories -->
+                                    <!-- Extra Dropdown with Delete / Clear Option -->
                                     <div class="border-top pt-3 mt-2 mb-3">
-                                        <label class="form-label small fw-bold text-dark mb-2"><i class="bi bi-shield-exclamation me-1"></i>Blocked Time Categories / Reason Tags:</label>
-                                        <div class="d-flex gap-4">
-                                            <div class="form-check">
-                                                <input class="form-check-input block-category" type="checkbox" value="Meeting" id="checkMeeting">
-                                                <label class="form-check-label small" for="checkMeeting">Meeting</label>
-                                            </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input block-category" type="checkbox" value="Escorting" id="checkEscorting">
-                                                <label class="form-check-label small" for="checkEscorting">Escorting</label>
-                                            </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input block-category" type="checkbox" value="VIP" id="checkVIP">
-                                                <label class="form-check-label small" for="checkVIP">VIP</label>
-                                            </div>
+                                        <label class="form-label small fw-bold text-dark mb-2"><i class="bi bi-shield-exclamation me-1"></i>Public Booking Page - Blocked Time Category:</label>
+                                        <div class="input-group input-group-sm">
+                                            <select id="publicBlockedCategory" class="form-select border-primary">
+                                                <option value="">-- None / Disabled --</option>
+                                                <option value="Meeting">Meeting</option>
+                                                <option value="Escorting">Escorting</option>
+                                                <option value="VIP">VIP</option>
+                                            </select>
+                                            <button class="btn btn-outline-secondary" type="button" onclick="clearBlockedCategory()" title="Delete / Clear Selection"><i class="bi bi-x-lg"></i> Clear</button>
                                         </div>
+                                        <div class="form-text small">Select a category or clear/delete the selection for blocked slots on the public form.</div>
                                     </div>
 
                                     <button type="submit" class="btn btn-primary w-100">Save Availability & Sync to Public Form</button>
@@ -326,10 +322,9 @@
                     <form id="buildingForm">
                         <input type="hidden" id="editBuildingIndex">
                         <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold text-primary">Building Number / Name (Type or Select)</label>
-                            <input class="form-control border-primary" list="buildingSuggestions" id="modalBuildingName" required placeholder="Type building number or select from list...">
-                            <datalist id="buildingSuggestions"></datalist>
-                            <div class="form-text small">Select an existing building suggestion or type a new building number.</div>
+                            <label class="form-label text-muted small fw-bold text-primary">Building Number / Name</label>
+                            <input type="text" id="modalBuildingName" class="form-control border-primary" required placeholder="Enter building number or name (e.g. Building 402)...">
+                            <div class="form-text small">Type the building number or facility name manually.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-muted small fw-bold text-primary">Assign To Staff (From User List)</label>
@@ -481,7 +476,7 @@
             }
 
             if (!localStorage.getItem('housing_availability')) {
-                const defaultAvailability = { start: "08:00", end: "17:00", lunchStart: "12:00", lunchEnd: "13:00", categories: ["Meeting"] };
+                const defaultAvailability = { start: "08:00", end: "17:00", lunchStart: "12:00", lunchEnd: "13:00", publicBlockedCategory: "Meeting" };
                 localStorage.setItem('housing_availability', JSON.stringify(defaultAvailability));
             }
 
@@ -498,6 +493,16 @@
             loadPurposeDropdown();
             loadBuildingDropdown();
             if (isStaff) loadUserManagementTable();
+        }
+
+        // --- NAVIGATION BRAND RESET HANDLER ---
+        function goToCalendar(event) {
+            if (event) event.preventDefault();
+            const calendarTabTrigger = document.getElementById('calendar-tab');
+            if (calendarTabTrigger) {
+                const tab = new bootstrap.Tab(calendarTabTrigger);
+                tab.show();
+            }
         }
 
         // --- CALENDAR & BOOKINGS LOGIC ---
@@ -752,19 +757,8 @@
             loadBuildingDropdown();
         }
 
-        function loadBuildingSuggestions() {
-            const buildings = JSON.parse(localStorage.getItem('housing_assigned_buildings')) || [];
-            const datalist = document.getElementById('buildingSuggestions');
-            datalist.innerHTML = '';
-            const uniqueNames = [...new Set(buildings.map(b => b.name))];
-            uniqueNames.forEach(name => {
-                datalist.innerHTML += `<option value="${name}">`;
-            });
-        }
-
         function openBuildingModal() {
             document.getElementById('modalBuildingName').value = '';
-            loadBuildingSuggestions();
             loadUserDropdownForBuildings();
             document.getElementById('modalBuildingRooms').value = '32';
             new bootstrap.Modal(document.getElementById('buildingModal')).show();
@@ -812,32 +806,26 @@
                 document.getElementById('availEndTime').value = avail.end || "17:00";
                 document.getElementById('lunchStartTime').value = avail.lunchStart || "12:00";
                 document.getElementById('lunchEndTime').value = avail.lunchEnd || "13:00";
-
-                if (avail.categories) {
-                    document.querySelectorAll('.block-category').forEach(cb => {
-                        cb.checked = avail.categories.includes(cb.value);
-                    });
-                }
+                document.getElementById('publicBlockedCategory').value = avail.publicBlockedCategory || "";
             }
+        }
+
+        function clearBlockedCategory() {
+            document.getElementById('publicBlockedCategory').value = "";
         }
 
         function saveAvailability(event) {
             event.preventDefault();
-            const selectedCategories = [];
-            document.querySelectorAll('.block-category:checked').forEach(cb => {
-                selectedCategories.push(cb.value);
-            });
-
             const avail = {
                 start: document.getElementById('availStartTime').value,
                 end: document.getElementById('availEndTime').value,
                 lunchStart: document.getElementById('lunchStartTime').value,
                 lunchEnd: document.getElementById('lunchEndTime').value,
-                categories: selectedCategories
+                publicBlockedCategory: document.getElementById('publicBlockedCategory').value
             };
 
             localStorage.setItem('housing_availability', JSON.stringify(avail));
-            showNotification("Time availability and lunch block settings saved.", "success");
+            showNotification("Time availability and public blocked category settings saved.", "success");
         }
 
         // --- PURPOSE OF VISIT LOGIC ---
