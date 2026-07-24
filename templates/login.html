@@ -7,91 +7,53 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        body { background-color: #f4f6f9; height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .login-card { width: 100%; max-width: 400px; border: none; border-radius: 0.5rem; }
+        body { background-color: #f4f6f9; min-height: 100vh; }
+        .card { border: none; border-radius: 0.5rem; }
     </style>
 </head>
-<body>
-    <div class="card shadow-sm login-card p-4 bg-white">
+<body class="d-flex align-items-center justify-content-center">
+
+    <div class="card shadow-sm p-4" style="width: 100%; max-width: 400px;">
         <div class="text-center mb-4">
-            <i class="bi bi-building-fill-lock fs-1 text-primary"></i>
-            <h3 class="fw-bold mt-2">UH Portal Login</h3>
-            <p class="text-muted small">Sign in to manage bookings & facilities</p>
+            <i class="bi bi-building-check fs-1 text-primary"></i>
+            <h3 class="fw-bold mt-2 mb-1">Staff Portal</h3>
+            <p class="text-muted small">Sign in to manage service member bookings</p>
         </div>
+
         {% if error %}
-        <div class="alert alert-danger py-2 small" role="alert">{{ error }}</div>
+        <div class="alert alert-danger py-2 small text-center" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ error }}
+        </div>
         {% endif %}
-        <form action="{{ url_for('login_page') }}" method="POST">
+
+        <form action="{{ url_for('login') }}" method="POST">
             <div class="mb-3">
-                <label class="form-label small fw-bold">Username</label>
-                <input type="text" name="username" class="form-control" required placeholder="Enter username">
+                <label class="form-label small fw-bold text-secondary">Username</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                    <input type="text" name="username" class="form-control" placeholder="Enter username" required autofocus>
+                </div>
             </div>
-            <div class="mb-3">
-                <label class="form-label small fw-bold">Password</label>
-                <input type="password" name="password" class="form-control" required placeholder="Enter password">
+            
+            <div class="mb-4">
+                <label class="form-label small fw-bold text-secondary">Password</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+                    <input type="password" name="password" class="form-control" placeholder="Enter password" required>
+                </div>
             </div>
-            <div class="mb-3 text-end">
-                <a href="#" class="small text-decoration-none" data-bs-toggle="modal" data-bs-target="#forgotModal">Forgot Password?</a>
-            </div>
-            <button type="submit" class="btn btn-primary w-100 fw-bold py-2 mb-2">
+
+            <button type="submit" class="btn btn-primary w-100 fw-bold py-2">
                 <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
             </button>
-            <a href="{{ url_for('booking_page') }}" class="btn btn-outline-secondary w-100 btn-sm">
-                <i class="bi bi-arrow-left me-1"></i> Back to Public Booking
-            </a>
         </form>
-    </div>
-
-    <!-- Forgot Password Modal -->
-    <div class="modal fade" id="forgotModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold">Password Recovery</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="recoveryAlert" class="alert d-none small" role="alert"></div>
-                    <form id="recoveryForm" onsubmit="submitRecovery(event)">
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Username</label>
-                            <input type="text" id="recUsername" class="form-control" required placeholder="Enter your username">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Recovery Email Address</label>
-                            <input type="email" id="recEmail" class="form-control" required placeholder="Enter your recovery email">
-                        </div>
-                        <button type="submit" class="btn btn-success w-100 fw-bold">Send Recovery Instructions</button>
-                    </form>
-                </div>
-            </div>
+        
+        <div class="text-center mt-3">
+            <a href="{{ url_for('index') }}" class="text-decoration-none small text-muted">
+                <i class="bi bi-arrow-left me-1"></i> Back to Public Booking Portal
+            </a>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        async function submitRecovery(e) {
-            e.preventDefault();
-            const username = document.getElementById('recUsername').value.trim();
-            const email = document.getElementById('recEmail').value.trim();
-            const alertBox = document.getElementById('recoveryAlert');
-
-            try {
-                const res = await fetch('/api/forgot-password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, email })
-                });
-                const data = await res.json();
-                alertBox.className = data.status === 'success' ? 'alert alert-success small' : 'alert alert-danger small';
-                alertBox.textContent = data.message;
-                alertBox.classList.remove('d-none');
-            } catch (err) {
-                alertBox.className = 'alert alert-danger small';
-                alertBox.textContent = 'Connection error. Please try again.';
-                alertBox.classList.remove('d-none');
-            }
-        }
-    </script>
 </body>
 </html>
