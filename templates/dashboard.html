@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Housing Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light" onload="initDashboard()">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Admin Portal</a>
+            <div class="d-flex">
+                <a href="/" class="btn btn-outline-light btn-sm me-2">Public Form</a>
+                <a href="/login" class="btn btn-outline-danger btn-sm">Log Out</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <h2 class="mb-4">Housing Management & Data Export</h2>
+        
+        <!-- Admin Export Controls Toolbar -->
+        <div class="card p-3 shadow-sm mb-4 bg-white border-success">
+            <h5 class="mb-3 text-success">📊 Booking Data Export (Excel / CSV Format)</h5>
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-4">
+                    <button class="btn btn-success w-100" onclick="exportAllBookings()">Export All Bookings (CSV)</button>
+                </div>
+                <div class="col-12 col-md-5">
+                    <label for="exportUserSelect" class="form-label form-label-sm mb-1">Filter by User (Email / Name):</label>
+                    <select class="form-select form-select-sm" id="exportUserSelect">
+                        <option value="">-- Select a User --</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <button class="btn btn-outline-success w-100" onclick="exportSelectedUserBookings()">Export Selected User</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Add / Edit Building Form -->
+            <div class="col-12 col-lg-4">
+                <div class="card p-3 shadow-sm">
+                    <h5 id="formTitle" class="mb-3">Add New Building</h5>
+                    <form id="buildingForm" onsubmit="saveBuilding(event)">
+                        <input type="hidden" id="buildingIndex" value="">
+                        <div class="mb-3">
+                            <label for="buildingNameInput" class="form-label">Building Number/Name</label>
+                            <input type="text" class="form-control" id="buildingNameInput" required placeholder="e.g. Building 4">
+                        </div>
+                        <div class="mb-3">
+                            <label for="startTimeInput" class="form-label">Available Start Time</label>
+                            <input type="time" class="form-control" id="startTimeInput" value="08:00" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="endTimeInput" class="form-label">Available End Time</label>
+                            <input type="time" class="form-control" id="endTimeInput" value="17:00" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mb-2">Save Building Rules</button>
+                        <button type="button" class="btn btn-outline-secondary w-100" onclick="resetBuildingForm()" id="cancelEditBtn" style="display:none;">Cancel Edit</button>
+                    </form>
+                </div>
+            </div>
+            <!-- Buildings List Table -->
+            <div class="col-12 col-lg-8">
+                <div class="card p-3 shadow-sm">
+                    <h5 class="mb-3">Configured Buildings & Operating Hours</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Building Number</th>
+                                    <th>Start Time</th>
+                                    <th>End Time</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="buildingsTableBody">
+                                <!-- Populated Dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function initDashboard() {
+            renderBuildingsTable();
+            populateExportUserDropdown();
+        }
+
+        function getBuildings() {
+            return JSON.parse(localStorage.getItem('housing_buildings')) || [];
+        }
+
+        function saveBuilding(event) {
+            event.preventDefault();
+            const index = document.getElementById('buildingIndex').value;
+            const name = document.getElementById('buildingNameInput').value.trim();
+            const startTime = document.getElementById('startTimeInput').value;
+            const endTime = document.getElementById('endTimeInput').value;
+
+            if (startTime >= endTime) {
+                alert("Start time must be earlier than end time.");
+                return;
+            }
+
+            let buildings = getBuildings();
+            if (index === "") {
+                const newId = buildings.length > 0 ? Math.max(...buildings.map(b => b.id)) + 1 : 1;
+                buildings.push({ id: newId, name, startTime, endTime });
+            } else {
+                buildings[index] = { id: buildings[index].id, name, startTime, endTime };
+            }
+
+            localStorage.setItem('housing_buildings', JSON.stringify(buildings));
+            resetBuildingForm();
+            renderBuildingsTable();
+            alert("Building operating hours successfully saved!");
+        }
+
+        function renderBuildingsTable() {
+            const buildings = getBuildings();
+            const tbody = document.getElementById('buildingsTableBody');
+            tbody.innerHTML = '';
+
+            if (buildings.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No buildings configured.</td></tr>`;
+                return;
+            }
+
+            buildings.forEach((b, idx) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${b.name}</strong></td>
+                        <td>${b.startTime}</td>
+                        <td>${b.endTime}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="editBuilding(${idx})">Edit</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteBuilding(${b.id})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function editBuilding(index) {
+            const buildings = getBuildings();
+            const b = buildings[index];
+            document.getElementById('buildingIndex').value = index;
+            document.getElementById('buildingNameInput').value = b.name;
+            document.getElementById('startTimeInput').value = b.startTime;
+            document.getElementById('endTimeInput').value = b.endTime;
+            document.getElementById('formTitle').innerText = "Edit Building Hours";
+            document.getElementById('cancelEditBtn').style.display = 'block';
+        }
+
+        function resetBuildingForm() {
+            document.getElementById('buildingForm').reset();
+            document.getElementById('buildingIndex').value = "";
+            document.getElementById('startTimeInput').value = "08:00";
+            document.getElementById('endTimeInput').value = "17:00";
+            document.getElementById('formTitle').innerText = "Add New Building";
+            document.getElementById('cancelEditBtn').style.display = 'none';
+        }
+
+        function deleteBuilding(id) {
+            let buildings = getBuildings();
+            buildings = buildings.filter(b => b.id !== id);
+            localStorage.setItem('housing_buildings', JSON.stringify(buildings));
+            renderBuildingsTable();
+        }
+
+        function populateExportUserDropdown() {
+            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            const select = document.getElementById('exportUserSelect');
+            select.innerHTML = '<option value="">-- Select a User --</option>';
+            
+            const uniqueUsers = {};
+            bookings.forEach(b => {
+                if (b.email) {
+                    uniqueUsers[b.email] = `${b.lastName || ''}, ${b.firstName || ''} (${b.email})`;
+                }
+            });
+
+            for (const [email, label] of Object.entries(uniqueUsers)) {
+                select.innerHTML += `<option value="${email}">${label}</option>`;
+            }
+        }
+
+        function downloadCSV(dataArray, filename) {
+            if (dataArray.length === 0) {
+                alert("No booking data available to export.");
+                return;
+            }
+
+            const headers = ["Branch of Service", "Last name", "First name", "Email", "Building number", "Date", "Time", "Purpose of Visit"];
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += headers.join(",") + "\r\n";
+
+            dataArray.forEach(row => {
+                const rowData = [
+                    `"${row.branchOfService || ''}"`,
+                    `"${row.lastName || ''}"`,
+                    `"${row.firstName || ''}"`,
+                    `"${row.email || ''}"`,
+                    `"${row.buildingNumber || ''}"`,
+                    `"${row.date || ''}"`,
+                    `"${row.time || ''}"`,
+                    `"${row.purposeOfVisit || ''}"`
+                ];
+                csvContent += rowData.join(",") + "\r\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exportAllBookings() {
+            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            downloadCSV(bookings, "all_housing_bookings.csv");
+        }
+
+        function exportSelectedUserBookings() {
+            const selectedEmail = document.getElementById('exportUserSelect').value;
+            if (!selectedEmail) {
+                alert("Please select a user from the dropdown first.");
+                return;
+            }
+            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            const userBookings = bookings.filter(b => b.email === selectedEmail);
+            
+            if (userBookings.length === 0) {
+                alert("No bookings found for the selected user.");
+                return;
+            }
+            downloadCSV(userBookings, `bookings_${selectedEmail.replace(/[@.]/g, '_')}.csv`);
+        }
+    </script>
+</body>
+</html>
