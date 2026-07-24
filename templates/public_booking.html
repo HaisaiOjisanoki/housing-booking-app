@@ -72,7 +72,7 @@
 
                             <hr class="mb-4">
 
-                            <!-- Location Section (Synced with Dashboard) -->
+                            <!-- Location Section: Camp Dropdown Synced with Super Admin -->
                             <h6 class="text-primary fw-bold mb-3"><i class="bi bi-geo-alt-fill me-1"></i>2. Location Details</h6>
                             <div class="row mb-4">
                                 <div class="col-md-6 mb-3 mb-md-0">
@@ -91,7 +91,7 @@
 
                             <hr class="mb-4">
 
-                            <!-- Appointment Time & Purpose (Synced with Dashboard) -->
+                            <!-- Appointment Time & Purpose -->
                             <h6 class="text-primary fw-bold mb-3"><i class="bi bi-clock-fill me-1"></i>3. Schedule & Purpose</h6>
                             <div class="row mb-3">
                                 <div class="col-md-6 mb-3 mb-md-0">
@@ -140,12 +140,11 @@
             loadPublicPurposes();
             loadPublicAvailability();
 
-            // Set default date picker min to today
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('pubDate').min = today;
         }
 
-        // Dynamically load camps saved by Super Admin from localStorage
+        // Dynamically populate Camp dropdown from Super Admin's localStorage settings
         function loadPublicCamps() {
             let camps = JSON.parse(localStorage.getItem('housing_camps')) || ["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"];
             const campSelect = document.getElementById('pubCampSelect');
@@ -179,7 +178,6 @@
             });
         }
 
-        // Dynamically load visit purposes saved from settings
         function loadPublicPurposes() {
             let purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [
                 "Check-in / In-processing", 
@@ -196,7 +194,6 @@
             });
         }
 
-        // Load facility schedule restrictions
         function loadPublicAvailability() {
             const stored = localStorage.getItem('housing_availability');
             if (stored) {
@@ -207,7 +204,6 @@
             }
         }
 
-        // Submit Booking and save to housing_bookings
         function submitBooking(event) {
             event.preventDefault();
 
