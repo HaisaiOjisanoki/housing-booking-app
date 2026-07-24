@@ -12,6 +12,7 @@
         .calendar-cell.header { background: #f8f9fa; font-weight: bold; text-align: center; min-height: 40px; padding-top: 8px; }
         .calendar-cell.other-month { background: #fdfdfe; color: #adb5bd; }
         .appointment-pill { font-size: 0.75rem; background: #e7f1ff; color: #0d6efd; border-radius: 3px; padding: 2px 4px; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+        .appointment-pill:hover { background: #d0e1fd; }
     </style>
 </head>
 <body class="bg-light" onload="initDashboard()">
@@ -161,7 +162,7 @@
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label small text-muted">Building Number / Name</label>
-                                        <input type="text" id="newBuildingNumber" class="form-control" required placeholder="e.g. Bldg 2304">
+                                        <input type="text" id="newBuildingNumber" class="form-control" required placeholder="e.g. 2304">
                                     </div>
                                     <button type="submit" class="btn btn-primary w-100 btn-sm fw-bold">Add Building</button>
                                 </form>
@@ -242,7 +243,7 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small text-muted fw-bold">Internal Notes (Visible to assigned staff)</label>
+                        <label class="form-label small text-muted fw-bold">Internal Notes (Visible to all assigned staff)</label>
                         <textarea id="editInternalNotes" class="form-control" rows="3" placeholder="Add notes, updates, or communication logs here..."></textarea>
                     </div>
                 </div>
@@ -338,17 +339,12 @@
                 scopeEl.textContent = 'All Camps & Buildings (Super Admin Full Access)';
             } else {
                 const assigned = currentUser.assignedBuildings || [];
-                scopeEl.textContent = assigned.length > 0 ? assigned.join(', ') : 'None assigned';
+                scopeEl.textContent = assigned.length > 0 ? assigned.join(', ') : 'None assigned (Assign in Staff Accounts)';
             }
 
-            if (currentUser.role === 'Super Admin' || currentUser.role === 'Admin') {
-                document.getElementById('btnExportExcel').classList.remove('d-none');
-                document.getElementById('filterCamp').classList.remove('d-none');
-                document.getElementById('filterBuilding').classList.remove('d-none');
-            } else {
-                document.getElementById('filterCamp').classList.remove('d-none');
-                document.getElementById('filterBuilding').classList.remove('d-none');
-            }
+            document.getElementById('btnExportExcel').classList.remove('d-none');
+            document.getElementById('filterCamp').classList.remove('d-none');
+            document.getElementById('filterBuilding').classList.remove('d-none');
 
             if (currentUser.role === 'UH Building Managers') {
                 document.getElementById('staffTabItem').style.display = 'none';
@@ -376,7 +372,7 @@
                 
                 const scopeEl = document.getElementById('assignedScopeDisplay');
                 if (currentUser.role !== 'Super Admin') {
-                    scopeEl.textContent = currentUser.assignedBuildings.length > 0 ? currentUser.assignedBuildings.join(', ') : 'None assigned';
+                    scopeEl.textContent = currentUser.assignedBuildings.length > 0 ? currentUser.assignedBuildings.join(', ') : 'None assigned (Assign in Staff Accounts)';
                 }
             }
 
@@ -453,24 +449,44 @@
         function getFilteredBookings() {
             let bookings = appState.bookings || [];
 
-            // 1. Role-based scope filtering: Super Admin sees all; Admin/Managers see only assigned camps/buildings
+            // Robust Flexible Scope Matching for Admin & UH Building Managers
             if (currentUser.role !== 'Super Admin') {
                 const assigned = currentUser.assignedBuildings || [];
                 bookings = bookings.filter(b => {
-                    return assigned.some(a => 
-                        a === b.camp || 
-                        a === `${b.camp} - ${b.building}`
-                    );
+                    return assigned.some(a => {
+                        let cleanA = a.trim().toLowerCase();
+                        let cleanCamp = (b.camp || '').trim().toLowerCase();
+
+                        // Match full camp name if assigned directly
+                        if (cleanA === cleanCamp) return true;
+
+                        // Match camp and building combination (handles prefix/format variances)
+                        if (cleanA.includes(cleanCamp)) {
+                            const parts = cleanA.split(' - ');
+                            if (parts.length > 1) {
+                                const assignedBldg = parts[1].replace(/bldg\.?/i, '').trim();
+                                const bookingBldg = (b.building || '').replace(/bldg\.?/i, '').trim();
+                                if (assignedBldg === bookingBldg) return true;
+                            }
+                        }
+
+                        // Match building number directly across camps if applicable
+                        if (cleanA.replace(/bldg\.?/i, '').trim() === (b.building || '').replace(/bldg\.?/i, '').trim()) {
+                            return true;
+                        }
+
+                        return false;
+                    });
                 });
             }
 
-            // 2. Dropdown Camp selection filter
+            // Dropdown Camp filter
             const campFilter = document.getElementById('filterCamp');
             if (campFilter && campFilter.value) {
                 bookings = bookings.filter(b => b.camp === campFilter.value);
             }
 
-            // 3. Dropdown Building selection filter
+            // Dropdown Building filter
             const bldgFilter = document.getElementById('filterBuilding');
             if (bldgFilter && bldgFilter.value) {
                 bookings = bookings.filter(b => b.building === bldgFilter.value);
@@ -492,7 +508,7 @@
             if (filter) bookings = bookings.filter(b => b.status === filter);
 
             if (bookings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No appointments found matching your assigned scope/filters.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No appointments found matching your assigned scope/filters. (Ensure this building is assigned to your user account under Staff Accounts)</td></tr>`;
                 return;
             }
 
@@ -551,7 +567,7 @@
                 let pills = dayBldgs.map(b => `
                     <div class="appointment-pill d-flex justify-content-between align-items-center" onclick="openEditModal(${b.id})" title="${b.firstName} ${b.lastName} - ${b.purpose}">
                         <span>${b.time} ${b.firstName}</span>
-                        ${b.staffNotes ? '<i class="bi bi-journal-text text-danger ms-1"></i>' : ''}
+                        ${b.staffNotes ? '<i class="bi bi-journal-text text-danger ms-1" title="Has internal notes"></i>' : ''}
                     </div>
                 `).join('');
                 html += `<div class="calendar-cell"><div class="fw-bold small mb-1">${d}</div><div>${pills}</div></div>`;
