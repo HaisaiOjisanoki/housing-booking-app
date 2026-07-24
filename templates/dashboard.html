@@ -31,6 +31,17 @@
     </nav>
 
     <div class="container-fluid px-4 py-4">
+        
+        <!-- User Scope & Assigned Buildings Banner -->
+        <div class="alert alert-primary py-2 px-3 mb-4 d-flex align-items-center justify-content-between shadow-sm border-0 bg-white">
+            <div>
+                <i class="bi bi-shield-check text-primary me-2 fs-5"></i>
+                <strong class="text-dark">Assigned Scope / Buildings:</strong> 
+                <span id="assignedScopeDisplay" class="text-secondary fw-semibold ms-1">Loading...</span>
+            </div>
+            <span id="roleBadgeDisplay" class="badge bg-dark"></span>
+        </div>
+
         <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active fw-bold" id="appointments-tab" data-bs-toggle="tab" data-bs-target="#appointmentsPane" type="button" role="tab">
@@ -55,7 +66,16 @@
                 <div class="card shadow border-0 mb-4">
                     <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-list-task me-2 text-primary"></i>Appointment Schedule</h5>
-                        <div class="d-flex gap-2 align-items-center">
+                        <div class="d-flex gap-2 align-items-center flex-wrap">
+                            <button type="button" class="btn btn-outline-success btn-sm d-none" id="btnExportExcel" onclick="exportBookingsToCSV()">
+                                <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
+                            </button>
+                            <select id="filterCamp" class="form-select form-select-sm d-none" onchange="onCampFilterChange()">
+                                <option value="">All Camps</option>
+                            </select>
+                            <select id="filterBuilding" class="form-select form-select-sm d-none" onchange="renderAppointmentsView()">
+                                <option value="">All Buildings</option>
+                            </select>
                             <div class="btn-group btn-group-sm" role="group">
                                 <button type="button" class="btn btn-outline-primary" id="btnTableView" onclick="switchAppointmentView('table')"><i class="bi bi-table me-1"></i>Table</button>
                                 <button type="button" class="btn btn-outline-primary active" id="btnCalendarView" onclick="switchAppointmentView('calendar')"><i class="bi bi-calendar3 me-1"></i>Calendar</button>
@@ -260,7 +280,6 @@
         </div>
     </div>
 
-    <!-- Edit/Manage User Modal (Password Reset & Building/Camp Assignment) -->
     <div class="modal fade" id="editUserModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -276,9 +295,7 @@
                     </div>
                     <div class="mb-3" id="assignedBuildingsContainer">
                         <label class="form-label small text-muted fw-bold">Assign Camps & Buildings</label>
-                        <div id="buildingCheckboxes" class="border rounded p-2 bg-light" style="max-height: 200px; overflow-y: auto;">
-                            <!-- Checkboxes injected dynamically -->
-                        </div>
+                        <div id="buildingCheckboxes" class="border rounded p-2 bg-light" style="max-height: 200px; overflow-y: auto;"></div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -303,7 +320,22 @@
                 return;
             }
             currentUser = JSON.parse(userJson);
-            document.getElementById('currentUserDisplay').textContent = `${currentUser.username} (${currentUser.role})`;
+            document.getElementById('currentUserDisplay').textContent = `${currentUser.username}`;
+            document.getElementById('roleBadgeDisplay').textContent = currentUser.role;
+
+            const scopeEl = document.getElementById('assignedScopeDisplay');
+            if (currentUser.role === 'Super Admin') {
+                scopeEl.textContent = 'All Camps & Buildings (Super Admin Full Access)';
+            } else {
+                const assigned = currentUser.assignedBuildings || [];
+                scopeEl.textContent = assigned.length > 0 ? assigned.join(', ') : 'None assigned';
+            }
+
+            if (currentUser.role === 'Super Admin' || currentUser.role === 'Admin') {
+                document.getElementById('btnExportExcel').classList.remove('d-none');
+                document.getElementById('filterCamp').classList.remove('d-none');
+                document.getElementById('filterBuilding').classList.remove('d-none');
+            }
 
             if (currentUser.role === 'UH Building Managers') {
                 document.getElementById('staffTabItem').style.display = 'none';
@@ -323,9 +355,62 @@
             if (!appState.camps) appState.camps = [];
             if (!appState.camp_buildings) appState.camp_buildings = {};
             if (!appState.bookings) appState.bookings = [];
+
+            const latestUser = appState.users.find(u => u.username === currentUser.username);
+            if (latestUser) {
+                currentUser.assignedBuildings = latestUser.assignedBuildings || [];
+                localStorage.setItem('housing_current_user', JSON.stringify(currentUser));
+                
+                const scopeEl = document.getElementById('assignedScopeDisplay');
+                if (currentUser.role !== 'Super Admin') {
+                    scopeEl.textContent = currentUser.assignedBuildings.length > 0 ? currentUser.assignedBuildings.join(', ') : 'None assigned';
+                }
+            }
+
+            populateCampFilterDropdown();
+            populateBuildingFilterDropdown();
             renderAppointmentsView();
             renderCampsManagement();
             renderStaffTable();
+        }
+
+        function populateCampFilterDropdown() {
+            const campFilter = document.getElementById('filterCamp');
+            if (!campFilter) return;
+            const currentVal = campFilter.value;
+            campFilter.innerHTML = '<option value="">All Camps</option>';
+            (appState.camps || []).forEach(c => {
+                campFilter.innerHTML += `<option value="${c}" ${c === currentVal ? 'selected' : ''}>${c}</option>`;
+            });
+        }
+
+        function populateBuildingFilterDropdown() {
+            const campVal = document.getElementById('filterCamp').value;
+            const bldgFilter = document.getElementById('filterBuilding');
+            if (!bldgFilter) return;
+
+            const currentBldgVal = bldgFilter.value;
+            bldgFilter.innerHTML = '<option value="">All Buildings</option>';
+
+            if (!campVal) {
+                let allBldgs = new Set();
+                Object.values(appState.camp_buildings || {}).forEach(bldgs => {
+                    bldgs.forEach(b => allBldgs.add(b));
+                });
+                allBldgs.forEach(b => {
+                    bldgFilter.innerHTML += `<option value="${b}" ${b === currentBldgVal ? 'selected' : ''}>${b}</option>`;
+                });
+            } else {
+                let bldgs = (appState.camp_buildings || {})[campVal] || [];
+                bldgs.forEach(b => {
+                    bldgFilter.innerHTML += `<option value="${b}" ${b === currentBldgVal ? 'selected' : ''}>${b}</option>`;
+                });
+            }
+        }
+
+        function onCampFilterChange() {
+            populateBuildingFilterDropdown();
+            renderAppointmentsView();
         }
 
         async function saveState() {
@@ -354,20 +439,32 @@
 
         function getFilteredBookings() {
             let bookings = appState.bookings || [];
-            // If Super Admin, sees all bookings
-            if (currentUser.role === 'Super Admin') {
-                return bookings;
+
+            // 1. Role-based scope filtering
+            if (currentUser.role !== 'Super Admin') {
+                const assigned = currentUser.assignedBuildings || [];
+                bookings = bookings.filter(b => {
+                    return assigned.some(a => 
+                        a === b.camp || 
+                        a === `${b.camp} - ${b.building}` || 
+                        a.startsWith(b.camp + ' -')
+                    );
+                });
             }
 
-            // If Admin or UH Building Manager, filter by assigned camps/buildings
-            const assigned = currentUser.assignedBuildings || [];
-            return bookings.filter(b => {
-                return assigned.some(a => 
-                    a === b.camp || 
-                    a === `${b.camp} - ${b.building}` || 
-                    a.startsWith(b.camp + ' -')
-                );
-            });
+            // 2. Dropdown Camp selection filter
+            const campFilter = document.getElementById('filterCamp');
+            if (campFilter && campFilter.value) {
+                bookings = bookings.filter(b => b.camp === campFilter.value);
+            }
+
+            // 3. Dropdown Building selection filter
+            const bldgFilter = document.getElementById('filterBuilding');
+            if (bldgFilter && bldgFilter.value) {
+                bookings = bookings.filter(b => b.building === bldgFilter.value);
+            }
+
+            return bookings;
         }
 
         function renderAppointmentsView() {
@@ -383,7 +480,7 @@
             if (filter) bookings = bookings.filter(b => b.status === filter);
 
             if (bookings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No appointments found.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No appointments found matching your assigned buildings/filters.</td></tr>`;
                 return;
             }
 
@@ -445,6 +542,63 @@
             renderAppointmentsCalendar();
         }
 
+        function exportBookingsToCSV() {
+            if (currentUser.role !== 'Super Admin' && currentUser.role !== 'Admin') {
+                alert('Access denied.');
+                return;
+            }
+
+            let bookings = getFilteredBookings();
+            if (bookings.length === 0) {
+                alert('No bookings available to export for the selected filters.');
+                return;
+            }
+
+            bookings.sort((a, b) => {
+                if (a.camp !== b.camp) return a.camp.localeCompare(b.camp);
+                if (a.building !== b.building) return a.building.localeCompare(b.building);
+                return a.date.localeCompare(b.date);
+            });
+
+            let csvRows = [];
+            let currentCamp = '';
+            let currentBuilding = '';
+            let colHeaders = ["Branch of Service", "Last Name", "First Name", "Building Number", "Date", "Time", "Purpose of Visit"];
+
+            bookings.forEach(b => {
+                if (b.camp !== currentCamp) {
+                    currentCamp = b.camp;
+                    csvRows.push(`\n"CAMP: ${currentCamp}"`);
+                    currentBuilding = '';
+                }
+                if (b.building !== currentBuilding) {
+                    currentBuilding = b.building;
+                    csvRows.push(`"Building: ${currentBuilding}"`);
+                    csvRows.push(colHeaders.map(h => `"${h}"`).join(','));
+                }
+
+                let rowData = [
+                    b.branch || '',
+                    b.lastName || '',
+                    b.firstName || '',
+                    b.building || '',
+                    b.date || '',
+                    b.time || '',
+                    b.purpose || ''
+                ];
+                csvRows.push(rowData.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','));
+            });
+
+            let csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `housing_bookings_export_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         function openEditModal(id) {
             let b = (appState.bookings || []).find(item => item.id === id);
             if (!b) return;
@@ -499,6 +653,7 @@
                 appState.camps.push(name);
                 await saveState();
                 document.getElementById('newCampName').value = '';
+                populateCampFilterDropdown();
                 renderCampsManagement();
             }
         }
@@ -513,6 +668,7 @@
                     appState.camp_buildings[camp].push(bldg);
                     await saveState();
                     document.getElementById('newBuildingNumber').value = '';
+                    populateBuildingFilterDropdown();
                     renderCampsManagement();
                 }
             }
@@ -521,6 +677,7 @@
         async function removeBuilding(camp, bldg) {
             appState.camp_buildings[camp] = appState.camp_buildings[camp].filter(b => b !== bldg);
             await saveState();
+            populateBuildingFilterDropdown();
             renderCampsManagement();
         }
 
@@ -540,7 +697,7 @@
                         <td>${u.recoveryEmail || 'None'}</td>
                         <td><span class="badge bg-secondary">${bldgsDisplay}</span></td>
                         <td class="text-end pe-3">
-                            <button class="btn btn-outline-secondary btn-sm me-1" onclick="openEditUserModal('${u.username}')" title="Manage User (Password & Buildings)"><i class="bi bi-gear"></i></button>
+                            <button class="btn btn-outline-secondary btn-sm me-1" onclick="openEditUserModal('${u.username}')" title="Manage User"><i class="bi bi-gear"></i></button>
                             ${u.username !== 'superadmin' && (currentUser.role === 'Super Admin' || (currentUser.role === 'Admin' && u.role === 'UH Building Managers')) ? `<button class="btn btn-outline-danger btn-sm" onclick="deleteStaff('${u.username}')" title="Delete User"><i class="bi bi-trash"></i></button>` : ''}
                         </td>
                     </tr>
@@ -570,7 +727,7 @@
                 document.getElementById('assignedBuildingsContainer').style.display = 'block';
                 let allItems = [];
                 (appState.camps || []).forEach(camp => {
-                    allItems.push(camp); // Camp-level assignment option
+                    allItems.push(camp);
                     ((appState.camp_buildings || {})[camp] || []).forEach(bldg => {
                         allItems.push(`${camp} - ${bldg}`);
                     });
@@ -603,9 +760,7 @@
 
             appState.users = appState.users.map(u => {
                 if (u.username === username) {
-                    if (newPassword) {
-                        u.password = newPassword;
-                    }
+                    if (newPassword) u.password = newPassword;
                     if (u.role !== 'Super Admin') {
                         let checkboxes = document.querySelectorAll('.user-bldg-checkbox:checked');
                         u.assignedBuildings = Array.from(checkboxes).map(cb => cb.value);
@@ -616,7 +771,7 @@
 
             await saveState();
             bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
-            renderStaffTable();
+            await refreshState();
             alert(`User ${username} updated successfully.`);
         }
 
