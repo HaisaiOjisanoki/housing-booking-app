@@ -103,8 +103,10 @@
                                 </div>
                             </div>
                             <div class="mb-4">
-                                <label class="form-label small fw-bold text-muted">Purpose of Visit / Remarks *</label>
-                                <textarea id="purpose" class="form-control" rows="3" required placeholder="Describe the purpose of your visit..."></textarea>
+                                <label class="form-label small fw-bold text-muted">Purpose of Visit *</label>
+                                <select id="purposeSelect" class="form-select" required>
+                                    <option value="">-- Select Purpose of Visit --</option>
+                                </select>
                             </div>
                             <button type="submit" id="submitBtn" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">
                                 <i class="bi bi-check-circle me-1"></i>Submit Appointment
@@ -147,11 +149,27 @@
                 if (!appState.camps) appState.camps = [];
                 if (!appState.camp_buildings) appState.camp_buildings = {};
                 if (!appState.bookings) appState.bookings = [];
+                if (!appState.purposes) {
+                    appState.purposes = [
+                        'Check-in / In-processing',
+                        'Out-processing Inspection',
+                        'Maintenance Request',
+                        'Room Change Inquiry'
+                    ];
+                }
 
+                // Populate Camps
                 const campSelect = document.getElementById('campSelect');
                 campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
                 appState.camps.forEach(c => {
                     campSelect.innerHTML += `<option value="${c}">${c}</option>`;
+                });
+
+                // Populate Purpose of Visit Dropdown
+                const purposeSelect = document.getElementById('purposeSelect');
+                purposeSelect.innerHTML = '<option value="">-- Select Purpose of Visit --</option>';
+                appState.purposes.forEach(p => {
+                    purposeSelect.innerHTML += `<option value="${p}">${p}</option>`;
                 });
             } catch (err) {
                 console.error("Error loading application state:", err);
@@ -217,7 +235,7 @@
                 building: document.getElementById('buildingSelect').value,
                 date: document.getElementById('bookingDate').value,
                 time: document.getElementById('bookingTime').value,
-                purpose: document.getElementById('purpose').value.trim(),
+                purpose: document.getElementById('purposeSelect').value,
                 status: 'Pending',
                 staffNotes: ''
             };
