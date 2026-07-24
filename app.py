@@ -19,7 +19,7 @@ def load_state():
         },
         "bookings": [],
         "staff_users": [
-            {"username": "hansen_manager", "password": "password123", "camp": "Camp Hansen", "building": "1001"}
+            {"username": "hansen_manager", "password": "password123", "camp": "Camp Hansen", "building": "1001", "role": "camp_admin"}
         ],
         "purposes": [
             "Check-in / In-processing",
@@ -33,7 +33,6 @@ def load_state():
         try:
             with open(STATE_FILE, 'r') as f:
                 data = json.load(f)
-                # Ensure all required keys exist to prevent KeyError exceptions
                 for key in default_state:
                     if key not in data:
                         data[key] = default_state[key]
@@ -62,6 +61,16 @@ def superadmin():
         return redirect(url_for('login'))
     return render_template('superadmin.html')
 
+@app.route('/dashboard')
+def dashboard():
+    if session.get('role') not in ['staff', 'camp_admin']:
+        return redirect(url_for('login'))
+    return render_template('dashboard.html', 
+                         username=session.get('username'), 
+                         camp=session.get('camp'), 
+                         building=session.get('building'),
+                         role=session.get('role'))
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -73,11 +82,11 @@ def login():
             session['role'] = 'superadmin'
             return redirect(url_for('superadmin'))
             
-        # Staff check
+        # Staff / Camp Admin check
         state = load_state()
         for staff in state.get('staff_users', []):
             if staff.get('username') == username and staff.get('password') == password:
-                session['role'] = 'staff'
+                session['role'] = staff.get('role', 'camp_admin')
                 session['username'] = username
                 session['camp'] = staff.get('camp')
                 session['building'] = staff.get('building')
