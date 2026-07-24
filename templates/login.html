@@ -3,218 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Portal - Housing Management</title>
+    <title>Login - Housing Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="bg-dark d-flex align-items-center justify-content-center vh-100" onload="initLoginStorage()">
+<body class="bg-light d-flex align-items-center justify-content-center vh-100" onload="initAuthStorage()">
 
-    <div class="card p-4 shadow-lg col-11 col-md-4">
-        
-        <!-- 1. MAIN LOGIN VIEW -->
-        <div id="loginView">
-            <h3 class="text-center mb-3">Housing Portal Login</h3>
-            <p class="text-center text-muted small mb-4">Sign in to your account.</p>
-            
-            <form onsubmit="handleLogin(event)">
-                <div class="mb-3">
-                    <label for="username" class="form-label">Username</label>
-                    <input type="text" class="form-control" id="username" placeholder="Enter username" required>
-                </div>
-                <div class="mb-3">
-                    <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" placeholder="Enter password" required>
-                </div>
-                <button type="submit" class="btn btn-primary w-100 mb-3">Sign In</button>
-            </form>
-
-            <div class="text-center mb-2">
-                <a href="#" onclick="switchView('forgotView')" class="text-decoration-none small text-warning">Forgot Password?</a>
+    <div class="card shadow p-4" style="width: 100%; max-width: 400px;">
+        <div class="text-center mb-4">
+            <h3 class="fw-bold">Housing Portal Login</h3>
+            <p class="text-muted small">Sign in to manage bookings and schedules</p>
+        </div>
+        <form onsubmit="handleLogin(event)">
+            <div class="mb-3">
+                <label for="usernameInput" class="form-label">Username</label>
+                <input type="text" class="form-control" id="usernameInput" required placeholder="e.g. user, admin, superadmin">
             </div>
+            <div class="mb-3">
+                <label for="passwordInput" class="form-label">Password</label>
+                <input type="password" class="form-control" id="passwordInput" required placeholder="password123">
+            </div>
+            <button type="submit" class="btn btn-primary w-100 mb-3">Sign In</button>
             <div class="text-center">
-                <a href="/" class="text-decoration-none small">← Back to Public Booking Form</a>
+                <a href="/" class="text-decoration-none small">&larr; Back to Public Booking Form</a>
             </div>
-        </div>
-
-        <!-- 2. FIRST-TIME PASSWORD & RECOVERY EMAIL SETUP VIEW -->
-        <div id="setupView" style="display: none;">
-            <h3 class="text-center mb-3 text-warning">Security Setup</h3>
-            <p class="text-muted small mb-3">Since you are logging in with a default password, please update your credentials and provide a recovery email.</p>
-            
-            <form onsubmit="saveFirstTimeSetup(event)">
-                <div class="mb-3">
-                    <label for="newPassInput" class="form-label">New Password</label>
-                    <input type="password" class="form-control" id="newPassInput" placeholder="Enter new password" required minlength="6">
-                </div>
-                <div class="mb-3">
-                    <label for="recoveryEmailInput" class="form-label">Recovery Email</label>
-                    <input type="email" class="form-control" id="recoveryEmailInput" placeholder="user@mil / email.com" required>
-                </div>
-                <button type="submit" class="btn btn-success w-100">Save and Continue</button>
-            </form>
-        </div>
-
-        <!-- 3. FORGOT / RESET PASSWORD VIEW -->
-        <div id="forgotView" style="display: none;">
-            <h3 class="text-center mb-3 text-info">Password Recovery</h3>
-            <p class="text-muted small mb-3">Enter your username and recovery email to receive your password reset link.</p>
-            
-            <form onsubmit="requestPasswordReset(event)">
-                <div class="mb-3">
-                    <label for="resetUsername" class="form-label">Username</label>
-                    <input type="text" class="form-control" id="resetUsername" placeholder="Enter your username" required>
-                </div>
-                <div class="mb-3">
-                    <label for="resetEmail" class="form-label">Recovery Email</label>
-                    <input type="email" class="form-control" id="resetEmail" placeholder="Enter recovery email" required>
-                </div>
-                <button type="submit" class="btn btn-info w-100 mb-3 text-white">Send Recovery Link</button>
-            </form>
-            <div class="text-center">
-                <a href="#" onclick="switchView('loginView')" class="text-decoration-none small">← Back to Login</a>
-            </div>
-        </div>
-
-        <!-- 4. NEW PASSWORD RESET ENTRY VIEW -->
-        <div id="resetConfirmView" style="display: none;">
-            <h3 class="text-center mb-3 text-success">Reset Password</h3>
-            <p class="text-muted small mb-3">Identity verified via recovery email. Please enter your new password.</p>
-            
-            <form onsubmit="executePasswordReset(event)">
-                <div class="mb-3">
-                    <label for="finalNewPassword" class="form-label">New Password</label>
-                    <input type="password" class="form-control" id="finalNewPassword" placeholder="Enter new password" required minlength="6">
-                </div>
-                <button type="submit" class="btn btn-success w-100">Update Password & Login</button>
-            </form>
-        </div>
-
+        </form>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const defaultUsers = [
-            { id: 1, username: "superadmin", password: "password123", role: "Super Admin", mustChangePassword: true, recoveryEmail: "" },
-            { id: 2, username: "admin", password: "password123", role: "Admin", mustChangePassword: true, recoveryEmail: "" },
-            { id: 3, username: "user", password: "password123", role: "User", mustChangePassword: true, recoveryEmail: "" }
-        ];
-
-        let pendingUserSession = null;
-        let resettingUsername = null;
-
-        function initLoginStorage() {
+        function initAuthStorage() {
             if (!localStorage.getItem('housing_users')) {
+                const defaultUsers = [
+                    { id: 1, username: "superadmin", password: "password123", role: "Super Admin", email: "superadmin@housing.mil" },
+                    { id: 2, username: "admin", password: "password123", role: "Admin", email: "admin@housing.mil" },
+                    { id: 3, username: "user", password: "password123", role: "User", email: "user@housing.mil" }
+                ];
                 localStorage.setItem('housing_users', JSON.stringify(defaultUsers));
             }
         }
 
-        function switchView(viewId) {
-            document.getElementById('loginView').style.display = 'none';
-            document.getElementById('setupView').style.display = 'none';
-            document.getElementById('forgotView').style.display = 'none';
-            document.getElementById('resetConfirmView').style.display = 'none';
-
-            document.getElementById(viewId).style.display = 'block';
-        }
-
         function handleLogin(event) {
             event.preventDefault();
-            const usernameInput = document.getElementById('username').value.trim();
-            const passwordInput = document.getElementById('password').value.trim();
+            const usernameInput = document.getElementById('usernameInput').value.trim().toLowerCase();
+            const passwordInput = document.getElementById('passwordInput').value.trim();
 
-            let users = JSON.parse(localStorage.getItem('housing_users')) || defaultUsers;
-            const foundUser = users.find(u => u.username === usernameInput && u.password === passwordInput);
+            const users = JSON.parse(localStorage.getItem('housing_users')) || [];
+            const foundUser = users.find(u => u.username.toLowerCase() === usernameInput && u.password === passwordInput);
 
-            if (!foundUser) {
-                alert("Invalid username or password.");
-                return;
+            if (foundUser) {
+                // Save current user with normalized role handling
+                localStorage.setItem('housing_current_user', JSON.stringify(foundUser));
+                window.location.href = '/dashboard';
+            } else {
+                alert("Invalid username or password. Default test accounts: superadmin, admin, user (password: password123)");
             }
-
-            if (foundUser.mustChangePassword) {
-                pendingUserSession = foundUser;
-                switchView('setupView');
-                return;
-            }
-
-            completeLogin(foundUser);
-        }
-
-        function saveFirstTimeSetup(event) {
-            event.preventDefault();
-            const newPassword = document.getElementById('newPassInput').value.trim();
-            const recoveryEmail = document.getElementById('recoveryEmailInput').value.trim();
-
-            let users = JSON.parse(localStorage.getItem('housing_users')) || defaultUsers;
-            const index = users.findIndex(u => u.id === pendingUserSession.id);
-
-            if (index !== -1) {
-                users[index].password = newPassword;
-                users[index].recoveryEmail = recoveryEmail;
-                users[index].mustChangePassword = false;
-                localStorage.setItem('housing_users', JSON.stringify(users));
-
-                alert("Credentials updated successfully!");
-                completeLogin(users[index]);
-            }
-        }
-
-        function requestPasswordReset(event) {
-            event.preventDefault();
-            const username = document.getElementById('resetUsername').value.trim();
-            const email = document.getElementById('resetEmail').value.trim();
-
-            let users = JSON.parse(localStorage.getItem('housing_users')) || defaultUsers;
-            const user = users.find(u => u.username === username && u.recoveryEmail && u.recoveryEmail.toLowerCase() === email.toLowerCase());
-
-            if (!user) {
-                alert("No user found matching that username and recovery email combination.");
-                return;
-            }
-
-            resettingUsername = username;
-            alert(`[Simulated Email Sent to ${email}]\n\nA password reset link has been sent to your recovery email.\nClicking the link will now prompt you to enter a new password.`);
-            switchView('resetConfirmView');
-        }
-
-        function executePasswordReset(event) {
-            event.preventDefault();
-            const newPassword = document.getElementById('finalNewPassword').value.trim();
-
-            let users = JSON.parse(localStorage.getItem('housing_users')) || defaultUsers;
-            const index = users.findIndex(u => u.username === resettingUsername);
-
-            if (index !== -1) {
-                users[index].password = newPassword;
-                users[index].mustChangePassword = false;
-                localStorage.setItem('housing_users', JSON.stringify(users));
-
-                alert("Password successfully reset! You can now log in with your new password.");
-                switchView('loginView');
-                document.getElementById('username').value = resettingUsername;
-                document.getElementById('password').value = '';
-                resettingUsername = null;
-            }
-        }
-
-        function completeLogin(userObj) {
-            // Save active session for the dashboard
-            localStorage.setItem('housing_current_user', JSON.stringify({
-                username: userObj.username,
-                role: userObj.role,
-                email: userObj.recoveryEmail || `${userObj.username}@housing.mil`
-            }));
-
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/login';
-
-            const roleInput = document.createElement('input');
-            roleInput.type = 'hidden';
-            roleInput.name = 'role';
-            roleInput.value = userObj.role;
-            form.appendChild(roleInput);
-
-            document.body.appendChild(form);
-            form.submit();
         }
     </script>
 </body>
