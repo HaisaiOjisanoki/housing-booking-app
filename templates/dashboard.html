@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Housing Management</title>
+    <title>Dashboard - Housing Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light" onload="initDashboard()">
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#">Admin Portal <span id="currentUserRoleBadge" class="badge bg-secondary ms-2"></span></a>
+            <a class="navbar-brand" href="#">Housing Portal <span id="currentUserRoleBadge" class="badge bg-secondary ms-2"></span></a>
             <div class="d-flex align-items-center gap-2">
                 <!-- Notification Bell & Inbox Trigger -->
                 <button class="btn btn-outline-light btn-sm position-relative" type="button" onclick="openNotificationModal()">
@@ -24,7 +24,7 @@
     </nav>
 
     <div class="container my-4">
-        <h2 class="mb-4">Housing Management & Calendar Portal</h2>
+        <h2 class="mb-4" id="portalHeaderTitle">Housing Management & Calendar Portal</h2>
         
         <!-- CALENDAR VIEW SECTION -->
         <div class="card p-3 shadow-sm mb-4 bg-white border-primary">
@@ -53,8 +53,8 @@
             </div>
         </div>
 
-        <!-- Admin Export Controls Toolbar -->
-        <div class="card p-3 shadow-sm mb-4 bg-white border-success">
+        <!-- Admin Export Controls Toolbar (Visible to Admins / Super Admins only) -->
+        <div class="card p-3 shadow-sm mb-4 bg-white border-success" id="adminExportSection">
             <h5 class="mb-3 text-success">📊 Booking Data Export (Excel / CSV Format)</h5>
             <div class="row g-3 align-items-end">
                 <div class="col-12 col-md-5">
@@ -71,10 +71,13 @@
             </div>
         </div>
 
-        <div class="row g-4">
-            <!-- Add / Edit Building Form (With Multi-User Assignment for Coverage) -->
-            <div class="col-12 col-lg-4">
-                <div class="card p-3 shadow-sm mb-4">
+        <!-- MAIN CONTENT AREA (Role Adaptive) -->
+        <div class="row g-4" id="mainContentRow">
+            <!-- Left Column: Building / User Management (Admin vs User) -->
+            <div class="col-12 col-lg-4" id="leftColumnControls">
+                
+                <!-- ADMIN BUILDING CREATION FORM -->
+                <div class="card p-3 shadow-sm mb-4" id="adminBuildingFormCard">
                     <h5 id="formTitle" class="mb-3">Add New Building</h5>
                     <form id="buildingForm" onsubmit="saveBuilding(event)">
                         <input type="hidden" id="buildingIndex" value="">
@@ -103,8 +106,8 @@
                             </div>
                         </div>
 
-                        <!-- Assigned Users for Coverage (Sick, Vacation, Time Off) -->
-                        <div class="mb-3">
+                        <!-- Assigned Users for Coverage -->
+                        <div class="mb-3" id="assignedUsersWrapper">
                             <label class="form-label">Assign Team Members (Coverage)</label>
                             <div id="assignedUsersChecklist" class="border rounded p-2 bg-light" style="max-height: 120px; overflow-y: auto;">
                                 <!-- Checkboxes populated dynamically -->
@@ -129,8 +132,17 @@
                     </form>
                 </div>
 
-                <!-- Add User Form -->
-                <div class="card p-3 shadow-sm border-primary">
+                <!-- NORMAL USER: ASSIGNED BUILDING EDIT CARD -->
+                <div class="card p-3 shadow-sm mb-4 border-info" id="userAssignedBuildingCard" style="display: none;">
+                    <h5 class="mb-3 text-info">🏢 My Assigned Buildings</h5>
+                    <p class="text-muted small">You can manage and update the operating hours and purpose options for the buildings assigned to you.</p>
+                    <div id="userAssignedBuildingsContainer">
+                        <!-- Populated dynamically for normal users -->
+                    </div>
+                </div>
+
+                <!-- Add User Form (Admin/Super Admin only) -->
+                <div class="card p-3 shadow-sm border-primary" id="adminUserCreationCard">
                     <h5 class="mb-3 text-primary">👥 Add New User Account</h5>
                     <form id="userForm" onsubmit="saveUser(event)">
                         <div class="mb-3">
@@ -154,9 +166,9 @@
                 </div>
             </div>
 
-            <!-- Right Column: Buildings Table & Users Table -->
-            <div class="col-12 col-lg-8">
-                <div class="card p-3 shadow-sm mb-4">
+            <!-- Right Column: Buildings Table & Users Table (Admin) / User Status (Normal) -->
+            <div class="col-12 col-lg-8" id="rightColumnContainer">
+                <div class="card p-3 shadow-sm mb-4" id="adminBuildingsTableCard">
                     <h5 class="mb-3">Configured Buildings, Coverage Staff & Operating Hours</h5>
                     <div class="table-responsive">
                         <table class="table table-striped align-middle">
@@ -177,7 +189,7 @@
                 </div>
 
                 <!-- User Accounts Management Table -->
-                <div class="card p-3 shadow-sm">
+                <div class="card p-3 shadow-sm" id="adminUsersTableCard">
                     <h5 class="mb-3">Managed User Accounts</h5>
                     <div class="table-responsive">
                         <table class="table table-striped align-middle">
@@ -198,6 +210,61 @@
         </div>
     </div>
 
+    <!-- EDIT ASSIGNED BUILDING MODAL (For Normal User) -->
+    <div class="modal fade" id="editAssignedBuildingModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">Edit Assigned Building</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="userBuildingEditForm" onsubmit="saveUserAssignedBuilding(event)">
+                        <input type="hidden" id="userEditBuildingId">
+                        <div class="mb-3">
+                            <label for="userEditBuildingName" class="form-label">Building Name / Number</label>
+                            <input type="text" class="form-control" id="userEditBuildingName" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label for="userEditStartTime" class="form-label">Start Time</label>
+                                <input type="time" class="form-control" id="userEditStartTime" required>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label for="userEditEndTime" class="form-label">End Time</label>
+                                <input type="time" class="form-control" id="userEditEndTime" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label for="userEditLunchStart" class="form-label">Lunch Start</label>
+                                <input type="time" class="form-control" id="userEditLunchStart">
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label for="userEditLunchEnd" class="form-label">Lunch End</label>
+                                <input type="time" class="form-control" id="userEditLunchEnd">
+                            </div>
+                        </div>
+
+                        <!-- Purpose of Visit Manager -->
+                        <div class="mb-3">
+                            <label class="form-label">Purpose of Visit Options</label>
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control form-control-sm" id="userNewPurposeInput" placeholder="e.g. In-processing">
+                                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="addUserPurposeToForm()">Add</button>
+                            </div>
+                            <ul id="userPurposeListContainer" class="list-group list-group-flush border rounded" style="max-height: 120px; overflow-y: auto;">
+                                <!-- Dynamically populated purposes -->
+                            </ul>
+                        </div>
+
+                        <button type="submit" class="btn btn-info text-white w-100">Save Changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- DAY BOOKINGS MODAL (Clicked from Calendar) -->
     <div class="modal fade" id="dayBookingsModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -213,6 +280,68 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOOKING DETAIL & MANAGEMENT MODAL -->
+    <div class="modal fade" id="bookingDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Manage Booking - <span id="detailConfirmationCode"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="bookingManagementForm" onsubmit="saveBookingChanges(event)">
+                        <input type="hidden" id="editBookingCode">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="editBookingFirstName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="editBookingLastName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" id="editBookingEmail" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Branch of Service</label>
+                                <input type="text" class="form-control" id="editBookingBranch">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Building Number</label>
+                                <select class="form-select" id="editBookingBuilding" required onchange="updateBookingPurposeOptions()"></select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Date (Reschedule)</label>
+                                <input type="date" class="form-control" id="editBookingDate" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Time (Reschedule)</label>
+                                <input type="time" class="form-control" id="editBookingTime" required>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Purpose of Visit</label>
+                                <select class="form-select" id="editBookingPurpose" required></select>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label text-danger fw-bold">🔒 Staff Internal Notes (Only viewed by staff)</label>
+                                <textarea class="form-control bg-light" id="editBookingInternalNotes" rows="3" placeholder="Add confidential staff notes regarding this booking..."></textarea>
+                            </div>
+                        </div>
+                        <div class="mt-4 d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-danger" onclick="cancelBookingFromModal()">Cancel / Delete Booking</button>
+                            <div>
+                                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -255,6 +384,7 @@
         ];
 
         let currentBuildingPurposes = ["In-processing", "Room Inspection", "Maintenance"];
+        let currentUserBuildingPurposesTemp = [];
         let currentNotifFilter = 'all';
         let calendarYear = new Date().getFullYear();
         let calendarMonth = new Date().getMonth(); // 0-11
@@ -267,13 +397,142 @@
             const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'superadmin', role: 'Super Admin', email: 'superadmin@housing.mil' };
             document.getElementById('currentUserRoleBadge').innerText = `${currentUser.role} (${currentUser.username})`;
 
-            renderPurposeList();
-            renderAssignedUsersChecklist([]);
-            renderBuildingsTable();
-            renderUsersTable();
-            populateExportUserDropdown();
+            const isNormalUser = currentUser.role === 'User';
+
+            if (isNormalUser) {
+                // Adapt UI for normal user
+                document.getElementById('portalHeaderTitle').innerText = `User Portal - ${currentUser.username}`;
+                document.getElementById('adminExportSection').style.display = 'none';
+                document.getElementById('adminBuildingFormCard').style.display = 'none';
+                document.getElementById('adminUserCreationCard').style.display = 'none';
+                document.getElementById('adminUsersTableCard').style.display = 'none';
+                document.getElementById('adminBuildingsTableCard').style.display = 'none';
+
+                document.getElementById('userAssignedBuildingCard').style.display = 'block';
+                renderUserAssignedBuildings();
+            } else {
+                // Admin / Super Admin UI
+                renderPurposeList();
+                renderAssignedUsersChecklist([]);
+                renderBuildingsTable();
+                renderUsersTable();
+                populateExportUserDropdown();
+            }
+
             updateNotificationBadge();
             renderCalendar();
+        }
+
+        // --- NORMAL USER BUILDING MANAGEMENT ---
+        function renderUserAssignedBuildings() {
+            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'user' };
+            const buildings = getBuildings();
+            const assignedBuildings = buildings.filter(b => b.assignedUsers && b.assignedUsers.includes(currentUser.username));
+            const container = document.getElementById('userAssignedBuildingsContainer');
+            container.innerHTML = '';
+
+            if (assignedBuildings.length === 0) {
+                container.innerHTML = `<p class="text-muted small">No buildings are currently assigned to your account. Contact an administrator.</p>`;
+                return;
+            }
+
+            assignedBuildings.forEach(b => {
+                const purposesHtml = (b.purposes || []).map(p => `<span class="badge bg-light text-dark border me-1">${p}</span>`).join('');
+                container.innerHTML += `
+                    <div class="card mb-3 p-3 bg-light border">
+                        <h6 class="text-primary fw-bold mb-1">${b.name}</h6>
+                        <p class="mb-1 small"><strong>Hours:</strong> ${b.startTime} - ${b.endTime} | <strong>Lunch:</strong> ${b.lunchStart || 'N/A'} - ${b.lunchEnd || 'N/A'}</p>
+                        <p class="mb-2 small"><strong>Purpose Options:</strong> ${purposesHtml || 'None'}</p>
+                        <button class="btn btn-outline-info btn-sm w-100" onclick="openUserEditBuildingModal(${b.id})">Edit Building Details & Purposes</button>
+                    </div>
+                `;
+            });
+        }
+
+        function openUserEditBuildingModal(buildingId) {
+            const buildings = getBuildings();
+            const b = buildings.find(item => item.id === buildingId);
+            if (!b) return;
+
+            document.getElementById('userEditBuildingId').value = b.id;
+            document.getElementById('userEditBuildingName').value = b.name;
+            document.getElementById('userEditStartTime').value = b.startTime;
+            document.getElementById('userEditEndTime').value = b.endTime;
+            document.getElementById('userEditLunchStart').value = b.lunchStart || '';
+            document.getElementById('userEditLunchEnd').value = b.lunchEnd || '';
+            currentUserBuildingPurposesTemp = [...(b.purposes || [])];
+            renderUserPurposeList();
+
+            const modal = new bootstrap.Modal(document.getElementById('editAssignedBuildingModal'));
+            modal.show();
+        }
+
+        function renderUserPurposeList() {
+            const container = document.getElementById('userPurposeListContainer');
+            container.innerHTML = '';
+            if (currentUserBuildingPurposesTemp.length === 0) {
+                container.innerHTML = '<li class="list-group-item text-muted small">No purposes added.</li>';
+                return;
+            }
+            currentUserBuildingPurposesTemp.forEach((p, idx) => {
+                container.innerHTML += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-1 px-2">
+                        <span class="small">${p}</span>
+                        <button type="button" class="btn btn-sm text-danger p-0 border-0 fw-bold" onclick="removeUserPurpose(${idx})">&times;</button>
+                    </li>
+                `;
+            });
+        }
+
+        function addUserPurposeToForm() {
+            const input = document.getElementById('userNewPurposeInput');
+            const val = input.value.trim();
+            if (val && !currentUserBuildingPurposesTemp.includes(val)) {
+                currentUserBuildingPurposesTemp.push(val);
+                input.value = '';
+                renderUserPurposeList();
+            }
+        }
+
+        function removeUserPurpose(idx) {
+            currentUserBuildingPurposesTemp.splice(idx, 1);
+            renderUserPurposeList();
+        }
+
+        function saveUserAssignedBuilding(event) {
+            event.preventDefault();
+            const buildingId = parseInt(document.getElementById('userEditBuildingId').value);
+            const newName = document.getElementById('userEditBuildingName').value.trim();
+            const startTime = document.getElementById('userEditStartTime').value;
+            const endTime = document.getElementById('userEditEndTime').value;
+            const lunchStart = document.getElementById('userEditLunchStart').value;
+            const lunchEnd = document.getElementById('userEditLunchEnd').value;
+
+            if (startTime >= endTime) {
+                alert("Start time must be earlier than end time.");
+                return;
+            }
+
+            let buildings = getBuildings();
+            const index = buildings.findIndex(b => b.id === buildingId);
+            if (index !== -1) {
+                buildings[index].name = newName;
+                buildings[index].startTime = startTime;
+                buildings[index].endTime = endTime;
+                buildings[index].lunchStart = lunchStart;
+                buildings[index].lunchEnd = lunchEnd;
+                buildings[index].purposes = [...currentUserBuildingPurposesTemp];
+
+                localStorage.setItem('housing_buildings', JSON.stringify(buildings));
+                
+                const modalEl = document.getElementById('editAssignedBuildingModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                modalInstance.hide();
+
+                renderUserAssignedBuildings();
+                renderCalendar();
+                alert("Building details and purpose options successfully updated!");
+            }
         }
 
         // --- CALENDAR VIEW LOGIC ---
@@ -296,9 +555,7 @@
 
             let bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
             
-            // Filter based on role
             if (!isAdminOrSuper) {
-                // Normal user: show bookings created by them (email match) OR bookings in buildings assigned to them
                 const buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [];
                 const assignedBuildingNames = buildings.filter(b => b.assignedUsers && b.assignedUsers.includes(currentUser.username)).map(b => b.name);
                 
@@ -339,10 +596,8 @@
                         cell.innerHTML = `<div class="fw-bold small">${date}</div>${badgeHtml}`;
                         
                         const capturedDate = dateString;
-                        const capturedCount = dayBookings.length;
-                        cell.onclick = () => showDayBookingsModal(capturedDate, capturedCount);
+                        cell.onclick = () => showDayBookingsModal(capturedDate);
 
-                        // Highlight today
                         const todayStr = new Date().toISOString().split('T')[0];
                         if (dateString === todayStr) {
                             cell.className = 'table-warning';
@@ -369,7 +624,7 @@
             renderCalendar();
         }
 
-        function showDayBookingsModal(dateStr, count) {
+        function showDayBookingsModal(dateStr) {
             const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'superadmin', role: 'Super Admin', email: 'superadmin@housing.mil' };
             const isAdminOrSuper = currentUser.role === 'Super Admin' || currentUser.role === 'Admin';
             let bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
@@ -391,7 +646,7 @@
                     <table class="table table-striped table-sm align-middle">
                         <thead>
                             <tr>
-                                <th>Code</th><th>Name</th><th>Building</th><th>Time</th><th>Purpose</th>
+                                <th>Code</th><th>Name</th><th>Building</th><th>Time</th><th>Purpose</th><th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -404,6 +659,7 @@
                             <td><strong>${b.buildingNumber}</strong></td>
                             <td>${b.time}</td>
                             <td>${b.purposeOfVisit}</td>
+                            <td><button class="btn btn-sm btn-outline-primary" onclick="openBookingDetail('${b.confirmationCode}')">Manage</button></td>
                         </tr>
                     `;
                 });
@@ -415,10 +671,123 @@
             modal.show();
         }
 
+        // --- BOOKING MANAGEMENT & DETAILS MODAL ---
+        function openBookingDetail(confirmationCode) {
+            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            const booking = bookings.find(b => b.confirmationCode === confirmationCode);
+            if (!booking) return;
+
+            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'superadmin', role: 'Super Admin', email: 'superadmin@housing.mil' };
+            const isAdminOrSuper = currentUser.role === 'Super Admin' || currentUser.role === 'Admin';
+            const buildings = getBuildings();
+            const assignedBuildingNames = buildings.filter(b => b.assignedUsers && b.assignedUsers.includes(currentUser.username)).map(b => b.name);
+
+            if (!isAdminOrSuper) {
+                const isOwner = booking.email && booking.email.toLowerCase() === currentUser.email.toLowerCase();
+                const isAssignedBuilding = assignedBuildingNames.includes(booking.buildingNumber);
+                if (!isOwner && !isAssignedBuilding) {
+                    alert("You do not have permission to modify or manage this booking.");
+                    return;
+                }
+            }
+
+            // Populate form fields
+            document.getElementById('detailConfirmationCode').innerText = booking.confirmationCode;
+            document.getElementById('editBookingCode').value = booking.confirmationCode;
+            document.getElementById('editBookingFirstName').value = booking.firstName || '';
+            document.getElementById('editBookingLastName').value = booking.lastName || '';
+            document.getElementById('editBookingEmail').value = booking.email || '';
+            document.getElementById('editBookingBranch').value = booking.branchOfService || '';
+            document.getElementById('editBookingDate').value = booking.date || '';
+            document.getElementById('editBookingTime').value = booking.time || '';
+            document.getElementById('editBookingInternalNotes').value = booking.internalNotes || '';
+
+            // Populate building dropdown
+            const buildingSelect = document.getElementById('editBookingBuilding');
+            buildingSelect.innerHTML = '';
+            buildings.forEach(b => {
+                const selected = b.name === booking.buildingNumber ? 'selected' : '';
+                buildingSelect.innerHTML += `<option value="${b.name}" ${selected}>${b.name}</option>`;
+            });
+
+            updateBookingPurposeOptions(booking.purposeOfVisit);
+
+            // Hide day bookings modal and show booking detail modal
+            const dayModalEl = document.getElementById('dayBookingsModal');
+            const dayModalInstance = bootstrap.Modal.getInstance(dayModalEl);
+            if (dayModalInstance) dayModalInstance.hide();
+
+            const detailModal = new bootstrap.Modal(document.getElementById('bookingDetailModal'));
+            detailModal.show();
+        }
+
+        function updateBookingPurposeOptions(selectedPurpose = '') {
+            const buildingName = document.getElementById('editBookingBuilding').value;
+            const buildings = getBuildings();
+            const building = buildings.find(b => b.name === buildingName);
+            const purposeSelect = document.getElementById('editBookingPurpose');
+            purposeSelect.innerHTML = '';
+
+            const purposes = (building && building.purposes) ? building.purposes : ["In-processing", "Room Inspection", "Maintenance"];
+            purposes.forEach(p => {
+                const isSel = p === selectedPurpose ? 'selected' : '';
+                purposeSelect.innerHTML += `<option value="${p}" ${isSel}>${p}</option>`;
+            });
+        }
+
+        function saveBookingChanges(event) {
+            event.preventDefault();
+            const code = document.getElementById('editBookingCode').value;
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            const index = bookings.findIndex(b => b.confirmationCode === code);
+
+            if (index === -1) {
+                alert("Booking record not found.");
+                return;
+            }
+
+            bookings[index].firstName = document.getElementById('editBookingFirstName').value.trim();
+            bookings[index].lastName = document.getElementById('editBookingLastName').value.trim();
+            bookings[index].email = document.getElementById('editBookingEmail').value.trim();
+            bookings[index].branchOfService = document.getElementById('editBookingBranch').value.trim();
+            bookings[index].buildingNumber = document.getElementById('editBookingBuilding').value;
+            bookings[index].date = document.getElementById('editBookingDate').value;
+            bookings[index].time = document.getElementById('editBookingTime').value;
+            bookings[index].purposeOfVisit = document.getElementById('editBookingPurpose').value;
+            bookings[index].internalNotes = document.getElementById('editBookingInternalNotes').value.trim();
+
+            localStorage.setItem('housing_bookings_list', JSON.stringify(bookings));
+
+            const modalEl = document.getElementById('bookingDetailModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            modalInstance.hide();
+
+            renderCalendar();
+            alert("Booking successfully updated/rescheduled!");
+        }
+
+        function cancelBookingFromModal() {
+            if (!confirm("Are you sure you want to cancel and delete this booking?")) return;
+
+            const code = document.getElementById('editBookingCode').value;
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            bookings = bookings.filter(b => b.confirmationCode !== code);
+
+            localStorage.setItem('housing_bookings_list', JSON.stringify(bookings));
+
+            const modalEl = document.getElementById('bookingDetailModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            modalInstance.hide();
+
+            renderCalendar();
+            alert("Booking has been successfully cancelled and removed.");
+        }
+
         // --- MULTI-USER ASSIGNMENT LOGIC ---
         function renderAssignedUsersChecklist(selectedUsers = []) {
             const users = getUsers();
             const container = document.getElementById('assignedUsersChecklist');
+            if (!container) return;
             container.innerHTML = '';
 
             if (users.length === 0) {
@@ -551,7 +920,7 @@
             updateNotificationBadge();
         }
 
-        // --- BUILDING & USER MANAGEMENT ---
+        // --- BUILDING & USER MANAGEMENT (Admin) ---
         function exportBuildingGroupedBookings() {
             const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
             const buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [];
@@ -568,7 +937,7 @@
                 const assignedStr = b.assignedUsers ? b.assignedUsers.join(', ') : 'None';
                 
                 csvContent += `"=== BUILDING: ${b.name} (Hours: ${b.startTime} - ${b.endTime}) | Assigned Staff: ${assignedStr} ==="\r\n`;
-                csvContent += `"Branch of Service","Last Name","First Name","Email","Date","Time","Purpose of Visit","Confirmation Code"\r\n`;
+                csvContent += `"Branch of Service","Last Name","First Name","Email","Date","Time","Purpose of Visit","Confirmation Code","Internal Notes"\r\n`;
 
                 if (buildingBookings.length === 0) {
                     csvContent += `"No bookings recorded for this building"\r\n`;
@@ -582,7 +951,8 @@
                             `"${row.date || ''}"`,
                             `"${row.time || ''}"`,
                             `"${row.purposeOfVisit || ''}"`,
-                            `"${row.confirmationCode || ''}"`
+                            `"${row.confirmationCode || ''}"`,
+                            `"${(row.internalNotes || '').replace(/"/g, '""')}"`
                         ].join(",") + "\r\n";
                     });
                 }
@@ -600,6 +970,7 @@
 
         function renderPurposeList() {
             const container = document.getElementById('purposeListContainer');
+            if (!container) return;
             container.innerHTML = '';
             if (currentBuildingPurposes.length === 0) {
                 container.innerHTML = '<li class="list-group-item text-muted small">No purposes added.</li>';
@@ -667,6 +1038,7 @@
         function renderBuildingsTable() {
             const buildings = getBuildings();
             const tbody = document.getElementById('buildingsTableBody');
+            if (!tbody) return;
             tbody.innerHTML = '';
 
             if (buildings.length === 0) {
@@ -742,6 +1114,7 @@
         function renderUsersTable() {
             const users = getUsers();
             const tbody = document.getElementById('usersTableBody');
+            if (!tbody) return;
             tbody.innerHTML = '';
 
             if (users.length === 0) {
@@ -801,6 +1174,7 @@
         function populateExportUserDropdown() {
             const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
             const select = document.getElementById('exportUserSelect');
+            if (!select) return;
             select.innerHTML = '<option value="">-- Filter by User --</option>';
             
             const uniqueUsers = {};
@@ -829,7 +1203,7 @@
                 return;
             }
 
-            const headers = ["Branch of Service", "Last name", "First name", "Email", "Building number", "Date", "Time", "Purpose of Visit", "Confirmation Code"];
+            const headers = ["Branch of Service", "Last name", "First name", "Email", "Building number", "Date", "Time", "Purpose of Visit", "Confirmation Code", "Internal Notes"];
             let csvContent = "data:text/csv;charset=utf-8,";
             csvContent += headers.join(",") + "\r\n";
 
@@ -843,7 +1217,8 @@
                     `"${row.date || ''}"`,
                     `"${row.time || ''}"`,
                     `"${row.purposeOfVisit || ''}"`,
-                    `"${row.confirmationCode || ''}"`
+                    `"${row.confirmationCode || ''}"`,
+                    `"${(row.internalNotes || '').replace(/"/g, '""')}"`
                 ];
                 csvContent += rowData.join(",") + "\r\n";
             });
