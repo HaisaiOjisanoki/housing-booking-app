@@ -34,8 +34,8 @@
             if (!localStorage.getItem('housing_users')) {
                 const defaultUsers = [
                     { id: 1, username: "superadmin", password: "password123", role: "Super Admin", email: "superadmin@housing.mil" },
-                    { id: 2, username: "admin", password: "password123", role: "Admin", email: "admin@housing.mil" },
-                    { id: 3, username: "user", password: "password123", role: "User", email: "user@housing.mil" }
+                    { id: 2, username: "Admin", password: "password123", role: "Admin", email: "admin@housing.mil" },
+                    { id: 3, username: "User", password: "password123", role: "User", email: "user@housing.mil" }
                 ];
                 localStorage.setItem('housing_users', JSON.stringify(defaultUsers));
             }
@@ -50,11 +50,10 @@
             const foundUser = users.find(u => u.username.toLowerCase() === usernameInput && u.password === passwordInput);
 
             if (foundUser) {
-                // Save current user with normalized role handling
                 localStorage.setItem('housing_current_user', JSON.stringify(foundUser));
                 window.location.href = '/dashboard';
             } else {
-                alert("Invalid username or password. Default test accounts: superadmin, admin, user (password: password123)");
+                alert("Invalid username or password.");
             }
         }
     </script>
