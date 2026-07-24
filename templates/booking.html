@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule Unaccompanied Housing Appointment</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .card { border: none; border-radius: 0.5rem; }
+    </style>
+</head>
+<body onload="initBookingPage()">
+
+    <nav class="navbar navbar-dark bg-dark shadow-sm">
+        <div class="container px-4">
+            <span class="navbar-brand fw-bold">
+                <i class="bi bi-building me-2"></i>Unaccompanied Housing Portal
+            </span>
+            <div>
+                <a href="{{ url_for('login_page') }}" class="btn btn-outline-light btn-sm fw-bold">
+                    <i class="bi bi-shield-lock me-1"></i> Staff Login
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card shadow-sm p-4 bg-white">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-calendar-plus fs-1 text-primary"></i>
+                        <h3 class="fw-bold mt-2">Schedule Appointment</h3>
+                        <p class="text-muted small">Select your camp, building, and appointment time</p>
+                    </div>
+
+                    <div id="successAlert" class="alert alert-success d-none" role="alert">
+                        <h5 class="fw-bold mb-1"><i class="bi bi-check-circle-fill me-2"></i>Appointment Booked!</h5>
+                        <p class="mb-1 small">Your confirmation code is: <strong id="displayCode" class="fs-5 text-dark"></strong></p>
+                        <p class="mb-0 text-muted small">Please save this code to reference your appointment.</p>
+                        <button class="btn btn-sm btn-outline-success mt-3 w-100 fw-bold" onclick="resetForm()">Book Another Appointment</button>
+                    </div>
+
+                    <form id="bookingForm" onsubmit="submitBooking(event)">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">First Name *</label>
+                                <input type="text" id="firstName" class="form-control" required placeholder="John">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Last Name *</label>
+                                <input type="text" id="lastName" class="form-control" required placeholder="Doe">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Email Address *</label>
+                            <input type="email" id="email" class="form-control" required placeholder="john.doe@mil.mil">
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Branch of Service *</label>
+                                <select id="branch" class="form-select" required>
+                                    <option value="">-- Select Branch --</option>
+                                    <option value="USMC">USMC</option>
+                                    <option value="USA">USA</option>
+                                    <option value="USN">USN</option>
+                                    <option value="USAF">USAF</option>
+                                    <option value="USCG">USCG</option>
+                                    <option value="USSF">USSF</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Camp Location *</label>
+                                <select id="campSelect" class="form-select" required onchange="updateBuildings()">
+                                    <option value="">-- Select Camp --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Building Number *</label>
+                                <select id="buildingSelect" class="form-select" required>
+                                    <option value="">-- Select Building --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Purpose of Visit *</label>
+                                <select id="purposeSelect" class="form-select" required>
+                                    <option value="">-- Select Purpose --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Appointment Date *</label>
+                                <input type="date" id="apptDate" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Appointment Time *</label>
+                                <select id="apptTime" class="form-select" required>
+                                    <option value="">-- Select Time --</option>
+                                    <option value="08:00">08:00 AM</option>
+                                    <option value="09:00">09:00 AM</option>
+                                    <option value="10:00">10:00 AM</option>
+                                    <option value="11:00">11:00 AM</option>
+                                    <option value="13:00">01:00 PM</option>
+                                    <option value="14:00">02:00 PM</option>
+                                    <option value="15:00">03:00 PM</option>
+                                    <option value="16:00">04:00 PM</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 fw-bold py-2">
+                            <i class="bi bi-calendar-check me-1"></i> Submit Booking
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let appState = {};
+
+        async function initBookingPage() {
+            try {
+                const res = await fetch('/api/state');
+                appState = await res.json();
+                
+                // Populate Camps
+                const campSelect = document.getElementById('campSelect');
+                campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
+                (appState.camps || []).forEach(c => {
+                    campSelect.innerHTML += `<option value="${c}">${c}</option>`;
+                });
+
+                // Populate Purposes
+                const purposeSelect = document.getElementById('purposeSelect');
+                purposeSelect.innerHTML = '<option value="">-- Select Purpose --</option>';
+                (appState.purposes || []).forEach(p => {
+                    purposeSelect.innerHTML += `<option value="${p}">${p}</option>`;
+                });
+            } catch (err) {
+                console.error("Error loading application state:", err);
+            }
+        }
+
+        function updateBuildings() {
+            const camp = document.getElementById('campSelect').value;
+            const buildingSelect = document.getElementById('buildingSelect');
+            buildingSelect.innerHTML = '<option value="">-- Select Building --</option>';
+
+            if (!camp || !appState.camp_buildings || !appState.camp_buildings[camp]) return;
+
+            appState.camp_buildings[camp].forEach(b => {
+                buildingSelect.innerHTML += `<option value="${b}">Bldg ${b}</option>`;
+            });
+        }
+
+        async function submitBooking(e) {
+            e.preventDefault();
+            const bookingData = {
+                firstName: document.getElementById('firstName').value.trim(),
+                lastName: document.getElementById('lastName').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                branch: document.getElementById('branch').value,
+                camp: document.getElementById('campSelect').value,
+                building: document.getElementById('buildingSelect').value,
+                purpose: document.getElementById('purposeSelect').value,
+                date: document.getElementById('apptDate').value,
+                time: document.getElementById('apptTime').value
+            };
+
+            try {
+                const res = await fetch('/api/book', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bookingData)
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    document.getElementById('bookingForm').classList.add('d-none');
+                    document.getElementById('displayCode').textContent = data.confirmationCode;
+                    document.getElementById('successAlert').classList.remove('d-none');
+                } else {
+                    alert('Error creating booking. Please try again.');
+                }
+            } catch (err) {
+                console.error("Error submitting booking:", err);
+                alert('Connection error. Please try again.');
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('bookingForm').reset();
+            document.getElementById('buildingSelect').innerHTML = '<option value="">-- Select Building --</option>';
+            document.getElementById('successAlert').classList.add('d-none');
+            document.getElementById('bookingForm').classList.remove('d-none');
+        }
+    </script>
+</body>
+</html>
