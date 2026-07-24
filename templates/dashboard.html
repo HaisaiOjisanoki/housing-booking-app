@@ -178,7 +178,7 @@
                                         <th class="ps-3">Username</th>
                                         <th>Role</th>
                                         <th>Recovery Email</th>
-                                        <th>Assigned Buildings</th>
+                                        <th>Assigned Camps/Buildings</th>
                                         <th class="text-end pe-3">Actions</th>
                                     </tr>
                                 </thead>
@@ -260,7 +260,7 @@
         </div>
     </div>
 
-    <!-- Edit/Manage User Modal (Password Reset & Building Assignment) -->
+    <!-- Edit/Manage User Modal (Password Reset & Building/Camp Assignment) -->
     <div class="modal fade" id="editUserModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -275,8 +275,8 @@
                         <input type="text" id="editUserNewPassword" class="form-control" placeholder="Enter new password (leave blank to keep current)">
                     </div>
                     <div class="mb-3" id="assignedBuildingsContainer">
-                        <label class="form-label small text-muted fw-bold">Assign Buildings (UH Building Managers)</label>
-                        <div id="buildingCheckboxes" class="border rounded p-2 bg-light" style="max-height: 180px; overflow-y: auto;">
+                        <label class="form-label small text-muted fw-bold">Assign Camps & Buildings</label>
+                        <div id="buildingCheckboxes" class="border rounded p-2 bg-light" style="max-height: 200px; overflow-y: auto;">
                             <!-- Checkboxes injected dynamically -->
                         </div>
                     </div>
@@ -352,6 +352,24 @@
             else renderAppointmentsTable();
         }
 
+        function getFilteredBookings() {
+            let bookings = appState.bookings || [];
+            // If Super Admin, sees all bookings
+            if (currentUser.role === 'Super Admin') {
+                return bookings;
+            }
+
+            // If Admin or UH Building Manager, filter by assigned camps/buildings
+            const assigned = currentUser.assignedBuildings || [];
+            return bookings.filter(b => {
+                return assigned.some(a => 
+                    a === b.camp || 
+                    a === `${b.camp} - ${b.building}` || 
+                    a.startsWith(b.camp + ' -')
+                );
+            });
+        }
+
         function renderAppointmentsView() {
             if (currentViewMode === 'table') renderAppointmentsTable();
             else renderAppointmentsCalendar();
@@ -360,7 +378,7 @@
         function renderAppointmentsTable() {
             const tbody = document.getElementById('appointmentsTableBody');
             const filter = document.getElementById('filterStatus').value;
-            let bookings = appState.bookings || [];
+            let bookings = getFilteredBookings();
 
             if (filter) bookings = bookings.filter(b => b.status === filter);
 
@@ -404,7 +422,7 @@
             const totalDays = new Date(year, month + 1, 0).getDate();
             const prevTotalDays = new Date(year, month, 0).getDate();
 
-            let bookings = appState.bookings || [];
+            let bookings = getFilteredBookings();
             const filter = document.getElementById('filterStatus').value;
             if (filter) bookings = bookings.filter(b => b.status === filter);
 
@@ -513,7 +531,7 @@
             (appState.users || []).forEach(u => {
                 if (currentUser.role === 'Admin' && u.role === 'Super Admin') return;
 
-                let bldgsDisplay = (u.role === 'Super Admin' || u.role === 'Admin') ? 'All Access' : ((u.assignedBuildings || []).join(', ') || 'None');
+                let bldgsDisplay = (u.role === 'Super Admin') ? 'All Access (Super Admin)' : ((u.assignedBuildings || []).join(', ') || 'None Assigned');
 
                 tbody.innerHTML += `
                     <tr>
@@ -546,27 +564,29 @@
             const container = document.getElementById('buildingCheckboxes');
             container.innerHTML = '';
 
-            if (u.role === 'Super Admin' || u.role === 'Admin') {
+            if (u.role === 'Super Admin') {
                 document.getElementById('assignedBuildingsContainer').style.display = 'none';
             } else {
                 document.getElementById('assignedBuildingsContainer').style.display = 'block';
-                let allBuildings = [];
-                Object.keys(appState.camp_buildings || {}).forEach(camp => {
-                    (appState.camp_buildings[camp] || []).forEach(bldg => {
-                        allBuildings.push(`${camp} - ${bldg}`);
+                let allItems = [];
+                (appState.camps || []).forEach(camp => {
+                    allItems.push(camp); // Camp-level assignment option
+                    ((appState.camp_buildings || {})[camp] || []).forEach(bldg => {
+                        allItems.push(`${camp} - ${bldg}`);
                     });
                 });
 
-                if (allBuildings.length === 0) {
-                    container.innerHTML = '<em class="small text-muted">No buildings configured in the system. Add camps & buildings first.</em>';
+                if (allItems.length === 0) {
+                    container.innerHTML = '<em class="small text-muted">No camps or buildings configured in the system. Add camps & buildings first.</em>';
                 } else {
-                    allBuildings.forEach(fullBldg => {
-                        let isChecked = (u.assignedBuildings || []).includes(fullBldg);
+                    allItems.forEach(item => {
+                        let isChecked = (u.assignedBuildings || []).includes(item);
+                        let safeId = item.replace(/[^a-zA-Z0-9]/g, '_');
                         container.innerHTML += `
                             <div class="form-check">
-                                <input class="form-check-input user-bldg-checkbox" type="checkbox" value="${fullBldg}" id="bldg_${fullBldg.replace(/[^a-zA-Z0-9]/g, '_')}" ${isChecked ? 'checked' : ''}>
-                                <label class="form-check-label small" for="bldg_${fullBldg.replace(/[^a-zA-Z0-9]/g, '_')}">
-                                    ${fullBldg}
+                                <input class="form-check-input user-bldg-checkbox" type="checkbox" value="${item}" id="bldg_${safeId}" ${isChecked ? 'checked' : ''}>
+                                <label class="form-check-label small" for="bldg_${safeId}">
+                                    ${item}
                                 </label>
                             </div>
                         `;
@@ -586,7 +606,7 @@
                     if (newPassword) {
                         u.password = newPassword;
                     }
-                    if (u.role === 'UH Building Managers') {
+                    if (u.role !== 'Super Admin') {
                         let checkboxes = document.querySelectorAll('.user-bldg-checkbox:checked');
                         u.assignedBuildings = Array.from(checkboxes).map(cb => cb.value);
                     }
