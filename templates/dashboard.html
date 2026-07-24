@@ -16,7 +16,6 @@
 </head>
 <body class="bg-light" onload="initDashboard()">
 
-    <!-- Top Navigation Bar -->
     <nav class="navbar navbar-dark bg-dark shadow-sm">
         <div class="container-fluid px-4">
             <span class="navbar-brand fw-bold">
@@ -31,10 +30,7 @@
         </div>
     </nav>
 
-    <!-- Main Dashboard Container -->
     <div class="container-fluid px-4 py-4">
-        
-        <!-- Dashboard Tabs Header -->
         <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active fw-bold" id="appointments-tab" data-bs-toggle="tab" data-bs-target="#appointmentsPane" type="button" role="tab">
@@ -53,16 +49,13 @@
             </li>
         </ul>
 
-        <!-- Tab Content -->
         <div class="tab-content" id="dashboardTabContent">
             
-            <!-- APPOINTMENTS PANE -->
             <div class="tab-pane fade show active" id="appointmentsPane" role="tabpanel">
                 <div class="card shadow border-0 mb-4">
                     <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-list-task me-2 text-primary"></i>Appointment Schedule</h5>
                         <div class="d-flex gap-2 align-items-center">
-                            <!-- View Toggle Buttons -->
                             <div class="btn-group btn-group-sm" role="group">
                                 <button type="button" class="btn btn-outline-primary active" id="btnTableView" onclick="switchAppointmentView('table')"><i class="bi bi-table me-1"></i>Table</button>
                                 <button type="button" class="btn btn-outline-primary" id="btnCalendarView" onclick="switchAppointmentView('calendar')"><i class="bi bi-calendar3 me-1"></i>Calendar</button>
@@ -78,7 +71,6 @@
                     </div>
                     
                     <div class="card-body p-0">
-                        <!-- Table View Container -->
                         <div id="appointmentsTableContainer" class="table-responsive">
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light text-uppercase fs-7 text-muted">
@@ -96,7 +88,6 @@
                             </table>
                         </div>
 
-                        <!-- Calendar View Container -->
                         <div id="appointmentsCalendarContainer" class="p-3 d-none">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <button class="btn btn-outline-secondary btn-sm" onclick="changeCalendarMonth(-1)"><i class="bi bi-chevron-left"></i> Prev</button>
@@ -118,7 +109,6 @@
                 </div>
             </div>
 
-            <!-- CAMPS & BUILDINGS PANE -->
             <div class="tab-pane fade" id="campsPane" role="tabpanel">
                 <div class="row">
                     <div class="col-md-4 mb-4">
@@ -170,7 +160,6 @@
                 </div>
             </div>
 
-            <!-- STAFF ACCOUNTS PANE -->
             <div class="tab-pane fade" id="staffPane" role="tabpanel">
                 <div class="card shadow border-0 mb-4">
                     <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
@@ -251,7 +240,6 @@
                         <div class="mb-3">
                             <label class="form-label small text-muted">Initial Password *</label>
                             <input type="text" id="newStaffPassword" class="form-control" required value="Welcome123!">
-                            <div class="form-text small">User will be forced to change this upon first login.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small text-muted">Recovery Email</label>
@@ -290,9 +278,8 @@
                         <div class="mb-3">
                             <label class="form-label small text-muted">New Temporary Password *</label>
                             <input type="text" id="newTempPassword" class="form-control" required value="Reset123!">
-                            <div class="form-text small">User will be required to change this password on their next login.</div>
                         </div>
-                        <button type="submit" class="btn btn-warning w-100 btn-sm fw-bold text-dark">Reset & Require Password Change</button>
+                        <button type="submit" class="btn btn-warning w-100 btn-sm fw-bold text-dark">Reset Password</button>
                     </form>
                 </div>
             </div>
@@ -435,7 +422,7 @@
                         </td>
                         <td><span class="badge ${badgeClass}">${b.status}</span></td>
                         <td class="text-end pe-3">
-                            <button class="btn btn-outline-primary btn-sm" onclick="openEditModal(${b.id})" title="Update Status & Notes">
+                            <button class="btn btn-outline-primary btn-sm" onclick="openEditModal(${b.id})" title="Update Status">
                                 <i class="bi bi-pencil-square"></i>
                             </button>
                             ${currentUser.role !== 'Housing Staff' ? `
@@ -481,7 +468,7 @@
                 let pillsHtml = '';
 
                 dayBookings.forEach(b => {
-                    pillsHtml += `<div class="appointment-pill" onclick="openEditModal(${b.id})" title="${b.time} - ${b.firstName} ${b.lastName} (${b.camp})">${b.time} ${b.firstName}</div>`;
+                    pillsHtml += `<div class="appointment-pill" onclick="openEditModal(${b.id})" title="${b.time} - ${b.firstName} ${b.lastName}">${b.time} ${b.firstName}</div>`;
                 });
 
                 daysGridHtml += `
@@ -738,7 +725,7 @@
 
             localStorage.setItem('housing_users', JSON.stringify(users));
             bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal')).hide();
-            alert(`Password successfully reset for ${username}. They will be required to change it upon their next login.`);
+            alert(`Password successfully reset for ${username}.`);
             renderStaffTable();
         }
 
