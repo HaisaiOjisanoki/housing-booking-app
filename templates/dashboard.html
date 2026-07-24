@@ -99,7 +99,7 @@
                                         <th class="ps-3">Code</th>
                                         <th>Visitor</th>
                                         <th>Location</th>
-                                        <th>Purpose</th>
+                                        <th>Purpose & Internal Notes</th>
                                         <th>Date & Time</th>
                                         <th>Status</th>
                                         <th class="text-end pe-3">Actions</th>
@@ -217,13 +217,23 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Update Appointment Status</h5>
+                    <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Manage Appointment & Reschedule</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="editBookingId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small text-muted fw-bold">Appointment Date</label>
+                            <input type="date" id="editBookingDate" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small text-muted fw-bold">Appointment Time</label>
+                            <input type="time" id="editBookingTime" class="form-control">
+                        </div>
+                    </div>
                     <div class="mb-3">
-                        <label class="form-label small text-muted">Status</label>
+                        <label class="form-label small text-muted fw-bold">Status</label>
                         <select id="editStatusSelect" class="form-select">
                             <option value="Pending">Pending</option>
                             <option value="Confirmed">Confirmed</option>
@@ -232,13 +242,13 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small text-muted">Staff Notes</label>
-                        <textarea id="editStaffNotes" class="form-control" rows="3"></textarea>
+                        <label class="form-label small text-muted fw-bold">Internal Notes (Visible to assigned staff)</label>
+                        <textarea id="editInternalNotes" class="form-control" rows="3" placeholder="Add notes, updates, or communication logs here..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="saveBookingChanges()">Save Changes</button>
+                    <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="saveBookingChanges()">Save Changes</button>
                 </div>
             </div>
         </div>
@@ -333,6 +343,9 @@
 
             if (currentUser.role === 'Super Admin' || currentUser.role === 'Admin') {
                 document.getElementById('btnExportExcel').classList.remove('d-none');
+                document.getElementById('filterCamp').classList.remove('d-none');
+                document.getElementById('filterBuilding').classList.remove('d-none');
+            } else {
                 document.getElementById('filterCamp').classList.remove('d-none');
                 document.getElementById('filterBuilding').classList.remove('d-none');
             }
@@ -440,14 +453,13 @@
         function getFilteredBookings() {
             let bookings = appState.bookings || [];
 
-            // 1. Role-based scope filtering
+            // 1. Role-based scope filtering: Super Admin sees all; Admin/Managers see only assigned camps/buildings
             if (currentUser.role !== 'Super Admin') {
                 const assigned = currentUser.assignedBuildings || [];
                 bookings = bookings.filter(b => {
                     return assigned.some(a => 
                         a === b.camp || 
-                        a === `${b.camp} - ${b.building}` || 
-                        a.startsWith(b.camp + ' -')
+                        a === `${b.camp} - ${b.building}`
                     );
                 });
             }
@@ -480,7 +492,7 @@
             if (filter) bookings = bookings.filter(b => b.status === filter);
 
             if (bookings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No appointments found matching your assigned buildings/filters.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No appointments found matching your assigned scope/filters.</td></tr>`;
                 return;
             }
 
@@ -492,17 +504,22 @@
                 if (b.status === 'Cancelled') badge = 'bg-danger';
                 if (b.status === 'Pending') badge = 'bg-warning text-dark';
 
+                let notesHtml = b.staffNotes ? `<div class="small text-danger fw-semibold mt-1"><i class="bi bi-journal-text me-1"></i>Internal: ${b.staffNotes}</div>` : '';
+
                 tbody.innerHTML += `
                     <tr>
                         <td class="ps-3 fw-bold text-primary">${b.confirmationCode}</td>
                         <td><div class="fw-bold">${b.firstName} ${b.lastName}</div><div class="small text-muted">${b.email}</div></td>
                         <td><div>${b.camp}</div><div class="small text-muted">Bldg ${b.building}</div></td>
-                        <td>${b.purpose}</td>
+                        <td>
+                            <div>${b.purpose}</div>
+                            ${notesHtml}
+                        </td>
                         <td><div>${b.date}</div><div class="small text-muted">${b.time}</div></td>
                         <td><span class="badge ${badge}">${b.status}</span></td>
                         <td class="text-end pe-3">
-                            <button class="btn btn-outline-primary btn-sm" onclick="openEditModal(${b.id})"><i class="bi bi-pencil-square"></i></button>
-                            ${currentUser.role !== 'UH Building Managers' ? `<button class="btn btn-outline-danger btn-sm" onclick="deleteBooking(${b.id})"><i class="bi bi-trash"></i></button>` : ''}
+                            <button class="btn btn-outline-primary btn-sm me-1" onclick="openEditModal(${b.id})" title="Edit / Reschedule"><i class="bi bi-pencil-square"></i></button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteBooking(${b.id})" title="Delete Appointment"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>
                 `;
@@ -531,7 +548,12 @@
             for (let d = 1; d <= totalDays; d++) {
                 let dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 let dayBldgs = bookings.filter(b => b.date === dateKey);
-                let pills = dayBldgs.map(b => `<div class="appointment-pill" onclick="openEditModal(${b.id})">${b.time} ${b.firstName}</div>`).join('');
+                let pills = dayBldgs.map(b => `
+                    <div class="appointment-pill d-flex justify-content-between align-items-center" onclick="openEditModal(${b.id})" title="${b.firstName} ${b.lastName} - ${b.purpose}">
+                        <span>${b.time} ${b.firstName}</span>
+                        ${b.staffNotes ? '<i class="bi bi-journal-text text-danger ms-1"></i>' : ''}
+                    </div>
+                `).join('');
                 html += `<div class="calendar-cell"><div class="fw-bold small mb-1">${d}</div><div>${pills}</div></div>`;
             }
             document.getElementById('calendarDaysGrid').innerHTML = html;
@@ -543,11 +565,6 @@
         }
 
         function exportBookingsToCSV() {
-            if (currentUser.role !== 'Super Admin' && currentUser.role !== 'Admin') {
-                alert('Access denied.');
-                return;
-            }
-
             let bookings = getFilteredBookings();
             if (bookings.length === 0) {
                 alert('No bookings available to export for the selected filters.');
@@ -563,7 +580,7 @@
             let csvRows = [];
             let currentCamp = '';
             let currentBuilding = '';
-            let colHeaders = ["Branch of Service", "Last Name", "First Name", "Building Number", "Date", "Time", "Purpose of Visit"];
+            let colHeaders = ["Branch of Service", "Last Name", "First Name", "Building Number", "Date", "Time", "Purpose of Visit", "Internal Notes", "Status"];
 
             bookings.forEach(b => {
                 if (b.camp !== currentCamp) {
@@ -584,7 +601,9 @@
                     b.building || '',
                     b.date || '',
                     b.time || '',
-                    b.purpose || ''
+                    b.purpose || '',
+                    b.staffNotes || '',
+                    b.status || ''
                 ];
                 csvRows.push(rowData.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','));
             });
@@ -603,8 +622,10 @@
             let b = (appState.bookings || []).find(item => item.id === id);
             if (!b) return;
             document.getElementById('editBookingId').value = b.id;
+            document.getElementById('editBookingDate').value = b.date || '';
+            document.getElementById('editBookingTime').value = b.time || '';
             document.getElementById('editStatusSelect').value = b.status;
-            document.getElementById('editStaffNotes').value = b.staffNotes || '';
+            document.getElementById('editInternalNotes').value = b.staffNotes || '';
             new bootstrap.Modal(document.getElementById('editBookingModal')).show();
         }
 
@@ -612,8 +633,10 @@
             const id = parseInt(document.getElementById('editBookingId').value, 10);
             appState.bookings = appState.bookings.map(b => {
                 if (b.id === id) {
+                    b.date = document.getElementById('editBookingDate').value;
+                    b.time = document.getElementById('editBookingTime').value;
                     b.status = document.getElementById('editStatusSelect').value;
-                    b.staffNotes = document.getElementById('editStaffNotes').value.trim();
+                    b.staffNotes = document.getElementById('editInternalNotes').value.trim();
                 }
                 return b;
             });
