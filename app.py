@@ -5,7 +5,9 @@ from flask import Flask, jsonify, redirect, render_template, request, session, u
 app = Flask(__name__)
 app.secret_key = "your_secret_key_here"  # Change this to a secure random key
 
-STATE_FILE = "state.json"
+# Use absolute path so state.json always saves and loads from the app folder
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+STATE_FILE = os.path.join(BASE_DIR, "state.json")
 
 def load_state():
     if os.path.exists(STATE_FILE):
@@ -35,15 +37,14 @@ def save_state(state):
 
 @app.route("/")
 def index():
-    # Renders the public visitor booking page (ensure your template is named index.html)
     return render_template("index.html")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         data = request.get_json() if request.is_json else request.form
-        username = data.get("username", "").strip()
-        password = data.get("password", "").strip()
+        username = (data.get("username") or "").strip()
+        password = (data.get("password") or "").strip()
 
         state = load_state()
         users = state.get("users", [])
@@ -57,6 +58,7 @@ def login():
                 "success": True, 
                 "role": user["role"], 
                 "username": user["username"],
+                "assignedBuildings": user.get("assignedBuildings", []),
                 "firstLogin": user.get("firstLogin", False)
             })
         else:
