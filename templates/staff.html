@@ -74,14 +74,14 @@
                         <div class="row g-4 mb-4">
                             <div class="col-md-6">
                                 <div class="card shadow-sm p-3 bg-white border-start border-primary border-4">
-                                    <h6 class="text-muted fw-bold small">ASSIGNED APPOINTMENTS</h6>
+                                    <h6 class="text-muted fw-bold small">ACCESSIBLE APPOINTMENTS</h6>
                                     <h2 id="statTotalAppointments" class="fw-bold text-primary mb-0">0</h2>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="card shadow-sm p-3 bg-white border-start border-success border-4">
-                                    <h6 class="text-muted fw-bold small">ASSIGNED BUILDINGS</h6>
-                                    <h2 id="statTotalBuildings" class="fw-bold text-success mb-0">0</h2>
+                                    <h6 class="text-muted fw-bold small">ASSIGNED SCOPE</h6>
+                                    <h2 id="statScopeLabel" class="fw-bold text-success mb-0 fs-5 mt-1">Camp / Bldgs</h2>
                                 </div>
                             </div>
                         </div>
@@ -99,13 +99,13 @@
 
                     <!-- 2. APPOINTMENTS SECTION -->
                     <div class="tab-pane fade" id="appointmentsSection" role="tabpanel">
-                        <h2 class="fw-bold mb-4"><i class="bi bi-calendar-event me-2"></i>Assigned Appointments</h2>
+                        <h2 class="fw-bold mb-4"><i class="bi bi-calendar-event me-2"></i>Service Member Appointments</h2>
                         <div class="card shadow-sm">
                             <div class="card-body p-4">
                                 <div class="table-responsive">
                                     <table class="table table-hover align-middle mb-0">
                                         <thead class="table-light">
-                                            <tr><th>Code</th><th>Name</th><th>Branch</th><th>Building</th><th>Date & Time</th><th>Purpose</th><th>Status</th><th class="text-end">Actions</th></tr>
+                                            <tr><th>Code</th><th>Name</th><th>Branch</th><th>Camp / Building</th><th>Date & Time</th><th>Purpose</th><th>Status</th><th class="text-end">Actions</th></tr>
                                         </thead>
                                         <tbody id="assignedAppointmentsTable"></tbody>
                                     </table>
@@ -211,7 +211,13 @@
                 document.getElementById('sidebarUsername').textContent = currentUser.username || 'Staff User';
                 const roleLabel = currentUser.role === 'camp_admin' ? 'Camp Admin' : 'UH Building Manager';
                 document.getElementById('sidebarRoleCamp').textContent = `${roleLabel} (${currentUser.camp || 'All Camps'})`;
-                document.getElementById('overviewSubtitle').textContent = `Appointments for ${currentUser.camp || 'assigned camp'} - Buildings: ${currentUser.buildings ? currentUser.buildings.join(', ') : 'All'}`;
+                
+                const scopeText = currentUser.role === 'camp_admin' 
+                    ? `${currentUser.camp} (All Bldgs)` 
+                    : `${currentUser.camp} - Bldgs: ${currentUser.buildings ? currentUser.buildings.join(', ') : 'None'}`;
+                
+                document.getElementById('overviewSubtitle').textContent = `Managing bookings for your assigned scope: ${scopeText}`;
+                document.getElementById('statScopeLabel').textContent = scopeText;
 
                 renderOverview();
                 renderAssignedAppointments();
@@ -236,9 +242,6 @@
         function renderOverview() {
             const accessibleBookings = getAccessibleBookings();
             document.getElementById('statTotalAppointments').textContent = accessibleBookings.length;
-            
-            const buildingsCount = currentUser.buildings ? currentUser.buildings.length : 0;
-            document.getElementById('statTotalBuildings').textContent = buildingsCount;
 
             const typeContainer = document.getElementById('overviewAppointmentTypesContainer');
             typeContainer.innerHTML = '';
@@ -266,7 +269,7 @@
             const allBookings = appState.bookings || [];
             const accessibleBookings = getAccessibleBookings();
             
-            tbody.innerHTML = accessibleBookings.length === 0 ? `<tr><td colspan="8" class="text-center text-muted py-3">No appointments found for your assigned buildings.</td></tr>` : '';
+            tbody.innerHTML = accessibleBookings.length === 0 ? `<tr><td colspan="8" class="text-center text-muted py-3">No appointments found for your assigned scope.</td></tr>` : '';
             
             accessibleBookings.forEach(b => {
                 const globalIdx = allBookings.findIndex(item => item.confirmationCode === b.confirmationCode);
@@ -276,7 +279,7 @@
                         <td><span class="fw-bold text-primary">${b.confirmationCode}</span></td>
                         <td>${b.firstName} ${b.lastName}</td>
                         <td>${b.branch}</td>
-                        <td>Bldg ${b.building}</td>
+                        <td>${b.camp} - Bldg ${b.building}</td>
                         <td>${b.date} @ ${b.time}</td>
                         <td>${b.purpose}</td>
                         <td><span class="badge ${badge}">${b.status}</span></td>
@@ -328,7 +331,7 @@
                     if (b.status === 'Cancelled') badgeColor = 'bg-secondary text-decoration-line-through';
                     else if (b.status === 'Rescheduled') badgeColor = 'bg-info text-dark';
                     
-                    cellHtml += `<span class="booking-badge ${badgeColor}" onclick="openBookingActionModal(${globalIdx})" title="${b.time} - ${b.firstName} ${b.lastName} (Bldg ${b.building})">${b.time} ${b.firstName} (Bldg ${b.building})</span>`;
+                    cellHtml += `<span class="booking-badge ${badgeColor}" onclick="openBookingActionModal(${globalIdx})" title="${b.time} - ${b.firstName} ${b.lastName} (${b.camp} Bldg ${b.building})">${b.time} ${b.firstName} (Bldg ${b.building})</span>`;
                 });
 
                 cellHtml += `</div>`;
