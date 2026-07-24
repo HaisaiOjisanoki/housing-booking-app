@@ -134,6 +134,19 @@
             alert.textContent = message;
             alert.classList.remove('d-none');
         }
+// Automatically seed default superadmin if no users exist in localStorage
+if (!localStorage.getItem('housing_users')) {
+    localStorage.setItem('housing_users', JSON.stringify([
+        { 
+            username: "superadmin", 
+            password: "password123", 
+            role: "Super Admin", 
+            firstLogin: false, 
+            recoveryEmail: "admin@housing.mil", 
+            assignedBuildings: [] 
+        }
+    ]));
+}
     </script>
 </body>
 </html>
