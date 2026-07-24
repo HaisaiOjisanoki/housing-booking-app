@@ -407,6 +407,15 @@
             });
         }
 
+        function showDashAlert(message, type = "success") {
+            const alertEl = document.getElementById('dashAlert');
+            if (!alertEl) return;
+            alertEl.className = `alert alert-${type} mb-4`;
+            alertEl.textContent = message;
+            alertEl.classList.remove('d-none');
+            setTimeout(() => { alertEl.classList.add('d-none'); }, 4000);
+        }
+
         function getFilteredBookings() {
             let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
             let currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: "superadmin", role: "Super Admin", assignedCamps: ["Camp Hansen"] };
@@ -542,30 +551,55 @@
                 return;
             }
 
-            let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
-            let buildings = campBuildingsMap[selectedCamp] || [];
+            let campBuildings = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
+            let bldgs = campBuildings[selectedCamp] || [];
 
-            if (buildings.length === 0) {
+            if (bldgs.length === 0) {
                 bldgSelect.innerHTML = '<option value="" disabled>No buildings assigned to this camp</option>';
                 return;
             }
 
-            buildings.forEach(b => {
+            bldgs.forEach(b => {
                 bldgSelect.innerHTML += `<option value="${b}">${b}</option>`;
             });
         }
 
-        function loadUsersManagement() {
-            let users = JSON.parse(localStorage.getItem('housing_users'));
-            if (!users) {
-                users = [
-                    { username: "superadmin", password: "password123", role: "Super Admin", assignedCamps: [], camp: "", buildings: [], building: "" },
-                    { username: "admin1", password: "password123", role: "Admin", assignedCamps: ["Camp Hansen"], camp: "Camp Hansen", buildings: ["100"], building: "100" },
-                    { username: "john", password: "password123", role: "User", assignedCamps: [], camp: "Camp Hansen", buildings: ["101"], building: "101" }
-                ];
-                localStorage.setItem('housing_users', JSON.stringify(users));
+        function createNewUserAccount(e) {
+            e.preventDefault();
+            const username = document.getElementById('newUsername').value.trim();
+            const password = document.getElementById('newPassword').value.trim();
+            const role = document.getElementById('newUserRole').value;
+            const camp = document.getElementById('newUserCamp').value;
+            const bldgSelectElement = document.getElementById('newUserBuildings');
+            
+            let assignedBuildings = [];
+            for (let opt of bldgSelectElement.selectedOptions) {
+                assignedBuildings.push(opt.value);
             }
 
+            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
+            if (users.some(u => u.username === username)) {
+                showDashAlert("Username already exists.", "danger");
+                return;
+            }
+
+            users.push({
+                username,
+                password,
+                role,
+                assignedCamps: camp ? [camp] : [],
+                assignedBuildings: assignedBuildings
+            });
+
+            localStorage.setItem('housing_users', JSON.stringify(users));
+            document.getElementById('createUserForm').reset();
+            updateCreateUserBuildings();
+            loadUsersManagement();
+            showDashAlert("User account successfully created.", "success");
+        }
+
+        function loadUsersManagement() {
+            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
             const tbody = document.getElementById('usersTableBody');
             if (!tbody) return;
 
@@ -575,60 +609,32 @@
             }
 
             tbody.innerHTML = '';
-            users.forEach((u) => {
-                let badgeClass = 'bg-secondary';
-                if (u.role === 'Super Admin') badgeClass = 'bg-danger';
-                if (u.role === 'Admin') badgeClass = 'bg-primary';
-
-                let userBldgs = u.buildings || (u.building ? [u.building] : []);
-                let locationDisplay = u.camp ? `<span class="fw-bold text-dark">${u.camp}</span><br><small class="text-muted">Bldgs: ${userBldgs.length > 0 ? userBldgs.join(', ') : 'None'}</small>` : '<span class="text-muted fst-italic">Unassigned</span>';
+            users.forEach(u => {
+                let campInfo = u.assignedCamps && u.assignedCamps.length > 0 ? u.assignedCamps.join(', ') : 'None';
+                let bldgInfo = u.assignedBuildings && u.assignedBuildings.length > 0 ? u.assignedBuildings.join(', ') : 'None';
 
                 tbody.innerHTML += `
                     <tr>
                         <td><strong>${u.username}</strong></td>
-                        <td><span class="badge ${badgeClass}">${u.role}</span></td>
-                        <td>${locationDisplay}</td>
+                        <td><span class="badge bg-secondary">${u.role}</span></td>
+                        <td><small><strong>Camp:</strong> ${campInfo}<br><strong>Buildings:</strong> ${bldgInfo}</small></td>
                         <td><code>${u.password}</code></td>
                         <td class="text-end">
-                            <button class="btn btn-outline-primary btn-sm py-0 px-1 me-1" title="Assign Multiple Buildings" onclick="openAssignUserModal('${u.username}')"><i class="bi bi-geo-alt"></i></button>
-                            <button class="btn btn-outline-warning btn-sm py-0 px-1 me-1" title="Reset Password" onclick="resetUserPassword('${u.username}')"><i class="bi bi-key-fill"></i></button>
-                            <button class="btn btn-outline-danger btn-sm py-0 px-1" title="Delete User" onclick="deleteUserAccount('${u.username}')"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-outline-primary btn-sm py-0 px-1 me-1" title="Assign Buildings" onclick="openAssignUserModal('${u.username}')"><i class="bi bi-geo-alt"></i></button>
+                            <button class="btn btn-outline-danger btn-sm py-0 px-1" title="Delete Account" onclick="deleteUserAccount('${u.username}')"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>
                 `;
             });
         }
 
-        function createNewUserAccount(event) {
-            event.preventDefault();
-            const username = document.getElementById('newUsername').value.trim().toLowerCase();
-            const password = document.getElementById('newPassword').value.trim();
-            const role = document.getElementById('newUserRole').value;
-            const camp = document.getElementById('newUserCamp').value;
-            
-            const bldgSelect = document.getElementById('newUserBuildings');
-            let buildings = [];
-            if (bldgSelect) {
-                for (let option of bldgSelect.selectedOptions) {
-                    if (option.value) buildings.push(option.value);
-                }
-            }
-
-            if (!username || !password) return;
-
+        function deleteUserAccount(username) {
+            if (!confirm(`Are you sure you want to delete user ${username}?`)) return;
             let users = JSON.parse(localStorage.getItem('housing_users')) || [];
-            if (users.some(u => u.username === username)) {
-                showDashAlert("Username already exists. Please choose a different username.", "danger");
-                return;
-            }
-
-            users.push({ username, password, role, assignedCamps: camp ? [camp] : [], camp, buildings, building: buildings[0] || "" });
+            users = users.filter(u => u.username !== username);
             localStorage.setItem('housing_users', JSON.stringify(users));
-
-            document.getElementById('createUserForm').reset();
-            populateCreateUserCamps();
             loadUsersManagement();
-            showDashAlert(`User account '${username}' created and assigned successfully.`, "success");
+            showDashAlert("User account deleted.", "success");
         }
 
         function openAssignUserModal(username) {
@@ -643,27 +649,11 @@
             let camps = getAvailableCampsForUser();
             campSelect.innerHTML = '<option value="">-- No Camp Assigned --</option>';
             camps.forEach(c => {
-                campSelect.innerHTML += `<option value="${c}">${c}</option>`;
+                let selected = (user.assignedCamps && user.assignedCamps.includes(c)) ? 'selected' : '';
+                campSelect.innerHTML += `<option value="${c}" ${selected}>${c}</option>`;
             });
 
-            if (user.camp && camps.includes(user.camp)) {
-                campSelect.value = user.camp;
-            } else {
-                campSelect.value = "";
-            }
-
             updateAssignModalBuildings();
-
-            let assignedBldgs = user.buildings || (user.building ? [user.building] : []);
-            const bldgSelect = document.getElementById('assignModalBuildings');
-            if (bldgSelect) {
-                for (let option of bldgSelect.options) {
-                    if (assignedBldgs.includes(option.value)) {
-                        option.selected = true;
-                    }
-                }
-            }
-
             let modal = new bootstrap.Modal(document.getElementById('assignUserModal'));
             modal.show();
         }
@@ -673,46 +663,46 @@
             const bldgSelect = document.getElementById('assignModalBuildings');
             if (!bldgSelect) return;
 
+            let username = document.getElementById('assignModalUsername').value;
+            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
+            let user = users.find(u => u.username === username) || {};
+            let currentAssigned = user.assignedBuildings || [];
+
             bldgSelect.innerHTML = '';
             if (!selectedCamp) {
                 bldgSelect.innerHTML = '<option value="" disabled>-- Select Camp First --</option>';
                 return;
             }
 
-            let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
-            let buildings = campBuildingsMap[selectedCamp] || [];
+            let campBuildings = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
+            let bldgs = campBuildings[selectedCamp] || [];
 
-            if (buildings.length === 0) {
+            if (bldgs.length === 0) {
                 bldgSelect.innerHTML = '<option value="" disabled>No buildings assigned to this camp</option>';
                 return;
             }
 
-            buildings.forEach(b => {
-                bldgSelect.innerHTML += `<option value="${b}">${b}</option>`;
+            bldgs.forEach(b => {
+                let selectedAttr = currentAssigned.includes(b) ? 'selected' : '';
+                bldgSelect.innerHTML += `<option value="${b}" ${selectedAttr}>${b}</option>`;
             });
         }
 
         function saveUserBuildingAssignment() {
-            const username = document.getElementById('assignModalUsername').value;
-            const camp = document.getElementById('assignModalCamp').value;
-            
+            let username = document.getElementById('assignModalUsername').value;
+            let camp = document.getElementById('assignModalCamp').value;
             const bldgSelect = document.getElementById('assignModalBuildings');
-            let buildings = [];
-            if (bldgSelect) {
-                for (let option of bldgSelect.selectedOptions) {
-                    if (option.value) buildings.push(option.value);
-                }
+
+            let assignedBuildings = [];
+            for (let opt of bldgSelect.selectedOptions) {
+                assignedBuildings.push(opt.value);
             }
 
             let users = JSON.parse(localStorage.getItem('housing_users')) || [];
             users = users.map(u => {
                 if (u.username === username) {
-                    u.camp = camp;
-                    u.buildings = buildings;
-                    u.building = buildings[0] || "";
-                    if (camp && !u.assignedCamps.includes(camp)) {
-                        u.assignedCamps.push(camp);
-                    }
+                    u.assignedCamps = camp ? [camp] : [];
+                    u.assignedBuildings = assignedBuildings;
                 }
                 return u;
             });
@@ -724,148 +714,39 @@
             modal.hide();
 
             loadUsersManagement();
-            showDashAlert(`Building assignments updated for user '${username}'.`, "success");
+            showDashAlert("User building assignments successfully saved.", "success");
         }
 
-        function resetUserPassword(username) {
-            const newPassword = prompt(`Enter new password for user '${username}':`);
-            if (!newPassword) return;
-
-            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
-            users = users.map(u => {
-                if (u.username === username) {
-                    u.password = newPassword.trim();
-                }
-                return u;
-            });
-            localStorage.setItem('housing_users', JSON.stringify(users));
-            loadUsersManagement();
-            showDashAlert(`Password for '${username}' has been successfully reset.`, "success");
-        }
-
-        function deleteUserAccount(username) {
-            if (username === 'superadmin') {
-                showDashAlert("Cannot delete the primary Super Admin account.", "danger");
-                return;
-            }
-
-            if (confirm(`Are you sure you want to delete user account '${username}'?`)) {
-                let users = JSON.parse(localStorage.getItem('housing_users')) || [];
-                users = users.filter(u => u.username !== username);
-                localStorage.setItem('housing_users', JSON.stringify(users));
-                loadUsersManagement();
-                showDashAlert(`User account '${username}' removed successfully.`, "success");
-            }
-        }
-
-        function changeCalendarMonth(direction) {
-            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
-            renderCalendarView();
-        }
-
-        function renderCalendarView() {
-            const container = document.getElementById('calendarGridContainer');
-            const monthLabel = document.getElementById('calendarMonthLabel');
-            if (!container || !monthLabel) return;
-
-            const year = currentCalendarDate.getFullYear();
-            const month = currentCalendarDate.getMonth();
-
-            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            monthLabel.textContent = `${monthNames[month]} ${year}`;
-
-            const firstDayIndex = new Date(year, month, 1).getDay();
-            const totalDays = new Date(year, month + 1, 0).getDate();
-
-            const bookings = getFilteredBookings();
-
-            let html = `
-                <table class="table table-bordered text-center align-middle" style="table-layout: fixed; height: 500px;">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="text-danger">Sun</th>
-                            <th>Mon</th>
-                            <th>Tue</th>
-                            <th>Wed</th>
-                            <th>Thu</th>
-                            <th>Fri</th>
-                            <th class="text-primary">Sat</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            let dayCounter = 1;
-            for (let i = 0; i < 6; i++) {
-                html += '<tr>';
-                for (let j = 0; j < 7; j++) {
-                    if (i === 0 && j < firstDayIndex) {
-                        html += '<td class="bg-light text-muted"></td>';
-                    } else if (dayCounter > totalDays) {
-                        html += '<td class="bg-light text-muted"></td>';
-                    } else {
-                        const formattedMonth = String(month + 1).padStart(2, '0');
-                        const formattedDay = String(dayCounter).padStart(2, '0');
-                        const dateStr = `${year}-${formattedMonth}-${formattedDay}`;
-
-                        const dayBookings = bookings.filter(b => b.date === dateStr);
-
-                        html += `<td class="p-1 align-top" style="height: 85px; overflow-y: auto;">
-                            <div class="fw-bold small mb-1">${dayCounter}</div>`;
-
-                        dayBookings.forEach(b => {
-                            let badgeBg = 'bg-warning text-dark';
-                            if (b.status === 'Confirmed') badgeBg = 'bg-success';
-                            if (b.status === 'Cancelled') badgeBg = 'bg-danger';
-
-                            html += `
-                                <div class="badge ${badgeBg} d-block text-truncate mb-1 cursor-pointer" style="cursor: pointer; font-size: 10px;" onclick="openBookingModal(${b.id})" title="${b.time} - ${b.lastName} (${b.building})">
-                                    ${b.time} ${b.lastName} (${b.building})
-                                </div>
-                            `;
-                        });
-
-                        html += `</td>`;
-                        dayCounter++;
-                    }
-                }
-                html += '</tr>';
-                if (dayCounter > totalDays) break;
-            }
-
-            html += '</tbody></table>';
-            container.innerHTML = html;
-        }
-
+        // --- SUPER ADMIN CAMPS & BUILDINGS ---
         function initSuperAdminCamps() {
-            renderSuperCampsTable();
-            populateSuperCampDropdowns();
-        }
-
-        function renderSuperCampsTable() {
             let camps = JSON.parse(localStorage.getItem('housing_camps')) || ["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"];
+            localStorage.setItem('housing_camps', JSON.stringify(camps));
+
             const tbody = document.getElementById('superCampsTableBody');
-            if (!tbody) return;
+            const select = document.getElementById('superCampSelect');
+            if (!tbody || !select) return;
 
             tbody.innerHTML = '';
-            camps.forEach((camp, index) => {
+            select.innerHTML = '<option value="">-- Select Camp --</option>';
+
+            camps.forEach(c => {
                 tbody.innerHTML += `
                     <tr>
-                        <td>${camp}</td>
-                        <td class="text-end">
-                            <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="superDeleteCamp(${index})"><i class="bi bi-trash"></i></button>
-                        </td>
+                        <td><strong>${c}</strong></td>
+                        <td class="text-end"><button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="superDeleteCamp('${c}')"><i class="bi bi-trash"></i></button></td>
                     </tr>
                 `;
+                select.innerHTML += `<option value="${c}">${c}</option>`;
             });
+            renderSuperCampBuildingsList();
         }
 
         function superAddCamp() {
             const input = document.getElementById('superNewCampInput');
-            const campName = input.value.trim();
+            let campName = input.value.trim();
             if (!campName) return;
 
-            let camps = JSON.parse(localStorage.getItem('housing_camps')) || ["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"];
+            let camps = JSON.parse(localStorage.getItem('housing_camps')) || [];
             if (camps.includes(campName)) {
                 showDashAlert("Camp already exists.", "danger");
                 return;
@@ -876,38 +757,17 @@
             input.value = '';
             initSuperAdminCamps();
             populateCreateUserCamps();
-            showDashAlert("Camp successfully added.", "success");
+            showDashAlert("Camp added successfully.", "success");
         }
 
-        function superDeleteCamp(index) {
-            let camps = JSON.parse(localStorage.getItem('housing_camps')) || ["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"];
-            const removedCamp = camps[index];
-            
-            if (confirm(`Are you sure you want to delete ${removedCamp}?`)) {
-                camps.splice(index, 1);
-                localStorage.setItem('housing_camps', JSON.stringify(camps));
-                
-                let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
-                delete campBuildingsMap[removedCamp];
-                localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildingsMap));
-
-                initSuperAdminCamps();
-                populateCreateUserCamps();
-                showDashAlert("Camp removed successfully.", "success");
-            }
-        }
-
-        function populateSuperCampDropdowns() {
-            let camps = JSON.parse(localStorage.getItem('housing_camps')) || ["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"];
-            const select = document.getElementById('superCampSelect');
-            if (!select) return;
-
-            const currentVal = select.value;
-            select.innerHTML = '<option value="">-- Select Camp --</option>';
-            camps.forEach(camp => {
-                select.innerHTML += `<option value="${camp}">${camp}</option>`;
-            });
-            if (currentVal) select.value = currentVal;
+        function superDeleteCamp(campName) {
+            if (!confirm(`Delete camp ${campName}?`)) return;
+            let camps = JSON.parse(localStorage.getItem('housing_camps')) || [];
+            camps = camps.filter(c => c !== campName);
+            localStorage.setItem('housing_camps', JSON.stringify(camps));
+            initSuperAdminCamps();
+            populateCreateUserCamps();
+            showDashAlert("Camp deleted.", "success");
         }
 
         function renderSuperCampBuildingsList() {
@@ -920,22 +780,20 @@
                 return;
             }
 
-            let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
-            let buildings = campBuildingsMap[selectedCamp] || [];
+            let campBuildings = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
+            let bldgs = campBuildings[selectedCamp] || [];
 
-            if (buildings.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted small">No buildings assigned to this camp yet</td></tr>';
+            if (bldgs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted small">No buildings assigned to this camp yet.</td></tr>';
                 return;
             }
 
             tbody.innerHTML = '';
-            buildings.forEach((bldg, index) => {
+            bldgs.forEach(b => {
                 tbody.innerHTML += `
                     <tr>
-                        <td>${bldg}</td>
-                        <td class="text-end">
-                            <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="superRemoveBuildingFromCamp('${selectedCamp}', ${index})"><i class="bi bi-trash"></i></button>
-                        </td>
+                        <td><strong>${b}</strong></td>
+                        <td class="text-end"><button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="superDeleteBuildingFromCamp('${selectedCamp}', '${b}')"><i class="bi bi-trash"></i></button></td>
                     </tr>
                 `;
             });
@@ -944,7 +802,7 @@
         function superAddBuildingToCamp() {
             const selectedCamp = document.getElementById('superCampSelect').value;
             const input = document.getElementById('superNewBuildingInput');
-            const bldgNum = input.value.trim();
+            let bldgNum = input.value.trim();
 
             if (!selectedCamp) {
                 showDashAlert("Please select a target camp first.", "danger");
@@ -952,71 +810,65 @@
             }
             if (!bldgNum) return;
 
-            let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
-            if (!campBuildingsMap[selectedCamp]) {
-                campBuildingsMap[selectedCamp] = [];
-            }
+            let campBuildings = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
+            if (!campBuildings[selectedCamp]) campBuildings[selectedCamp] = [];
 
-            if (campBuildingsMap[selectedCamp].includes(bldgNum)) {
-                showDashAlert("This building number is already assigned.", "danger");
+            if (campBuildings[selectedCamp].includes(bldgNum)) {
+                showDashAlert("Building already assigned to this camp.", "danger");
                 return;
             }
 
-            campBuildingsMap[selectedCamp].push(bldgNum);
-            localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildingsMap));
+            campBuildings[selectedCamp].push(bldgNum);
+            localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildings));
             input.value = '';
             renderSuperCampBuildingsList();
-            updateCreateUserBuildings();
-            showDashAlert("Building successfully assigned.", "success");
+            showDashAlert("Building assigned successfully.", "success");
         }
 
-        function superRemoveBuildingFromCamp(campName, index) {
-            let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
-            if (campBuildingsMap[campName]) {
-                campBuildingsMap[campName].splice(index, 1);
-                localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildingsMap));
+        function superDeleteBuildingFromCamp(camp, bldg) {
+            let campBuildings = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
+            if (campBuildings[camp]) {
+                campBuildings[camp] = campBuildings[camp].filter(b => b !== bldg);
+                localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildings));
                 renderSuperCampBuildingsList();
-                updateCreateUserBuildings();
-                showDashAlert("Building removed.", "success");
+                showDashAlert("Building removed from camp.", "success");
             }
         }
 
+        // --- FACILITY SCHEDULE & PURPOSES SETTINGS ---
         function loadAvailabilitySettings() {
-            const stored = localStorage.getItem('housing_availability');
-            const avail = stored ? JSON.parse(stored) : { start: "08:00", end: "17:00", lunchStart: "12:00", lunchEnd: "13:00" };
-
-            document.getElementById('availStart').value = avail.start || "08:00";
-            document.getElementById('availEnd').value = avail.end || "17:00";
-            document.getElementById('availLunchStart').value = avail.lunchStart || "12:00";
-            document.getElementById('availLunchEnd').value = avail.lunchEnd || "13:00";
+            let settings = JSON.parse(localStorage.getItem('housing_availability')) || { start: "08:00", end: "17:00", lunchStart: "12:00", lunchEnd: "13:00" };
+            document.getElementById('availStart').value = settings.start;
+            document.getElementById('availEnd').value = settings.end;
+            document.getElementById('availLunchStart').value = settings.lunchStart;
+            document.getElementById('availLunchEnd').value = settings.lunchEnd;
         }
 
-        function saveAvailabilitySettings(event) {
-            event.preventDefault();
-            const avail = {
+        function saveAvailabilitySettings(e) {
+            e.preventDefault();
+            let settings = {
                 start: document.getElementById('availStart').value,
                 end: document.getElementById('availEnd').value,
                 lunchStart: document.getElementById('availLunchStart').value,
                 lunchEnd: document.getElementById('availLunchEnd').value
             };
-
-            localStorage.setItem('housing_availability', JSON.stringify(avail));
-            showDashAlert("Facility schedule updated successfully.", "success");
+            localStorage.setItem('housing_availability', JSON.stringify(settings));
+            showDashAlert("Facility schedule settings saved.", "success");
         }
 
         function loadPurposes() {
-            const purposes = JSON.parse(localStorage.getItem('housing_purposes')) || ["Check-in / In-processing", "Out-processing Inspection", "Maintenance Request", "Room Change Inquiry"];
+            let purposes = JSON.parse(localStorage.getItem('housing_purposes')) || ["Check-In", "Check-Out", "Maintenance Inquiry", "General Assistance"];
+            localStorage.setItem('housing_purposes', JSON.stringify(purposes));
+
             const tbody = document.getElementById('purposesTableBody');
             if (!tbody) return;
 
             tbody.innerHTML = '';
-            purposes.forEach((p, index) => {
+            purposes.forEach(p => {
                 tbody.innerHTML += `
                     <tr>
                         <td>${p}</td>
-                        <td class="text-end">
-                            <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="removePurpose(${index})"><i class="bi bi-trash"></i></button>
-                        </td>
+                        <td class="text-end"><button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="deletePurpose('${p}')"><i class="bi bi-trash"></i></button></td>
                     </tr>
                 `;
             });
@@ -1024,34 +876,102 @@
 
         function addPurpose() {
             const input = document.getElementById('newPurposeInput');
-            const val = input.value.trim();
+            let val = input.value.trim();
             if (!val) return;
 
-            let purposes = JSON.parse(localStorage.getItem('housing_purposes')) || ["Check-in / In-processing", "Out-processing Inspection", "Maintenance Request", "Room Change Inquiry"];
-            if (!purposes.includes(val)) {
-                purposes.push(val);
-                localStorage.setItem('housing_purposes', JSON.stringify(purposes));
-                input.value = '';
-                loadPurposes();
-                showDashAlert("Visit purpose added.", "success");
-            }
+            let purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [];
+            if (purposes.includes(val)) return;
+
+            purposes.push(val);
+            localStorage.setItem('housing_purposes', JSON.stringify(purposes));
+            input.value = '';
+            loadPurposes();
+            showDashAlert("Visit purpose added.", "success");
         }
 
-        function removePurpose(index) {
+        function deletePurpose(p) {
             let purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [];
-            purposes.splice(index, 1);
+            purposes = purposes.filter(item => item !== p);
             localStorage.setItem('housing_purposes', JSON.stringify(purposes));
             loadPurposes();
             showDashAlert("Visit purpose removed.", "success");
         }
 
-        function showDashAlert(message, type) {
-            const alert = document.getElementById('dashAlert');
-            alert.className = `alert alert-${type} mb-4`;
-            alert.textContent = message;
-            alert.classList.remove('d-none');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => alert.classList.add('d-none'), 5000);
+        // --- CALENDAR VIEW ---
+        function changeCalendarMonth(direction) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
+            renderCalendarView();
+        }
+
+        function renderCalendarView() {
+            const container = document.getElementById('calendarGridContainer');
+            const label = document.getElementById('calendarMonthLabel');
+            if (!container || !label) return;
+
+            let year = currentCalendarDate.getFullYear();
+            let month = currentCalendarDate.getMonth();
+
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            label.textContent = `${monthNames[month]} ${year}`;
+
+            let firstDayIndex = new Date(year, month, 1).getDay();
+            let totalDays = new Date(year, month + 1, 0).getDate();
+
+            let bookings = getFilteredBookings();
+
+            let html = `
+                <table class="table table-bordered text-center align-middle mb-0" style="table-layout: fixed;">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="text-danger">Sun</th>
+                            <th>Mon</th>
+                            <th>Tue</th>
+                            <th>Wed</th>
+                            <th>Thu</th>
+                            <th>Fri</th>
+                            <th class="text-danger">Sat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            let dayCounter = 1;
+            for (let i = 0; i < 6; i++) {
+                html += '<tr>';
+                for (let j = 0; j < 7; j++) {
+                    if (i === 0 && j < firstDayIndex) {
+                        html += '<td class="bg-light text-muted" style="height: 100px;"></td>';
+                    } else if (dayCounter > totalDays) {
+                        html += '<td class="bg-light text-muted" style="height: 100px;"></td>';
+                    } else {
+                        let formattedMonth = String(month + 1).padStart(2, '0');
+                        let formattedDay = String(dayCounter).padStart(2, '0');
+                        let dateStr = `${year}-${formattedMonth}-${formattedDay}`;
+
+                        let dayBookings = bookings.filter(b => b.date === dateStr);
+
+                        html += `<td style="height: 100px; vertical-align: top; overflow-y: auto;" class="p-1">
+                            <div class="fw-bold small mb-1">${dayCounter}</div>
+                            <div style="max-height: 70px; overflow-y: auto;">`;
+
+                        dayBookings.forEach(b => {
+                            let badgeBg = 'bg-primary';
+                            if (b.status === 'Confirmed') badgeBg = 'bg-success';
+                            if (b.status === 'Cancelled') badgeBg = 'bg-danger text-decoration-line-through';
+
+                            html += `<div class="badge ${badgeBg} d-block text-truncate mb-1 cursor-pointer" style="font-size: 10px;" title="${b.time} - ${b.firstName} ${b.lastName} (${b.building})" onclick="openBookingModal(${b.id})">${b.time} ${b.lastName}</div>`;
+                        });
+
+                        html += `</div></td>`;
+                        dayCounter++;
+                    }
+                }
+                html += '</tr>';
+                if (dayCounter > totalDays) break;
+            }
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
         }
     </script>
 </body>
