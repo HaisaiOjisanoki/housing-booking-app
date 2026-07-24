@@ -53,20 +53,31 @@ default_state = {
 def load_state():
     if os.path.exists(DATA_FILE):
         try:
-            with open(DATA_FILE, 'r') as f:
-                return json.load(f)
-        except Exception:
-            pass
+            with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception as e:
+            print(f"Warning: Error loading state file, resetting to default: {e}")
     return default_state
 
 def save_state(state):
     try:
-        with open(DATA_FILE, 'w') as f:
+        with open(DATA_FILE, 'w', encoding='utf-8') as f:
             json.dump(state, f, indent=4)
     except Exception as e:
-        print(f"Error saving state: {e}")
+        print(f"Critical Error saving state file: {e}")
 
 app_state = load_state()
+
+# Global Error Handlers to prevent raw 500 crashes
+@app.errorhandler(400)
+def bad_request(e):
+    return jsonify({'error': 'Bad Request', 'message': str(e)}), 400
+
+@app.errorhandler(500)
+def internal_error(e):
+    return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
 
 @app.route('/')
 def index():
@@ -75,8 +86,8 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
         
         for user in app_state.get('staff_users', []):
             if user['username'] == username and user['password'] == password:
@@ -123,18 +134,20 @@ def api_state():
         
     global app_state
     if request.method == 'POST':
-        new_state = request.json
-        if new_state:
-            app_state = new_state
-            save_state(app_state)
+        new_state = request.get_json(silent=True)
+        if not new_state or not isinstance(new_state, dict):
+            return jsonify({'error': 'Invalid JSON payload provided'}), 400
+        
+        app_state = new_state
+        save_state(app_state)
         return jsonify({'status': 'success'})
         
     return jsonify(app_state)
 
 @app.route('/api/book', methods=['POST'])
 def api_book():
-    data = request.json
-    if not data:
+    data = request.get_json(silent=True)
+    if not data or not isinstance(data, dict):
         return jsonify({'error': 'Invalid data'}), 400
     
     if 'bookings' not in app_state:
