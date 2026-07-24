@@ -71,7 +71,6 @@ def save_state(state):
 
 app_state = load_state()
 
-# Expose exact Python traceback on 500 errors for instant debugging
 @app.errorhandler(500)
 def internal_error(e):
     tb = traceback.format_exc()
@@ -140,6 +139,43 @@ def api_state():
         new_state = request.get_json(silent=True)
         if not new_state or not isinstance(new_state, dict):
             return jsonify({'error': 'Invalid JSON payload provided'}), 400
+        
+        # Secure boundary checks for Camp Admins
+        if user['role'] == 'camp_admin':
+            camp = user['camp']
+            new_state['camps'] = app_state['camps']
+            
+            # Protect other camps' buildings
+            if 'camp_buildings' in new_state:
+                for c in app_state['camp_buildings']:
+                    if c != camp:
+                        new_state['camp_buildings'][c] = app_state['camp_buildings'][c]
+            else:
+                new_state['camp_buildings'] = app_state['camp_buildings']
+            
+            # Protect superadmins and staff from other camps
+            if 'staff_users' in new_state:
+                filtered_staff = []
+                for existing_su in app_state['staff_users']:
+                    if existing_su['role'] == 'superadmin' or existing_su['camp'] != camp:
+                        filtered_staff.append(existing_su)
+                
+                for submitted_su in new_state['staff_users']:
+                    if submitted_su.get('camp') == camp and submitted_su.get('role') == 'staff':
+                        filtered_staff.append(submitted_su)
+                    elif submitted_su.get('username') == user['username']: # Keep current camp admin
+                        filtered_staff.append(submitted_su)
+                new_state['staff_users'] = filtered_staff
+            else:
+                new_state['staff_users'] = app_state['staff_users']
+                
+            if 'bookings' not in new_state:
+                new_state['bookings'] = app_state['bookings']
+
+        elif user['role'] == 'staff':
+            new_state['camps'] = app_state['camps']
+            new_state['camp_buildings'] = app_state['camp_buildings']
+            new_state['staff_users'] = app_state['staff_users']
         
         app_state = new_state
         save_state(app_state)
