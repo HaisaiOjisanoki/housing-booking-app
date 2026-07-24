@@ -14,7 +14,7 @@ def load_state():
                 return json.load(f)
         except Exception:
             pass
-    # Default fallback state
+    # Default fallback state with superadmin
     return {
         "users": [
             {
@@ -33,6 +33,10 @@ def load_state():
 def save_state(state):
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=4)
+
+@app.route("/")
+def index():
+    return redirect(url_for("login"))
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -61,21 +65,20 @@ def login():
 
     return render_template("login.html")
 
+@app.route("/dashboard")
+def dashboard():
+    return render_template("dashboard.html")
+
 @app.route("/api/state", methods=["GET", "POST"])
 def api_state():
     state = load_state()
     if request.method == "POST":
         new_data = request.get_json()
         if new_data:
-            # Update state with incoming dashboard changes
             state.update(new_data)
             save_state(state)
             return jsonify({"success": True})
     return jsonify(state)
-
-@app.route("/dashboard")
-def dashboard():
-    return render_template("dashboard.html")
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
