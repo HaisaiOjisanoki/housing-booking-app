@@ -335,17 +335,14 @@
             currentUser = JSON.parse(userJson);
             document.getElementById('currentUserDisplay').innerHTML = `<i class="bi bi-person-circle me-1"></i>${currentUser.username} (${currentUser.role})`;
 
-            // Permissions setup
             if (currentUser.role === 'Housing Staff') {
                 document.getElementById('staffTabItem').style.display = 'none';
                 document.getElementById('campsTabItem').style.display = 'none';
             } else if (currentUser.role === 'Admin') {
-                // Admin cannot create Super Admins
                 const superOpt = document.getElementById('superAdminRoleOption');
                 if (superOpt) superOpt.remove();
             }
 
-            // Initialize storage defaults if empty
             if (!localStorage.getItem('housing_camps')) {
                 localStorage.setItem('housing_camps', JSON.stringify(["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"]));
             }
@@ -369,7 +366,6 @@
             renderStaffTable();
         }
 
-        // --- APPOINTMENTS VIEW TOGGLE & RENDER ---
         function switchAppointmentView(mode) {
             currentViewMode = mode;
             const tableContainer = document.getElementById('appointmentsTableContainer');
@@ -471,13 +467,11 @@
 
             let daysGridHtml = '';
 
-            // Previous month trailing days
             for (let i = firstDayIndex; i > 0; i--) {
                 let dayNum = prevTotalDays - i + 1;
                 daysGridHtml += `<div class="calendar-cell other-month"><span class="fw-bold small">${dayNum}</span></div>`;
             }
 
-            // Current month days
             for (let d = 1; d <= totalDays; d++) {
                 let monthStr = String(month + 1).padStart(2, '0');
                 let dayStr = String(d).padStart(2, '0');
@@ -498,7 +492,6 @@
                 `;
             }
 
-            // Next month leading days to complete grid rows
             let totalCellsRendered = firstDayIndex + totalDays;
             let remainingCells = totalCellsRendered % 7 === 0 ? 0 : 7 - (totalCellsRendered % 7);
             for (let n = 1; n <= remainingCells; n++) {
@@ -552,7 +545,6 @@
             renderAppointmentsView();
         }
 
-        // --- CAMPS & BUILDINGS LOGIC ---
         function renderCampsManagement() {
             if (currentUser.role === 'Housing Staff') return;
             let camps = JSON.parse(localStorage.getItem('housing_camps')) || [];
@@ -640,7 +632,6 @@
             }
         }
 
-        // --- STAFF MANAGEMENT LOGIC ---
         function renderStaffTable() {
             if (currentUser.role === 'Housing Staff') return;
             const tbody = document.getElementById('staffTableBody');
@@ -653,7 +644,6 @@
 
             tbody.innerHTML = '';
             users.forEach(u => {
-                // Admins can only see/manage Housing Staff and other Admins, but not Super Admins unless Super Admin.
                 if (currentUser.role === 'Admin' && u.role === 'Super Admin') return;
 
                 let assignedBldgsDisplay = (u.assignedBuildings && u.assignedBuildings.length > 0)
