@@ -30,7 +30,7 @@
                 <div class="card shadow border-0">
                     <div class="card-header bg-primary text-white py-3">
                         <h4 class="mb-0 fw-bold"><i class="bi bi-calendar-plus me-2"></i>Schedule Housing Appointment</h4>
-                        <p class="mb-0 small text-white-50">Select your preferred date, time, and facility for in-processing or housing inquiries.</p>
+                        <p class="mb-0 small text-white-50">Select your preferred camp, facility, date, and time for your housing inquiry.</p>
                     </div>
                     <div class="card-body p-4">
                         
@@ -66,10 +66,19 @@
                                 </div>
                             </div>
 
+                            <!-- Camp Dropdown -->
+                            <div class="mb-3">
+                                <label class="form-label text-muted small fw-bold text-primary">Camp Location</label>
+                                <select id="pubCamp" class="form-select form-select-sm border-primary" required onchange="filterBuildingsForCamp()">
+                                    <option value="">-- Select Camp Location --</option>
+                                </select>
+                            </div>
+
+                            <!-- Assigned Building Dropdown (Filtered by Camp) -->
                             <div class="mb-3">
                                 <label class="form-label text-muted small fw-bold text-primary">Assigned Building / Facility Number</label>
-                                <select id="pubBuilding" class="form-select form-select-sm border-primary" required>
-                                    <option value="">-- Select Building / Facility --</option>
+                                <select id="pubBuilding" class="form-select form-select-sm border-primary" required disabled>
+                                    <option value="">-- Select Camp First --</option>
                                 </select>
                             </div>
 
@@ -114,9 +123,46 @@
             document.getElementById('pubDate').min = today;
             document.getElementById('pubDate').value = today;
 
-            loadPublicBuildings();
+            loadPublicCamps();
             loadPublicPurposes();
             loadAndDisplayAvailabilityRules();
+        }
+
+        function loadPublicCamps() {
+            const camps = JSON.parse(localStorage.getItem('housing_camps')) || ["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"];
+            const select = document.getElementById('pubCamp');
+            if (!select) return;
+            select.innerHTML = '<option value="">-- Select Camp Location --</option>';
+            camps.forEach(camp => {
+                select.innerHTML += `<option value="${camp}">${camp}</option>`;
+            });
+        }
+
+        function filterBuildingsForCamp() {
+            const selectedCamp = document.getElementById('pubCamp').value;
+            const buildingSelect = document.getElementById('pubBuilding');
+            
+            buildingSelect.innerHTML = '<option value="">-- Select Building / Facility --</option>';
+            
+            if (!selectedCamp) {
+                buildingSelect.disabled = true;
+                buildingSelect.innerHTML = '<option value="">-- Select Camp First --</option>';
+                return;
+            }
+
+            const campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
+            const buildings = campBuildingsMap[selectedCamp] || [];
+
+            if (buildings.length === 0) {
+                buildingSelect.disabled = true;
+                buildingSelect.innerHTML = '<option value="" disabled>No buildings assigned to this camp</option>';
+                return;
+            }
+
+            buildingSelect.disabled = false;
+            buildings.forEach(b => {
+                buildingSelect.innerHTML += `<option value="${b}">${b}</option>`;
+            });
         }
 
         function loadAndDisplayAvailabilityRules() {
@@ -155,44 +201,6 @@
             return `${h}:${minute} ${ampm}`;
         }
 
-        function loadPublicBuildings() {
-            let buildings = [];
-            const possibleKeys = ['housing_assigned_buildings', 'housing_buildings', 'assigned_buildings', 'buildings'];
-            
-            for (let key of possibleKeys) {
-                const data = localStorage.getItem(key);
-                if (data) {
-                    try {
-                        const parsed = JSON.parse(data);
-                        if (Array.isArray(parsed) && parsed.length > 0) {
-                            buildings = parsed;
-                            break;
-                        }
-                    } catch (e) {
-                        console.error("Error parsing storage key: " + key, e);
-                    }
-                }
-            }
-
-            const select = document.getElementById('pubBuilding');
-            if (!select) return;
-            select.innerHTML = '<option value="">-- Select Building / Facility --</option>';
-
-            if (buildings.length === 0) {
-                select.innerHTML += '<option value="" disabled>No buildings currently configured in dashboard</option>';
-                return;
-            }
-
-            buildings.forEach(b => {
-                const buildingName = typeof b === 'string' ? b : (b.name || b.buildingNumber || b.building || '');
-                const status = b.status || 'Active';
-                
-                if (buildingName && (status === 'Active' || !b.status)) {
-                    select.innerHTML += `<option value="${buildingName}">${buildingName}</option>`;
-                }
-            });
-        }
-
         function loadPublicPurposes() {
             const purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [
                 "Check-in / In-processing", 
@@ -214,12 +222,13 @@
             const branch = document.getElementById('pubBranch').value;
             const lastName = document.getElementById('pubLastName').value.trim();
             const firstName = document.getElementById('pubFirstName').value.trim();
+            const camp = document.getElementById('pubCamp').value;
             const building = document.getElementById('pubBuilding').value;
             const purpose = document.getElementById('pubPurpose').value;
             const date = document.getElementById('pubDate').value;
             const time = document.getElementById('pubTime').value;
 
-            if (!lastName || !firstName || !building || !purpose || !date || !time) {
+            if (!lastName || !firstName || !camp || !building || !purpose || !date || !time) {
                 showPublicAlert("Please complete all required booking fields.", "danger");
                 return;
             }
@@ -251,6 +260,7 @@
                 branch: branch,
                 lastName: lastName,
                 firstName: firstName,
+                camp: camp,
                 building: building,
                 purpose: purpose,
                 date: date,
@@ -266,6 +276,8 @@
             showPublicAlert("Appointment request successfully submitted! Staff will review and confirm your booking.", "success");
             document.getElementById('publicBookingForm').reset();
             document.getElementById('pubDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('pubBuilding').disabled = true;
+            document.getElementById('pubBuilding').innerHTML = '<option value="">-- Select Camp First --</option>';
         }
 
         function showPublicAlert(message, type) {

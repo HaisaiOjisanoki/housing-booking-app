@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Housing Portal</title>
+    <title>Staff & Super Admin Dashboard - Housing Portal</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FullCalendar CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 </head>
@@ -16,1045 +14,327 @@
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="javascript:void(0);" onclick="goToCalendar(event)" style="cursor: pointer;"><i class="bi bi-house-door-fill me-2"></i>Housing Portal Dashboard</a>
+            <a class="navbar-brand fw-bold" href="#"><i class="bi bi-shield-lock-fill me-2"></i>Housing Portal Dashboard</a>
             <div class="d-flex align-items-center">
-                <span id="userBadge" class="badge bg-primary me-3 p-2">Role: Loading...</span>
-                <button onclick="handleLogout()" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right me-1"></i>Sign Out</button>
+                <a href="/public_booking.html" target="_blank" class="btn btn-outline-light btn-sm me-3"><i class="bi bi-box-arrow-up-right me-1"></i>View Public Booking Page</a>
+                <a href="/" class="btn btn-outline-danger btn-sm"><i class="bi bi-box-arrow-right me-1"></i>Sign Out</a>
             </div>
         </div>
     </nav>
 
-    <!-- Sub-Navbar for Feature Tabs -->
-    <div class="bg-white border-bottom shadow-sm px-4 py-2">
-        <ul class="nav nav-pills" id="dashboardTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active btn-sm" id="calendar-tab" data-bs-toggle="pill" data-bs-target="#calendarSection" type="button"><i class="bi bi-calendar-event me-1"></i>Calendar & Bookings</button>
-            </li>
-            <li class="nav-item ms-2" role="presentation">
-                <button class="nav-link btn-sm" id="buildings-tab" data-bs-toggle="pill" data-bs-target="#buildingsSection" type="button"><i class="bi bi-buildings me-1"></i>Assigned Buildings</button>
-            </li>
-            <li class="nav-item ms-2" role="presentation">
-                <button class="nav-link btn-sm" id="availability-tab" data-bs-toggle="pill" data-bs-target="#availabilitySection" type="button"><i class="bi bi-clock-history me-1"></i>Time Availability & Lunch</button>
-            </li>
-            <li class="nav-item ms-2" role="presentation">
-                <button class="nav-link btn-sm" id="purposes-tab" data-bs-toggle="pill" data-bs-target="#purposesSection" type="button"><i class="bi bi-list-check me-1"></i>Purpose of Visit</button>
-            </li>
-            <!-- Admin Only Tab -->
-            <li class="nav-item ms-2 d-none" id="adminUsersNav" role="presentation">
-                <button class="nav-link btn-sm text-danger fw-bold" id="users-tab" data-bs-toggle="pill" data-bs-target="#usersSection" type="button"><i class="bi bi-people-fill me-1"></i>User Management</button>
-            </li>
-        </ul>
-    </div>
-
-    <!-- Main Content Container -->
-    <div class="container-fluid py-4">
+    <!-- Main Container -->
+    <div class="container py-4">
         
         <!-- Status Alert Notification -->
         <div id="dashAlert" class="alert d-none mb-4" role="alert"></div>
 
-        <div class="tab-content" id="dashboardTabContent">
-            
-            <!-- TAB 1: CALENDAR & BOOKINGS -->
-            <div class="tab-pane fade show active" id="calendarSection" role="tabpanel">
-                <div class="row g-4">
-                    <div class="col-lg-8">
-                        <div class="card shadow-sm border-0 h-100">
-                            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0 fw-bold"><i class="bi bi-calendar-event me-2 text-primary"></i>Appointment Calendar View</h5>
-                                <div>
-                                    <button class="btn btn-sm btn-success me-2" onclick="openNewBookingModal()"><i class="bi bi-plus-circle me-1"></i>New Booking</button>
-                                    <button class="btn btn-sm btn-outline-success me-2 d-none" id="exportBtn" onclick="openExportModal()"><i class="bi bi-file-earmark-excel me-1"></i>Export Excel Report</button>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="loadBookingsData()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div id="calendar" style="min-height: 600px;"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-4">
-                        <div class="card shadow-sm border-0 h-100">
-                            <div class="card-header bg-white py-3">
-                                <h5 class="mb-0 fw-bold"><i class="bi bi-journal-check me-2 text-primary"></i>Manage Bookings</h5>
-                            </div>
-                            <div class="card-body d-flex flex-column">
-                                <div class="input-group mb-3">
-                                    <input type="text" id="searchBooking" class="form-control form-control-sm" placeholder="Search by name, building, or purpose..." onkeyup="filterBookings()">
-                                    <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
-                                </div>
-                                <div class="table-responsive flex-grow-1" style="max-height: 550px; overflow-y: auto;">
-                                    <table class="table table-hover align-middle small">
-                                        <thead class="table-light sticky-top">
-                                            <tr>
-                                                <th>Details & Purpose</th>
-                                                <th>Date/Time</th>
-                                                <th class="text-end">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="bookingTableBody"></tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <!-- Dashboard Header -->
+        <div class="row mb-4 align-items-center">
+            <div class="col">
+                <h2 class="fw-bold text-dark mb-1"><i class="bi bi-speedometer2 me-2"></i>Management Control Center</h2>
+                <p class="text-muted small mb-0">Manage appointment requests, configure camp options, and assign buildings by camp location.</p>
             </div>
-
-            <!-- TAB 2: ASSIGNED BUILDINGS -->
-            <div class="tab-pane fade" id="buildingsSection" role="tabpanel">
-                <div class="row">
-                    <div class="col-lg-12">
-                        <div class="card shadow-sm border-0">
-                            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0 fw-bold"><i class="bi bi-buildings me-2 text-primary"></i>Assigned Buildings Management</h5>
-                                <button class="btn btn-sm btn-success d-none" id="addBuildingBtn" onclick="openBuildingModal()"><i class="bi bi-plus-circle me-1"></i>Assign New Building</button>
-                            </div>
-                            <div class="card-body">
-                                <p class="text-muted small" id="buildingSubText">Facilities and blocks assigned to your profile scope.</p>
-                                <div class="table-responsive">
-                                    <table class="table table-striped align-middle">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Building Name / Block</th>
-                                                <th>Assigned To User</th>
-                                                <th>Assigned Authority</th>
-                                                <th>Total Rooms</th>
-                                                <th>Status</th>
-                                                <th class="text-end admin-col d-none">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="assignedBuildingsTable"></tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TAB 3: TIME AVAILABILITY & LUNCH BLOCKING -->
-            <div class="tab-pane fade" id="availabilitySection" role="tabpanel">
-                <div class="row justify-content-center">
-                    <div class="col-lg-7">
-                        <div class="card shadow-sm border-0">
-                            <div class="card-header bg-white py-3">
-                                <h5 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2 text-primary"></i>Modify Time Availability & Lunch Restrictions</h5>
-                            </div>
-                            <div class="card-body">
-                                <p class="text-muted small">Updating these hours and lunch blocks will immediately reflect on the public booking form, preventing public reservations during restricted windows.</p>
-                                <form onsubmit="saveAvailability(event)">
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label small text-muted">Operating Start Time</label>
-                                            <input type="time" id="availStartTime" class="form-control" required>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label small text-muted">Operating End Time</label>
-                                            <input type="time" id="availEndTime" class="form-control" required>
-                                        </div>
-                                    </div>
-                                    <div class="row border-top pt-3 mt-2">
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label small text-danger fw-bold">Lunch Block Start</label>
-                                            <input type="time" id="lunchStartTime" class="form-control" required>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label small text-danger fw-bold">Lunch Block End</label>
-                                            <input type="time" id="lunchEndTime" class="form-control" required>
-                                        </div>
-                                    </div>
-
-                                    <!-- Extra Dropdown with Start/Finish Time and Delete / Clear Option -->
-                                    <div class="border-top pt-3 mt-2 mb-3">
-                                        <label class="form-label small fw-bold text-dark mb-2"><i class="bi bi-shield-exclamation me-1"></i>Public Booking Page - Blocked Time Category:</label>
-                                        <div class="row g-2 mb-2">
-                                            <div class="col-md-6">
-                                                <select id="publicBlockedCategory" class="form-select form-select-sm border-primary">
-                                                    <option value="">-- None / Disabled --</option>
-                                                    <option value="Meeting">Meeting</option>
-                                                    <option value="Escorting">Escorting</option>
-                                                    <option value="VIP">VIP</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <button class="btn btn-outline-secondary btn-sm w-100" type="button" onclick="clearBlockedCategory()" title="Delete / Clear Selection"><i class="bi bi-x-lg me-1"></i>Clear Selection</button>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-md-6 mb-2">
-                                                <label class="form-label small text-muted">Blocked Start Time</label>
-                                                <input type="time" id="blockedStartTime" class="form-control form-control-sm">
-                                            </div>
-                                            <div class="col-md-6 mb-2">
-                                                <label class="form-label small text-muted">Blocked End Time</label>
-                                                <input type="time" id="blockedEndTime" class="form-control form-control-sm">
-                                            </div>
-                                        </div>
-                                        <div class="form-text small">Select a category and specify a start/finish time range to block slots on the public form.</div>
-                                    </div>
-
-                                    <button type="submit" class="btn btn-primary w-100">Save Availability & Sync to Public Form</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TAB 4: PURPOSE OF VISIT -->
-            <div class="tab-pane fade" id="purposesSection" role="tabpanel">
-                <div class="row justify-content-center">
-                    <div class="col-lg-6">
-                        <div class="card shadow-sm border-0">
-                            <div class="card-header bg-white py-3">
-                                <h5 class="mb-0 fw-bold"><i class="bi bi-list-check me-2 text-primary"></i>Manage Purpose of Visit Options</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="input-group mb-3">
-                                    <input type="text" id="newPurposeInput" class="form-control" placeholder="Enter new purpose...">
-                                    <button class="btn btn-success" type="button" onclick="addPurpose()">Add Purpose</button>
-                                </div>
-                                <ul class="list-group" id="purposeListGroup"></ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TAB 5: USER MANAGEMENT (ADMIN ONLY) -->
-            <div class="tab-pane fade" id="usersSection" role="tabpanel">
-                <div class="row">
-                    <div class="col-lg-12">
-                        <div class="card shadow-sm border-0">
-                            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0 fw-bold text-danger"><i class="bi bi-people-fill me-2"></i>System User Accounts</h5>
-                                <button class="btn btn-sm btn-success" onclick="openUserModal()"><i class="bi bi-person-plus-fill me-1"></i>Add New User</button>
-                            </div>
-                            <div class="card-body">
-                                <p class="text-muted small">Manage portal accounts, remove users, or reset user passwords.</p>
-                                <div class="table-responsive">
-                                    <table class="table table-striped align-middle">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Username</th>
-                                                <th>Role</th>
-                                                <th>Branch</th>
-                                                <th>Full Name</th>
-                                                <th class="text-end">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="userTableBody"></tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
         </div>
-    </div>
 
-    <!-- Booking Add / Edit Modal -->
-    <div class="modal fade" id="bookingModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold" id="modalTitle">Manage Booking</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="bookingForm">
-                        <input type="hidden" id="editBookingId">
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label text-muted small">Branch</label>
-                                <select id="modalBranch" class="form-select form-select-sm" required>
-                                    <option value="USMC">USMC</option>
-                                    <option value="US Army">US Army</option>
-                                    <option value="US Navy">US Navy</option>
-                                    <option value="US Air Force">US Air Force</option>
-                                    <option value="US Space Force">US Space Force</option>
-                                    <option value="Civilian">Civilian</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label text-muted small">Last Name</label>
-                                <input type="text" id="modalLastName" class="form-control form-control-sm" required placeholder="Miller">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label text-muted small">First Name</label>
-                                <input type="text" id="modalFirstName" class="form-control form-control-sm" required placeholder="John">
-                            </div>
+        <!-- Super Admin: Camp & Building Mapping Management Section -->
+        <div class="card shadow-sm mb-4 border-0">
+            <div class="card-header bg-dark text-white fw-bold">
+                <i class="bi bi-geo-alt-fill me-2"></i>Super Admin: Camp & Building Assignment Management
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Left Column: Manage Camp Options -->
+                    <div class="col-md-5 border-end pe-4">
+                        <h6 class="fw-bold text-primary mb-3">1. Manage Camp Options</h6>
+                        <div class="input-group input-group-sm mb-3">
+                            <input type="text" id="superNewCampInput" class="form-control" placeholder="Enter Camp Name (e.g. Camp Hansen)">
+                            <button class="btn btn-outline-primary" type="button" onclick="superAddCamp()">Add Camp</button>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold text-primary">Assigned Building / Facility</label>
-                            <select id="modalBuilding" class="form-select form-select-sm border-primary" required></select>
+                        <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
+                            <table class="table table-sm table-striped align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Camp Name</th>
+                                        <th class="text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="superCampsTableBody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
                         </div>
+                    </div>
+
+                    <!-- Right Column: Assign Building Numbers by Camp -->
+                    <div class="col-md-7 ps-4">
+                        <h6 class="fw-bold text-primary mb-3">2. Assign Building Numbers by Camp</h6>
                         <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold text-primary">Purpose of Visit</label>
-                            <select id="modalPurpose" class="form-select form-select-sm border-primary" required></select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label text-muted small">Appointment Date & Time</label>
-                            <input type="datetime-local" id="modalDateTime" class="form-control form-control-sm" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label text-muted small">Current Status</label>
-                            <select id="modalStatus" class="form-select form-select-sm">
-                                <option value="Pending">Pending</option>
-                                <option value="Approved">Approved</option>
-                                <option value="Cancelled">Cancelled</option>
+                            <label class="form-label small text-muted">Select Target Camp</label>
+                            <select id="superCampSelect" class="form-select form-select-sm" onchange="renderSuperCampBuildingsList()">
+                                <option value="">-- Select Camp --</option>
                             </select>
                         </div>
-                        <!-- Staff-Only Internal Notes Section -->
-                        <div class="mb-3" id="staffNotesContainer">
-                            <label class="form-label text-danger small fw-bold"><i class="bi bi-shield-lock me-1"></i>Internal Staff Notes (Staff Only)</label>
-                            <textarea id="modalInternalNote" class="form-control form-control-sm" rows="3" placeholder="Enter confidential notes visible only to staff..."></textarea>
+                        <div class="input-group input-group-sm mb-3">
+                            <input type="text" id="superNewBuildingInput" class="form-control" placeholder="Building Number (e.g. Bldg 2314)">
+                            <button class="btn btn-outline-success" type="button" onclick="superAddBuildingToCamp()">Assign Building</button>
                         </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                    <button type="button" id="deleteBookingBtn" class="btn btn-danger btn-sm d-none" onclick="deleteCurrentBooking()">Delete Booking</button>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="saveBookingChanges()">Save Booking</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Building Assignment Modal (Admin/Super Admin Only) -->
-    <div class="modal fade" id="buildingModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold">Assign Building to Staff</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="buildingForm">
-                        <input type="hidden" id="editBuildingIndex">
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold text-primary">Building Number / Name</label>
-                            <input type="text" id="modalBuildingName" class="form-control border-primary" required placeholder="Enter building number or name (e.g. Building 402)...">
-                            <div class="form-text small">Type the building number or facility name manually.</div>
+                        <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
+                            <table class="table table-sm table-striped align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Assigned Building Number</th>
+                                        <th class="text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="superCampBuildingsTableBody">
+                                    <tr><td colspan="2" class="text-center text-muted small">Select a camp to view assigned buildings</td></tr>
+                                </tbody>
+                            </table>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold text-primary">Assign To Staff (From User List)</label>
-                            <select id="modalBuildingUser" class="form-select border-primary" required></select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label text-muted small">Total Rooms</label>
-                            <input type="number" id="modalBuildingRooms" class="form-control" required value="32">
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="saveBuildingAssignment()">Save Assignment</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- User Add / Password Reset Modal (Admin Only) -->
-    <div class="modal fade" id="userModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold" id="userModalTitle">Add New User</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="userForm">
-                        <div class="mb-3">
-                            <label class="form-label text-muted small">Username</label>
-                            <input type="text" id="modalUsername" class="form-control" required placeholder="e.g. jmiller">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label text-muted small">Password</label>
-                            <input type="password" id="modalPassword" class="form-control" required placeholder="Enter password...">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label text-muted small">Role</label>
-                            <select id="modalRole" class="form-select">
-                                <option value="User">User</option>
-                                <option value="Admin">Admin</option>
-                                <option value="Super Admin">Super Admin</option>
-                            </select>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted small">Branch</label>
-                                <input type="text" id="modalUserBranch" class="form-control" placeholder="USMC">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted small">Full Name (Last, First)</label>
-                                <input type="text" id="modalUserFullName" class="form-control" placeholder="Miller, John">
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="saveUserAccount()">Save User</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Export Selection Modal -->
-    <div class="modal fade" id="exportModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-file-earmark-excel me-2 text-success"></i>Export Booking Excel Report</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted small">Select whether to export all records or filter by a specific user.</p>
-                    <div class="mb-3">
-                        <label class="form-label text-muted small">Select User Filter</label>
-                        <select id="exportUserSelect" class="form-select">
-                            <option value="ALL">All Users (Complete System Export)</option>
-                        </select>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-success btn-sm" onclick="executeExcelExport()"><i class="bi bi-download me-1"></i>Download CSV Report</button>
+            </div>
+        </div>
+
+        <!-- Appointments Management Section -->
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-calendar-check me-2"></i>Public Appointment Requests</span>
+                <button class="btn btn-light btn-sm" onclick="loadBookings()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Name</th>
+                                <th>Branch</th>
+                                <th>Camp Location</th>
+                                <th>Building</th>
+                                <th>Purpose</th>
+                                <th>Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookingsTableBody">
+                            <tr><td colspan="8" class="text-center text-muted py-4">No appointment requests found.</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
+
     </div>
 
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- FullCalendar JS -->
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 
     <script>
-        let calendar;
-        let allBookings = [];
-        let currentUser = null;
-
         function initDashboard() {
-            const storedUser = localStorage.getItem('housing_current_user');
-            if (!storedUser) {
-                window.location.href = '/login';
-                return;
-            }
-
-            currentUser = JSON.parse(storedUser);
-            document.getElementById('userBadge').textContent = `Role: ${currentUser.role} (${currentUser.username})`;
-
-            const isStaff = currentUser.role === 'Super Admin' || currentUser.role === 'Admin';
-            
-            // Toggle Admin UI elements
-            if (isStaff) {
-                document.getElementById('adminUsersNav').classList.remove('d-none');
-                document.getElementById('addBuildingBtn').classList.remove('d-none');
-                document.getElementById('exportBtn').classList.remove('d-none');
-                document.querySelectorAll('.admin-col').forEach(el => el.classList.remove('d-none'));
-                document.getElementById('staffNotesContainer').classList.remove('d-none');
-            } else {
-                document.getElementById('staffNotesContainer').classList.add('d-none');
-            }
-
-            // Initialize default storage mocks if empty
-            if (!localStorage.getItem('housing_users')) {
-                const sampleUsers = [
-                    { username: "superadmin", password: "password", role: "Super Admin", branch: "USMC", fullName: "Admin, System" },
-                    { username: "admin", password: "password", role: "Admin", branch: "US Army", fullName: "Commander, Staff" },
-                    { username: "user", password: "password", role: "User", branch: "USMC", fullName: "Miller, John" }
-                ];
-                localStorage.setItem('housing_users', JSON.stringify(sampleUsers));
-            }
-
-            if (!localStorage.getItem('housing_bookings')) {
-                const sampleBookings = [
-                    { id: 101, branch: "USMC", lastName: "Miller", firstName: "John", building: "Building 402 (Unaccompanied Enlisted)", purpose: "Check-in / In-processing", date: "2026-07-26", time: "10:00", status: "Approved", internalNote: "Verified PCS orders.", username: "user" },
-                    { id: 102, branch: "US Army", lastName: "Davis", firstName: "Sarah", building: "Building 405 (NCO Quarters)", purpose: "Maintenance Request", date: "2026-07-28", time: "14:30", status: "Pending", internalNote: "Pending clearance confirmation.", username: "admin" }
-                ];
-                localStorage.setItem('housing_bookings', JSON.stringify(sampleBookings));
-            }
-
-            if (!localStorage.getItem('housing_assigned_buildings')) {
-                const sampleBuildings = [
-                    { name: "Building 402 (Unaccompanied Enlisted)", assignedTo: "user", assignedBy: "Super Admin", rooms: 48, status: "Active" },
-                    { name: "Building 405 (NCO Quarters)", assignedTo: "admin", assignedBy: "Super Admin", rooms: 32, status: "Active" },
-                    { name: "Building 410 (Transient Quarters)", assignedTo: "superadmin", assignedBy: "Super Admin", rooms: 20, status: "Active" }
-                ];
-                localStorage.setItem('housing_assigned_buildings', JSON.stringify(sampleBuildings));
-            }
-
-            if (!localStorage.getItem('housing_availability')) {
-                const defaultAvailability = { start: "08:00", end: "17:00", lunchStart: "12:00", lunchEnd: "13:00", publicBlockedCategory: "Meeting", blockedStartTime: "15:00", blockedEndTime: "16:00" };
-                localStorage.setItem('housing_availability', JSON.stringify(defaultAvailability));
-            }
-
-            if (!localStorage.getItem('housing_purposes')) {
-                const defaultPurposes = ["Check-in / In-processing", "Out-processing Inspection", "Maintenance Request", "Room Change Inquiry"];
-                localStorage.setItem('housing_purposes', JSON.stringify(defaultPurposes));
-            }
-
-            initCalendar();
-            loadBookingsData();
-            loadAssignedBuildings();
-            loadAvailability();
-            loadPurposes();
-            loadPurposeDropdown();
-            loadBuildingDropdown();
-            if (isStaff) loadUserManagementTable();
+            initSuperAdminCamps();
+            loadBookings();
         }
 
-        // --- NAVIGATION BRAND RESET HANDLER ---
-        function goToCalendar(event) {
-            if (event) event.preventDefault();
-            const calendarTabTrigger = document.getElementById('calendar-tab');
-            if (calendarTabTrigger) {
-                const tab = new bootstrap.Tab(calendarTabTrigger);
-                tab.show();
-            }
+        // --- Super Admin Camp & Building Management Logic ---
+
+        function initSuperAdminCamps() {
+            renderSuperCampsTable();
+            populateSuperCampDropdowns();
         }
 
-        // --- CALENDAR & BOOKINGS LOGIC ---
-        function initCalendar() {
-            const calendarEl = document.getElementById('calendar');
-            calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,listWeek'
-                },
-                selectable: true,
-                dateClick: function(info) {
-                    openNewBookingModal(info.dateStr + 'T09:00');
-                },
-                events: fetchCalendarEvents,
-                eventClick: function(info) {
-                    openBookingModal(info.event.id);
-                }
-            });
-            calendar.render();
-        }
+        function renderSuperCampsTable() {
+            let camps = JSON.parse(localStorage.getItem('housing_camps')) || ["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"];
+            const tbody = document.getElementById('superCampsTableBody');
+            if (!tbody) return;
 
-        function fetchCalendarEvents(fetchInfo, successCallback, failureCallback) {
-            const bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
-            const events = bookings.map(b => ({
-                id: b.id.toString(),
-                title: `${b.lastName}, ${b.firstName} [${b.purpose}] (${b.building})`,
-                start: `${b.date}T${b.time}`,
-                backgroundColor: b.status === 'Approved' ? '#198754' : b.status === 'Cancelled' ? '#dc3545' : '#ffc107',
-                textColor: b.status === 'Pending' ? '#000' : '#fff'
-            }));
-            successCallback(events);
-        }
-
-        function loadBookingsData() {
-            allBookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
-            renderBookingsTable(allBookings);
-            if (calendar) calendar.refetchEvents();
-        }
-
-        function renderBookingsTable(bookings) {
-            const tbody = document.getElementById('bookingTableBody');
             tbody.innerHTML = '';
-            if (bookings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-4">No bookings found.</td></tr>`;
-                return;
-            }
-            bookings.forEach(b => {
-                const tr = document.createElement('tr');
-                const badgeClass = b.status === 'Approved' ? 'bg-success' : b.status === 'Cancelled' ? 'bg-danger' : 'bg-warning text-dark';
-                tr.innerHTML = `
-                    <td>
-                        <strong>${b.lastName}, ${b.firstName}</strong> (${b.branch})<br>
-                        <span class="text-muted small"><i class="bi bi-building me-1"></i>${b.building}</span><br>
-                        <span class="badge bg-primary bg-opacity-75 text-white my-1"><i class="bi bi-tag-fill me-1"></i>${b.purpose}</span><br>
-                        <span class="badge ${badgeClass}">${b.status}</span>
-                    </td>
-                    <td class="small fw-bold">${b.date}<br><span class="text-muted fw-normal">${b.time}</span></td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary" onclick="openBookingModal('${b.id}')"><i class="bi bi-pencil-square"></i></button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function filterBookings() {
-            const query = document.getElementById('searchBooking').value.toLowerCase();
-            const filtered = allBookings.filter(b => 
-                `${b.lastName} ${b.firstName}`.toLowerCase().includes(query) || 
-                b.building.toLowerCase().includes(query) ||
-                b.branch.toLowerCase().includes(query) ||
-                b.purpose.toLowerCase().includes(query)
-            );
-            renderBookingsTable(filtered);
-        }
-
-        function loadPurposeDropdown() {
-            const purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [];
-            const select = document.getElementById('modalPurpose');
-            select.innerHTML = '';
-            purposes.forEach(p => {
-                select.innerHTML += `<option value="${p}">${p}</option>`;
-            });
-        }
-
-        function loadBuildingDropdown() {
-            const buildings = JSON.parse(localStorage.getItem('housing_assigned_buildings')) || [];
-            const select = document.getElementById('modalBuilding');
-            select.innerHTML = '<option value="">-- Select Building / Facility --</option>';
-            buildings.forEach(b => {
-                select.innerHTML += `<option value="${b.name}">${b.name} (Staff: ${b.assignedTo})</option>`;
-            });
-        }
-
-        function loadUserDropdownForBuildings() {
-            const users = JSON.parse(localStorage.getItem('housing_users')) || [];
-            const select = document.getElementById('modalBuildingUser');
-            select.innerHTML = '<option value="">-- Select Staff User --</option>';
-            users.forEach(u => {
-                select.innerHTML += `<option value="${u.username}">${u.username} (${u.fullName || u.role})</option>`;
-            });
-        }
-
-        function openNewBookingModal(defaultDateTime = '') {
-            document.getElementById('editBookingId').value = '';
-            document.getElementById('modalTitle').textContent = 'Create New Booking';
-            document.getElementById('modalBranch').value = currentUser.branch || 'USMC';
-            document.getElementById('modalLastName').value = currentUser.fullName ? currentUser.fullName.split(',')[0].trim() : '';
-            document.getElementById('modalFirstName').value = currentUser.fullName && currentUser.fullName.includes(',') ? currentUser.fullName.split(',')[1].trim() : currentUser.username;
-            loadBuildingDropdown();
-            document.getElementById('modalBuilding').value = '';
-            document.getElementById('modalDateTime').value = defaultDateTime || new Date().toISOString().slice(0, 16);
-            document.getElementById('modalStatus').value = 'Pending';
-            document.getElementById('modalInternalNote').value = '';
-            document.getElementById('deleteBookingBtn').classList.add('d-none');
-            loadPurposeDropdown();
-            new bootstrap.Modal(document.getElementById('bookingModal')).show();
-        }
-
-        function openBookingModal(id) {
-            const booking = allBookings.find(b => b.id.toString() === id.toString());
-            if (!booking) return;
-            loadPurposeDropdown();
-            loadBuildingDropdown();
-            document.getElementById('editBookingId').value = booking.id;
-            document.getElementById('modalTitle').textContent = 'Edit Booking # ' + booking.id;
-            document.getElementById('modalBranch').value = booking.branch;
-            document.getElementById('modalLastName').value = booking.lastName;
-            document.getElementById('modalFirstName').value = booking.firstName;
-            document.getElementById('modalBuilding').value = booking.building;
-            document.getElementById('modalPurpose').value = booking.purpose;
-            document.getElementById('modalDateTime').value = `${booking.date}T${booking.time}`;
-            document.getElementById('modalStatus').value = booking.status;
-            document.getElementById('modalInternalNote').value = booking.internalNote || '';
-            document.getElementById('deleteBookingBtn').classList.remove('d-none');
-            new bootstrap.Modal(document.getElementById('bookingModal')).show();
-        }
-
-        function saveBookingChanges() {
-            const id = document.getElementById('editBookingId').value;
-            const branch = document.getElementById('modalBranch').value;
-            const lastName = document.getElementById('modalLastName').value.trim();
-            const firstName = document.getElementById('modalFirstName').value.trim();
-            const building = document.getElementById('modalBuilding').value;
-            const purpose = document.getElementById('modalPurpose').value;
-            const datetimeVal = document.getElementById('modalDateTime').value;
-            const status = document.getElementById('modalStatus').value;
-            const internalNote = document.getElementById('modalInternalNote').value.trim();
-
-            if (!lastName || !firstName || !building || !datetimeVal) {
-                alert("Please fill in all required booking fields.");
-                return;
-            }
-
-            const [date, time] = datetimeVal.split('T');
-
-            // Check lunch block restrictions
-            const avail = JSON.parse(localStorage.getItem('housing_availability'));
-            if (avail && avail.lunchStart && avail.lunchEnd) {
-                if (time >= avail.lunchStart && time <= avail.lunchEnd) {
-                    alert("Selected appointment time falls within the designated lunch block. Bookings during lunch are restricted.");
-                    return;
-                }
-            }
-
-            // Check blocked category time restrictions if active
-            if (avail && avail.publicBlockedCategory && avail.blockedStartTime && avail.blockedEndTime) {
-                if (time >= avail.blockedStartTime && time <= avail.blockedEndTime) {
-                    alert(`Selected appointment time falls within the restricted window for category "${avail.publicBlockedCategory}".`);
-                    return;
-                }
-            }
-
-            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
-
-            if (id) {
-                bookings = bookings.map(b => {
-                    if (b.id.toString() === id.toString()) {
-                        b.branch = branch;
-                        b.lastName = lastName;
-                        b.firstName = firstName;
-                        b.building = building;
-                        b.purpose = purpose;
-                        b.date = date;
-                        b.time = time;
-                        b.status = status;
-                        b.internalNote = internalNote;
-                    }
-                    return b;
-                });
-            } else {
-                const newBooking = {
-                    id: Date.now(),
-                    branch: branch,
-                    lastName: lastName,
-                    firstName: firstName,
-                    building: building,
-                    purpose: purpose,
-                    date: date,
-                    time: time,
-                    status: status,
-                    internalNote: internalNote,
-                    username: currentUser.username
-                };
-                bookings.push(newBooking);
-            }
-
-            localStorage.setItem('housing_bookings', JSON.stringify(bookings));
-            bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
-            loadBookingsData();
-            showNotification("Booking saved successfully.", "success");
-        }
-
-        function deleteCurrentBooking() {
-            if (!confirm("Are you sure you want to delete this booking?")) return;
-            const id = document.getElementById('editBookingId').value;
-            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
-            bookings = bookings.filter(b => b.id.toString() !== id.toString());
-            localStorage.setItem('housing_bookings', JSON.stringify(bookings));
-            bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
-            loadBookingsData();
-            showNotification("Booking deleted successfully.", "danger");
-        }
-
-        // --- ASSIGNED BUILDINGS LOGIC ---
-        function loadAssignedBuildings() {
-            const buildings = JSON.parse(localStorage.getItem('housing_assigned_buildings')) || [];
-            const tbody = document.getElementById('assignedBuildingsTable');
-            tbody.innerHTML = '';
-
-            const isStaff = currentUser.role === 'Super Admin' || currentUser.role === 'Admin';
-            const filteredBuildings = isStaff 
-                ? buildings 
-                : buildings.filter(b => b.assignedTo && b.assignedTo.toLowerCase() === currentUser.username.toLowerCase());
-
-            if (filteredBuildings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No buildings currently assigned.</td></tr>`;
-                return;
-            }
-
-            filteredBuildings.forEach((b, index) => {
-                let actionHtml = '';
-                if (isStaff) {
-                    actionHtml = `<td class="text-end admin-col"><button class="btn btn-sm btn-outline-danger" onclick="removeBuildingAssignment(${index})"><i class="bi bi-trash"></i></button></td>`;
-                }
+            camps.forEach((camp, index) => {
                 tbody.innerHTML += `
                     <tr>
-                        <td class="fw-bold">${b.name}</td>
-                        <td><span class="badge bg-primary">${b.assignedTo || 'Unassigned'}</span></td>
-                        <td><span class="badge bg-secondary">${b.assignedBy}</span></td>
-                        <td>${b.rooms} Rooms</td>
-                        <td><span class="badge bg-success">${b.status}</span></td>
-                        ${actionHtml}
-                    </tr>
-                `;
-            });
-            loadBuildingDropdown();
-        }
-
-        function openBuildingModal() {
-            document.getElementById('modalBuildingName').value = '';
-            loadUserDropdownForBuildings();
-            document.getElementById('modalBuildingRooms').value = '32';
-            new bootstrap.Modal(document.getElementById('buildingModal')).show();
-        }
-
-        function saveBuildingAssignment() {
-            const name = document.getElementById('modalBuildingName').value.trim();
-            const assignedTo = document.getElementById('modalBuildingUser').value;
-            const rooms = document.getElementById('modalBuildingRooms').value;
-
-            if (!name || !assignedTo) {
-                alert("Please fill in building name and select an assigned staff user.");
-                return;
-            }
-
-            let buildings = JSON.parse(localStorage.getItem('housing_assigned_buildings')) || [];
-            buildings.push({
-                name: name,
-                assignedTo: assignedTo,
-                assignedBy: currentUser.username,
-                rooms: parseInt(rooms) || 30,
-                status: "Active"
-            });
-
-            localStorage.setItem('housing_assigned_buildings', JSON.stringify(buildings));
-            bootstrap.Modal.getInstance(document.getElementById('buildingModal')).hide();
-            loadAssignedBuildings();
-            showNotification("Building successfully assigned.", "success");
-        }
-
-        function removeBuildingAssignment(index) {
-            if (!confirm("Are you sure you want to remove this building assignment?")) return;
-            let buildings = JSON.parse(localStorage.getItem('housing_assigned_buildings')) || [];
-            buildings.splice(index, 1);
-            localStorage.setItem('housing_assigned_buildings', JSON.stringify(buildings));
-            loadAssignedBuildings();
-            showNotification("Assignment removed.", "warning");
-        }
-
-        // --- TIME AVAILABILITY & LUNCH LOGIC ---
-        function loadAvailability() {
-            const avail = JSON.parse(localStorage.getItem('housing_availability'));
-            if (avail) {
-                document.getElementById('availStartTime').value = avail.start || "08:00";
-                document.getElementById('availEndTime').value = avail.end || "17:00";
-                document.getElementById('lunchStartTime').value = avail.lunchStart || "12:00";
-                document.getElementById('lunchEndTime').value = avail.lunchEnd || "13:00";
-                document.getElementById('publicBlockedCategory').value = avail.publicBlockedCategory || "";
-                document.getElementById('blockedStartTime').value = avail.blockedStartTime || "";
-                document.getElementById('blockedEndTime').value = avail.blockedEndTime || "";
-            }
-        }
-
-        function clearBlockedCategory() {
-            document.getElementById('publicBlockedCategory').value = "";
-            document.getElementById('blockedStartTime').value = "";
-            document.getElementById('blockedEndTime').value = "";
-        }
-
-        function saveAvailability(event) {
-            event.preventDefault();
-            const avail = {
-                start: document.getElementById('availStartTime').value,
-                end: document.getElementById('availEndTime').value,
-                lunchStart: document.getElementById('lunchStartTime').value,
-                lunchEnd: document.getElementById('lunchEndTime').value,
-                publicBlockedCategory: document.getElementById('publicBlockedCategory').value,
-                blockedStartTime: document.getElementById('blockedStartTime').value,
-                blockedEndTime: document.getElementById('blockedEndTime').value
-            };
-
-            localStorage.setItem('housing_availability', JSON.stringify(avail));
-            showNotification("Time availability, lunch, and blocked category schedule saved.", "success");
-        }
-
-        // --- PURPOSE OF VISIT LOGIC ---
-        function loadPurposes() {
-            const purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [];
-            const listGroup = document.getElementById('purposeListGroup');
-            listGroup.innerHTML = '';
-            if (purposes.length === 0) {
-                listGroup.innerHTML = `<li class="list-group-item text-muted text-center">No purpose options configured.</li>`;
-                return;
-            }
-            purposes.forEach((p, index) => {
-                listGroup.innerHTML += `
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        ${p}
-                        <button class="btn btn-outline-danger btn-sm" onclick="removePurpose(${index})"><i class="bi bi-trash"></i></button>
-                    </li>
-                `;
-            });
-        }
-
-        function addPurpose() {
-            const input = document.getElementById('newPurposeInput');
-            const val = input.value.trim();
-            if (!val) return;
-            let purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [];
-            purposes.push(val);
-            localStorage.setItem('housing_purposes', JSON.stringify(purposes));
-            input.value = '';
-            loadPurposes();
-            loadPurposeDropdown();
-            showNotification("Visit purpose added successfully.", "success");
-        }
-
-        function removePurpose(index) {
-            let purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [];
-            purposes.splice(index, 1);
-            localStorage.setItem('housing_purposes', JSON.stringify(purposes));
-            loadPurposes();
-            loadPurposeDropdown();
-            showNotification("Visit purpose removed.", "warning");
-        }
-
-        // --- USER MANAGEMENT LOGIC (ADMIN / SUPER ADMIN) ---
-        function loadUserManagementTable() {
-            const users = JSON.parse(localStorage.getItem('housing_users')) || [];
-            const tbody = document.getElementById('userTableBody');
-            tbody.innerHTML = '';
-
-            users.forEach((u, index) => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td class="fw-bold">${u.username}</td>
-                        <td><span class="badge bg-secondary">${u.role}</span></td>
-                        <td>${u.branch || 'N/A'}</td>
-                        <td>${u.fullName || 'N/A'}</td>
+                        <td>${camp}</td>
                         <td class="text-end">
-                            <button class="btn btn-sm btn-outline-warning me-1" title="Reset Password" onclick="promptResetPassword('${u.username}')"><i class="bi bi-key"></i></button>
-                            <button class="btn btn-sm btn-outline-danger" title="Remove User" onclick="removeUserAccount('${u.username}')"><i class="bi bi-person-x"></i></button>
+                            <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="superDeleteCamp(${index})"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>
                 `;
             });
-
-            // Populate export user select dropdown
-            const exportSelect = document.getElementById('exportUserSelect');
-            exportSelect.innerHTML = `<option value="ALL">All Users (Complete System Export)</option>`;
-            users.forEach(u => {
-                exportSelect.innerHTML += `<option value="${u.username}">${u.username} (${u.fullName || u.role})</option>`;
-            });
         }
 
-        function openUserModal() {
-            document.getElementById('modalUsername').value = '';
-            document.getElementById('modalPassword').value = '';
-            document.getElementById('modalRole').value = 'User';
-            document.getElementById('modalUserBranch').value = '';
-            document.getElementById('modalUserFullName').value = '';
-            new bootstrap.Modal(document.getElementById('userModal')).show();
-        }
+        function superAddCamp() {
+            const input = document.getElementById('superNewCampInput');
+            const campName = input.value.trim();
+            if (!campName) return;
 
-        function saveUserAccount() {
-            const username = document.getElementById('modalUsername').value.trim();
-            const password = document.getElementById('modalPassword').value.trim();
-            const role = document.getElementById('modalRole').value;
-            const branch = document.getElementById('modalUserBranch').value.trim();
-            const fullName = document.getElementById('modalUserFullName').value.trim();
-
-            if (!username || !password) {
-                alert("Username and password are required.");
+            let camps = JSON.parse(localStorage.getItem('housing_camps')) || ["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"];
+            if (camps.includes(campName)) {
+                showDashAlert("Camp already exists.", "danger");
                 return;
             }
 
-            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
-            const existingIndex = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
+            camps.push(campName);
+            localStorage.setItem('housing_camps', JSON.stringify(camps));
+            input.value = '';
+            initSuperAdminCamps();
+            showDashAlert("Camp successfully added.", "success");
+        }
 
-            if (existingIndex >= 0) {
-                users[existingIndex].password = password;
-                users[existingIndex].role = role;
-                users[existingIndex].branch = branch;
-                users[existingIndex].fullName = fullName;
-            } else {
-                users.push({ username, password, role, branch, fullName });
+        function superDeleteCamp(index) {
+            let camps = JSON.parse(localStorage.getItem('housing_camps')) || ["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"];
+            const removedCamp = camps[index];
+            
+            if (confirm(`Are you sure you want to delete ${removedCamp}?`)) {
+                camps.splice(index, 1);
+                localStorage.setItem('housing_camps', JSON.stringify(camps));
+                
+                // Clean up mappings
+                let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
+                delete campBuildingsMap[removedCamp];
+                localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildingsMap));
+
+                initSuperAdminCamps();
+                showDashAlert("Camp removed successfully.", "success");
             }
-
-            localStorage.setItem('housing_users', JSON.stringify(users));
-            bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
-            loadUserManagementTable();
-            loadUserDropdownForBuildings();
-            showNotification("User account saved successfully.", "success");
         }
 
-        function promptResetPassword(username) {
-            const newPass = prompt(`Enter new password for user "${username}":`);
-            if (!newPass) return;
+        function populateSuperCampDropdowns() {
+            let camps = JSON.parse(localStorage.getItem('housing_camps')) || ["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"];
+            const select = document.getElementById('superCampSelect');
+            if (!select) return;
 
-            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
-            users = users.map(u => {
-                if (u.username === username) u.password = newPass;
-                return u;
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">-- Select Camp --</option>';
+            camps.forEach(camp => {
+                select.innerHTML += `<option value="${camp}">${camp}</option>`;
             });
-            localStorage.setItem('housing_users', JSON.stringify(users));
-            showNotification(`Password reset successfully for ${username}.`, "success");
+            if (currentVal) select.value = currentVal;
         }
 
-        function removeUserAccount(username) {
-            if (username === currentUser.username) {
-                alert("You cannot remove your own active account.");
+        function renderSuperCampBuildingsList() {
+            const selectedCamp = document.getElementById('superCampSelect').value;
+            const tbody = document.getElementById('superCampBuildingsTableBody');
+            if (!tbody) return;
+
+            if (!selectedCamp) {
+                tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted small">Select a camp to view assigned buildings</td></tr>';
                 return;
             }
-            if (!confirm(`Are you sure you want to delete user account "${username}"?`)) return;
 
-            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
-            users = users.filter(u => u.username !== username);
-            localStorage.setItem('housing_users', JSON.stringify(users));
-            loadUserManagementTable();
-            loadUserDropdownForBuildings();
-            showNotification("User account removed.", "danger");
-        }
+            let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
+            let buildings = campBuildingsMap[selectedCamp] || [];
 
-        // --- EXCEL / CSV EXPORT ORGANIZED PER BUILDING ---
-        function openExportModal() {
-            new bootstrap.Modal(document.getElementById('exportModal')).show();
-        }
-
-        function executeExcelExport() {
-            const selectedUser = document.getElementById('exportUserSelect').value;
-            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
-
-            if (selectedUser !== 'ALL') {
-                bookings = bookings.filter(b => b.username && b.username.toLowerCase() === selectedUser.toLowerCase());
+            if (buildings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted small">No buildings assigned to this camp yet</td></tr>';
+                return;
             }
+
+            tbody.innerHTML = '';
+            buildings.forEach((bldg, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${bldg}</td>
+                        <td class="text-end">
+                            <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="superRemoveBuildingFromCamp('${selectedCamp}', ${index})"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function superAddBuildingToCamp() {
+            const selectedCamp = document.getElementById('superCampSelect').value;
+            const input = document.getElementById('superNewBuildingInput');
+            const bldgNum = input.value.trim();
+
+            if (!selectedCamp) {
+                showDashAlert("Please select a target camp first.", "danger");
+                return;
+            }
+            if (!bldgNum) return;
+
+            let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
+            if (!campBuildingsMap[selectedCamp]) {
+                campBuildingsMap[selectedCamp] = [];
+            }
+
+            if (campBuildingsMap[selectedCamp].includes(bldgNum)) {
+                showDashAlert("This building number is already assigned to this camp.", "danger");
+                return;
+            }
+
+            campBuildingsMap[selectedCamp].push(bldgNum);
+            localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildingsMap));
+            input.value = '';
+            renderSuperCampBuildingsList();
+            showDashAlert("Building successfully assigned to camp.", "success");
+        }
+
+        function superRemoveBuildingFromCamp(campName, index) {
+            let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
+            if (campBuildingsMap[campName]) {
+                campBuildingsMap[campName].splice(index, 1);
+                localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildingsMap));
+                renderSuperCampBuildingsList();
+                showDashAlert("Building removed from camp.", "success");
+            }
+        }
+
+        // --- Bookings Management Logic ---
+
+        function loadBookings() {
+            const bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
+            const tbody = document.getElementById('bookingsTableBody');
+            if (!tbody) return;
 
             if (bookings.length === 0) {
-                alert("No booking records found for the selected criteria.");
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No appointment requests found.</td></tr>';
                 return;
             }
 
-            // Organize per building
-            bookings.sort((a, b) => a.building.localeCompare(b.building));
+            tbody.innerHTML = '';
+            bookings.sort((a, b) => new Date(b.id) - new Date(a.id)).forEach((b) => {
+                let badgeClass = 'bg-warning text-dark';
+                if (b.status === 'Confirmed') badgeClass = 'bg-success';
+                if (b.status === 'Cancelled') badgeClass = 'bg-danger';
 
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Building Number,Branch,Last Name,First Name,Purpose of Visit,Date,Time\r\n";
-
-            bookings.forEach(b => {
-                const row = [
-                    `"${b.building || ''}"`,
-                    `"${b.branch || ''}"`,
-                    `"${b.lastName || ''}"`,
-                    `"${b.firstName || ''}"`,
-                    `"${b.purpose || ''}"`,
-                    `"${b.date || ''}"`,
-                    `"${b.time || ''}"`
-                ];
-                csvContent += row.join(",") + "\r\n";
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${b.date}</strong><br><small class="text-muted">${b.time}</small></td>
+                        <td>${b.lastName}, ${b.firstName}</td>
+                        <td><span class="badge bg-secondary">${b.branch}</span></td>
+                        <td>${b.camp || 'N/A'}</td>
+                        <td><strong>${b.building}</strong></td>
+                        <td>${b.purpose}</td>
+                        <td><span class="badge ${badgeClass}">${b.status}</span></td>
+                        <td class="text-end">
+                            <button class="btn btn-outline-success btn-sm py-0 px-1 me-1" title="Confirm" onclick="updateBookingStatus(${b.id}, 'Confirmed')"><i class="bi bi-check-lg"></i></button>
+                            <button class="btn btn-outline-danger btn-sm py-0 px-1" title="Cancel" onclick="updateBookingStatus(${b.id}, 'Cancelled')"><i class="bi bi-x-lg"></i></button>
+                        </td>
+                    </tr>
+                `;
             });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Housing_Bookings_Report_${selectedUser}_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            bootstrap.Modal.getInstance(document.getElementById('exportModal')).hide();
-            showNotification("Excel report successfully exported and downloaded.", "success");
         }
 
-        // --- GLOBAL UTILITIES ---
-        function showNotification(message, type) {
+        function updateBookingStatus(id, newStatus) {
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
+            bookings = bookings.map(b => {
+                if (b.id === id) {
+                    b.status = newStatus;
+                }
+                return b;
+            });
+            localStorage.setItem('housing_bookings', JSON.stringify(bookings));
+            loadBookings();
+            showDashAlert(`Appointment status updated to ${newStatus}.`, "success");
+        }
+
+        function showDashAlert(message, type) {
             const alert = document.getElementById('dashAlert');
             alert.className = `alert alert-${type} mb-4`;
             alert.textContent = message;
             alert.classList.remove('d-none');
-            setTimeout(() => alert.classList.add('d-none'), 4000);
-        }
-
-        function handleLogout() {
-            localStorage.removeItem('housing_current_user');
-            window.location.href = '/login';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => alert.classList.add('d-none'), 5000);
         }
     </script>
 </body>
