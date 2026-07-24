@@ -201,13 +201,10 @@
                 if (!appState.staff_users) appState.staff_users = [];
                 if (!appState.purposes) appState.purposes = ['Check-in / In-processing', 'Out-processing Inspection'];
 
-                // Identify current logged-in staff user from session or username matching
-                // Assuming session provides user info or we match against staff_users
                 const userRes = await fetch('/api/current_user');
                 if (userRes.ok) {
                     currentUser = await userRes.json();
                 } else {
-                    // Fallback to first matching or generic
                     currentUser = appState.staff_users[0] || { username: 'Staff', role: 'staff', camp: appState.camps[0] || '', buildings: [] };
                 }
 
@@ -227,7 +224,6 @@
         function getAccessibleBookings() {
             const allBookings = appState.bookings || [];
             return allBookings.filter(b => {
-                // If camp admin, match camp. If building manager, match camp and building.
                 if (currentUser.role === 'camp_admin') {
                     return b.camp === currentUser.camp;
                 } else if (currentUser.buildings && currentUser.buildings.length > 0) {
@@ -267,12 +263,13 @@
 
         function renderAssignedAppointments() {
             const tbody = document.getElementById('assignedAppointmentsTable');
+            const allBookings = appState.bookings || [];
             const accessibleBookings = getAccessibleBookings();
             
             tbody.innerHTML = accessibleBookings.length === 0 ? `<tr><td colspan="8" class="text-center text-muted py-3">No appointments found for your assigned buildings.</td></tr>` : '';
             
             accessibleBookings.forEach(b => {
-                const globalIdx = appState.bookings.findIndex(item => item.confirmationCode === b.confirmationCode);
+                const globalIdx = allBookings.findIndex(item => item.confirmationCode === b.confirmationCode);
                 const badge = b.status === 'Cancelled' ? 'bg-danger' : b.status === 'Rescheduled' ? 'bg-info text-dark' : 'bg-success';
                 tbody.innerHTML += `
                     <tr>
@@ -315,6 +312,7 @@
             }
 
             const accessibleBookings = getAccessibleBookings();
+            const allBookings = appState.bookings || [];
 
             for (let day = 1; day <= totalDays; day++) {
                 const formattedMonth = String(month + 1).padStart(2, '0');
@@ -325,7 +323,7 @@
                 
                 const bookingsOnDay = accessibleBookings.filter(b => b.date === dateStr);
                 bookingsOnDay.forEach(b => {
-                    const globalIdx = appState.bookings.findIndex(item => item.confirmationCode === b.confirmationCode);
+                    const globalIdx = allBookings.findIndex(item => item.confirmationCode === b.confirmationCode);
                     let badgeColor = 'bg-success';
                     if (b.status === 'Cancelled') badgeColor = 'bg-secondary text-decoration-line-through';
                     else if (b.status === 'Rescheduled') badgeColor = 'bg-info text-dark';
