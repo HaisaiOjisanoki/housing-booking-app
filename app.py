@@ -14,7 +14,6 @@ def load_state():
                 return json.load(f)
         except Exception:
             pass
-    # Default fallback state with superadmin
     return {
         "users": [
             {
@@ -36,7 +35,8 @@ def save_state(state):
 
 @app.route("/")
 def index():
-    return redirect(url_for("login"))
+    # Renders the public visitor booking page (ensure your template is named index.html)
+    return render_template("index.html")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -48,7 +48,6 @@ def login():
         state = load_state()
         users = state.get("users", [])
 
-        # Find user matching username and password
         user = next((u for u in users if u["username"] == username and u["password"] == password), None)
 
         if user:
