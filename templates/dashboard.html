@@ -17,8 +17,9 @@
             <a class="navbar-brand fw-bold" href="#"><i class="bi bi-shield-lock-fill me-2"></i>Housing Portal Dashboard</a>
             <div class="d-flex align-items-center">
                 <span id="userRoleBadge" class="badge bg-primary me-3 py-2 px-3">Role: Super Admin</span>
-                <a href="public_booking.html" target="_blank" class="btn btn-outline-light btn-sm me-2"><i class="bi bi-box-arrow-up-right me-1"></i>Public Booking Page</a>
-                <a href="/" class="btn btn-outline-danger btn-sm"><i class="bi bi-box-arrow-right me-1"></i>Sign Out</a>
+                <!-- Fixed with Flask url_for to prevent 404 -->
+                <a href="{{ url_for('public_booking') }}" target="_blank" class="btn btn-outline-light btn-sm me-2"><i class="bi bi-box-arrow-up-right me-1"></i>Public Booking Page</a>
+                <a href="{{ url_for('public_booking') }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-box-arrow-right me-1"></i>Sign Out</a>
             </div>
         </div>
     </nav>
@@ -515,7 +516,6 @@
             showDashAlert("Staff notes successfully saved.", "success");
         }
 
-        // --- USER & MULTIPLE BUILDING ASSIGNMENT MANAGEMENT ---
         function getAvailableCampsForUser() {
             let currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { role: "Super Admin" };
             let allCamps = JSON.parse(localStorage.getItem('housing_camps')) || ["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"];
@@ -717,7 +717,6 @@
             showDashAlert("User building assignments successfully saved.", "success");
         }
 
-        // --- SUPER ADMIN CAMPS & BUILDINGS ---
         function initSuperAdminCamps() {
             let camps = JSON.parse(localStorage.getItem('housing_camps')) || ["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"];
             localStorage.setItem('housing_camps', JSON.stringify(camps));
@@ -835,7 +834,6 @@
             }
         }
 
-        // --- FACILITY SCHEDULE & PURPOSES SETTINGS ---
         function loadAvailabilitySettings() {
             let settings = JSON.parse(localStorage.getItem('housing_availability')) || { start: "08:00", end: "17:00", lunchStart: "12:00", lunchEnd: "13:00" };
             document.getElementById('availStart').value = settings.start;
@@ -897,7 +895,6 @@
             showDashAlert("Visit purpose removed.", "success");
         }
 
-        // --- CALENDAR VIEW ---
         function changeCalendarMonth(direction) {
             currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
             renderCalendarView();
