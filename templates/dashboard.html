@@ -17,7 +17,6 @@
             <a class="navbar-brand fw-bold" href="#"><i class="bi bi-shield-lock-fill me-2"></i>Housing Portal Dashboard</a>
             <div class="d-flex align-items-center">
                 <span id="userRoleBadge" class="badge bg-primary me-3 py-2 px-3">Role: Super Admin</span>
-                <!-- Fixed link to use relative path public_booking.html -->
                 <a href="public_booking.html" target="_blank" class="btn btn-outline-light btn-sm me-2"><i class="bi bi-box-arrow-up-right me-1"></i>Public Booking Page</a>
                 <a href="/" class="btn btn-outline-danger btn-sm"><i class="bi bi-box-arrow-right me-1"></i>Sign Out</a>
             </div>
@@ -115,7 +114,7 @@
                 </div>
             </div>
 
-            <!-- TAB 3: CAMPS & BUILDING ASSIGNMENTS (SUPER ADMIN ONLY) -->
+            <!-- TAB 3: CAMPS & BUILDING ASSIGNMENTS -->
             <div class="tab-pane fade" id="campsPane" role="tabpanel">
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-header bg-dark text-white fw-bold py-3">
@@ -138,9 +137,7 @@
                                                 <th class="text-end">Action</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="superCampsTableBody">
-                                            <!-- Populated dynamically -->
-                                        </tbody>
+                                        <tbody id="superCampsTableBody"></tbody>
                                     </table>
                                 </div>
                             </div>
@@ -233,9 +230,7 @@
                                                 <th class="text-end">Action</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="purposesTableBody">
-                                            <!-- Populated dynamically -->
-                                        </tbody>
+                                        <tbody id="purposesTableBody"></tbody>
                                     </table>
                                 </div>
                             </div>
@@ -299,6 +294,12 @@
             loadAvailabilitySettings();
             loadPurposes();
             renderCalendarView();
+
+            // Listen for cross-tab storage changes
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'housing_bookings') loadBookings();
+                if (e.key === 'housing_camps' || e.key === 'housing_camp_buildings') initSuperAdminCamps();
+            });
         }
 
         function getFilteredBookings() {
@@ -397,7 +398,7 @@
             let modal = bootstrap.Modal.getInstance(modalEl);
             modal.hide();
 
-            showDashAlert("Staff notes successfully saved (Hidden from public booking page).", "success");
+            showDashAlert("Staff notes successfully saved.", "success");
         }
 
         function changeCalendarMonth(direction) {
@@ -517,7 +518,7 @@
             localStorage.setItem('housing_camps', JSON.stringify(camps));
             input.value = '';
             initSuperAdminCamps();
-            showDashAlert("Camp successfully added. Public booking page updated automatically.", "success");
+            showDashAlert("Camp successfully added and synced to public page.", "success");
         }
 
         function superDeleteCamp(index) {
@@ -533,7 +534,7 @@
                 localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildingsMap));
 
                 initSuperAdminCamps();
-                showDashAlert("Camp removed successfully. Public booking page updated automatically.", "success");
+                showDashAlert("Camp removed successfully.", "success");
             }
         }
 
@@ -606,7 +607,7 @@
             localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildingsMap));
             input.value = '';
             renderSuperCampBuildingsList();
-            showDashAlert("Building successfully assigned to camp and synced to public page.", "success");
+            showDashAlert("Building successfully assigned and synced to public page.", "success");
         }
 
         function superRemoveBuildingFromCamp(campName, index) {
@@ -615,18 +616,13 @@
                 campBuildingsMap[campName].splice(index, 1);
                 localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildingsMap));
                 renderSuperCampBuildingsList();
-                showDashAlert("Building removed from camp and synced to public page.", "success");
+                showDashAlert("Building removed.", "success");
             }
         }
 
         function loadAvailabilitySettings() {
             const stored = localStorage.getItem('housing_availability');
-            const avail = stored ? JSON.parse(stored) : {
-                start: "08:00",
-                end: "17:00",
-                lunchStart: "12:00",
-                lunchEnd: "13:00"
-            };
+            const avail = stored ? JSON.parse(stored) : { start: "08:00", end: "17:00", lunchStart: "12:00", lunchEnd: "13:00" };
 
             document.getElementById('availStart').value = avail.start || "08:00";
             document.getElementById('availEnd').value = avail.end || "17:00";
@@ -644,21 +640,15 @@
             };
 
             localStorage.setItem('housing_availability', JSON.stringify(avail));
-            showDashAlert("Facility schedule and restriction rules successfully updated.", "success");
+            showDashAlert("Facility schedule updated successfully.", "success");
         }
 
         function loadPurposes() {
-            const purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [
-                "Check-in / In-processing", 
-                "Out-processing Inspection", 
-                "Maintenance Request", 
-                "Room Change Inquiry"
-            ];
+            const purposes = JSON.parse(localStorage.getItem('housing_purposes')) || ["Check-in / In-processing", "Out-processing Inspection", "Maintenance Request", "Room Change Inquiry"];
             const tbody = document.getElementById('purposesTableBody');
             if (!tbody) return;
 
             tbody.innerHTML = '';
-            purposes.pers?.forEach((p, index) => {}); // fallback safe
             purposes.forEach((p, index) => {
                 tbody.innerHTML += `
                     <tr>
@@ -676,12 +666,7 @@
             const val = input.value.trim();
             if (!val) return;
 
-            let purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [
-                "Check-in / In-processing", 
-                "Out-processing Inspection", 
-                "Maintenance Request", 
-                "Room Change Inquiry"
-            ];
+            let purposes = JSON.parse(localStorage.getItem('housing_purposes')) || ["Check-in / In-processing", "Out-processing Inspection", "Maintenance Request", "Room Change Inquiry"];
             if (!purposes.includes(val)) {
                 purposes.push(val);
                 localStorage.setItem('housing_purposes', JSON.stringify(purposes));
