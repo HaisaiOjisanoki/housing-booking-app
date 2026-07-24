@@ -3,1169 +3,299 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Housing Management</title>
+    <title>Dashboard - Housing Portal</title>
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FullCalendar CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body class="bg-light" onload="initDashboard()">
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#">Housing Portal <span id="currentUserRoleBadge" class="badge bg-secondary ms-2"></span></a>
-            <div class="d-flex align-items-center gap-2">
-                <!-- Notification Bell & Inbox Trigger -->
-                <button class="btn btn-outline-light btn-sm position-relative" type="button" onclick="openNotificationModal()">
-                    🔔 Notifications 
-                    <span id="notifBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display:none;">0</span>
-                </button>
-                <a href="index.html" class="btn btn-outline-light btn-sm">Public Form</a>
-                <a href="login.html" class="btn btn-outline-danger btn-sm">Log Out</a>
+            <a class="navbar-brand fw-bold" href="#"><i class="bi bi-house-door-fill me-2"></i>Housing Portal Dashboard</a>
+            <div class="d-flex align-items-center">
+                <span id="userBadge" class="badge bg-primary me-3 p-2">Role: Loading...</span>
+                <button onclick="handleLogout()" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right me-1"></i>Sign Out</button>
             </div>
         </div>
     </nav>
 
-    <div class="container my-4">
-        <h2 class="mb-4" id="portalHeaderTitle">Housing Management & Calendar Portal</h2>
+    <!-- Main Content Container -->
+    <div class="container-fluid py-4">
         
-        <!-- CALENDAR VIEW SECTION -->
-        <div class="card p-3 shadow-sm mb-4 bg-white border-primary">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="text-primary mb-0">📅 Bookings Calendar & Schedule</h5>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-secondary btn-sm" onclick="changeMonth(-1)">&#9664; Prev</button>
-                    <h5 id="calendarMonthYear" class="mb-0 align-self-center fw-bold">Month Year</h5>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="changeMonth(1)">Next &#9654;</button>
-                </div>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-bordered text-center align-middle" style="table-layout: fixed; min-width: 700px;">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
-                        </tr>
-                    </thead>
-                    <tbody id="calendarBody">
-                        <!-- Populated dynamically -->
-                    </tbody>
-                </table>
-            </div>
-            <div class="text-muted small mt-2" id="calendarRoleNotice"></div>
-        </div>
+        <!-- Status Alert Notification -->
+        <div id="dashAlert" class="alert d-none mb-4" role="alert"></div>
 
-        <!-- Admin Export Controls Toolbar (Visible to Admins / Super Admins only) -->
-        <div class="card p-3 shadow-sm mb-4 bg-white border-success" id="adminExportSection">
-            <h5 class="mb-3 text-success">📊 Booking Data Export (Excel / CSV Format)</h5>
-            <div class="row g-3 align-items-end">
-                <div class="col-12 col-md-5">
-                    <button class="btn btn-success w-100" onclick="exportBuildingGroupedBookings()">Export All Bookings (Grouped by Building)</button>
-                </div>
-                <div class="col-12 col-md-4">
-                    <select class="form-select form-select-sm" id="exportUserSelect">
-                        <option value="">-- Filter by User --</option>
-                    </select>
-                </div>
-                <div class="col-12 col-md-3">
-                    <button class="btn btn-outline-success w-100" onclick="exportSelectedUserBookings()">Export Selected User</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- MAIN CONTENT AREA (Role Adaptive) -->
-        <div class="row g-4" id="mainContentRow">
-            <!-- Left Column: Building / User Management -->
-            <div class="col-12 col-lg-4" id="leftColumnControls">
-                
-                <!-- ADMIN BUILDING CREATION FORM -->
-                <div class="card p-3 shadow-sm mb-4" id="adminBuildingFormCard">
-                    <h5 id="formTitle" class="mb-3">Add New Building</h5>
-                    <form id="buildingForm" onsubmit="saveBuilding(event)">
-                        <input type="hidden" id="buildingIndex" value="">
-                        <div class="mb-3">
-                            <label for="buildingNameInput" class="form-label">Building Number/Name</label>
-                            <input type="text" class="form-control" id="buildingNameInput" required placeholder="e.g. Building 4">
-                        </div>
-                        <div class="row">
-                            <div class="col-6 mb-3">
-                                <label for="startTimeInput" class="form-label">Start Time</label>
-                                <input type="time" class="form-control" id="startTimeInput" value="08:00" required>
-                            </div>
-                            <div class="col-6 mb-3">
-                                <label for="endTimeInput" class="form-label">End Time</label>
-                                <input type="time" class="form-control" id="endTimeInput" value="17:00" required>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-6 mb-3">
-                                <label for="lunchStartInput" class="form-label">Lunch Start</label>
-                                <input type="time" class="form-control" id="lunchStartInput" value="12:00">
-                            </div>
-                            <div class="col-6 mb-3">
-                                <label for="lunchEndInput" class="form-label">Lunch End</label>
-                                <input type="time" class="form-control" id="lunchEndInput" value="13:00">
-                            </div>
-                        </div>
-
-                        <!-- Assigned Users for Coverage -->
-                        <div class="mb-3" id="assignedUsersWrapper">
-                            <label class="form-label">Assign Team Members (Coverage)</label>
-                            <div id="assignedUsersChecklist" class="border rounded p-2 bg-light" style="max-height: 120px; overflow-y: auto;"></div>
-                            <div class="form-text small">Assign multiple users to cover this building during leave or time off.</div>
-                        </div>
-
-                        <!-- Purpose of Visit Manager for Building -->
-                        <div class="mb-3">
-                            <label class="form-label">Purpose of Visit Options</label>
-                            <div class="input-group mb-2">
-                                <input type="text" class="form-control form-control-sm" id="newPurposeInput" placeholder="e.g. In-processing">
-                                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="addPurposeToForm()">Add</button>
-                            </div>
-                            <ul id="purposeListContainer" class="list-group list-group-flush border rounded" style="max-height: 100px; overflow-y: auto;"></ul>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100 mb-2">Save Building Rules</button>
-                        <button type="button" class="btn btn-outline-secondary w-100" onclick="resetBuildingForm()" id="cancelEditBtn" style="display:none;">Cancel Edit</button>
-                    </form>
-                </div>
-
-                <!-- NORMAL USER: ASSIGNED BUILDING EDIT CARD -->
-                <div class="card p-3 shadow-sm mb-4 border-info" id="userAssignedBuildingCard" style="display: none;">
-                    <h5 class="mb-3 text-info">📌 My Assigned Buildings</h5>
-                    <p class="text-muted small">You can manage and update the operating hours and purpose options for the buildings assigned to you.</p>
-                    <div id="userAssignedBuildingsContainer"></div>
-                </div>
-
-                <!-- Add User Form (Admin/Super Admin only) -->
-                <div class="card p-3 shadow-sm border-primary" id="adminUserCreationCard">
-                    <h5 class="mb-3 text-primary">👤 Add New User Account</h5>
-                    <form id="userForm" onsubmit="saveUser(event)">
-                        <div class="mb-3">
-                            <label for="newUsername" class="form-label">Username</label>
-                            <input type="text" class="form-control" id="newUsername" required placeholder="username">
-                        </div>
-                        <div class="mb-3">
-                            <label for="newPassword" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="newPassword" required placeholder="password">
-                        </div>
-                        <div class="mb-3">
-                            <label for="newRole" class="form-label">Role</label>
-                            <select class="form-select" id="newRole" required>
-                                <option value="User">User</option>
-                                <option value="Admin">Admin</option>
-                                <option value="Super Admin">Super Admin</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Create User</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Right Column: Buildings Table & Users Table -->
-            <div class="col-12 col-lg-8" id="rightColumnContainer">
-                <div class="card p-3 shadow-sm mb-4" id="adminBuildingsTableCard">
-                    <h5 class="mb-3">Configured Buildings, Coverage Staff & Operating Hours</h5>
-                    <div class="table-responsive">
-                        <table class="table table-striped align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Building Number</th>
-                                    <th>Hours</th>
-                                    <th>Assigned Coverage Staff</th>
-                                    <th>Purpose Options</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="buildingsTableBody"></tbody>
-                        </table>
+        <div class="row g-4">
+            <!-- Calendar Column -->
+            <div class="col-lg-8">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-calendar-event me-2 text-primary"></i>Appointment Calendar View</h5>
+                        <button class="btn btn-sm btn-outline-primary" onclick="loadBookingsData()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="calendar" style="min-height: 600px;"></div>
                     </div>
                 </div>
+            </div>
 
-                <!-- User Accounts Management Table -->
-                <div class="card p-3 shadow-sm" id="adminUsersTableCard">
-                    <h5 class="mb-3">Managed User Accounts</h5>
-                    <div class="table-responsive">
-                        <table class="table table-striped align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Username</th>
-                                    <th>Role</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="usersTableBody"></tbody>
-                        </table>
+            <!-- Booking Management Column -->
+            <div class="col-lg-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-journal-check me-2 text-primary"></i>Manage Bookings</h5>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <div class="input-group mb-3">
+                            <input type="text" id="searchBooking" class="form-control form-control-sm" placeholder="Search by name or building..." onkeyup="filterBookings()">
+                            <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                        </div>
+
+                        <!-- Bookings Scrollable List / Table Container -->
+                        <div class="table-responsive flex-grow-1" style="max-height: 550px; overflow-y: auto;">
+                            <table class="table table-hover align-middle small">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Details</th>
+                                        <th>Date</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bookingTableBody">
+                                    <!-- Injected via JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- EDIT ASSIGNED BUILDING MODAL (For Normal User) -->
-    <div class="modal fade" id="editAssignedBuildingModal" tabindex="-1" aria-hidden="true">
+    <!-- Booking Details / Edit Modal -->
+    <div class="modal fade" id="bookingModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title">Edit Assigned Building</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalTitle">Booking Information</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="userBuildingEditForm" onsubmit="saveUserAssignedBuilding(event)">
-                        <input type="hidden" id="userEditBuildingId">
+                    <form id="bookingForm">
+                        <input type="hidden" id="editBookingId">
                         <div class="mb-3">
-                            <label for="userEditBuildingName" class="form-label">Building Name / Number</label>
-                            <input type="text" class="form-control" id="userEditBuildingName" required>
-                        </div>
-                        <div class="row">
-                            <div class="col-6 mb-3">
-                                <label for="userEditStartTime" class="form-label">Start Time</label>
-                                <input type="time" class="form-control" id="userEditStartTime" required>
-                            </div>
-                            <div class="col-6 mb-3">
-                                <label for="userEditEndTime" class="form-label">End Time</label>
-                                <input type="time" class="form-control" id="userEditEndTime" required>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-6 mb-3">
-                                <label for="userEditLunchStart" class="form-label">Lunch Start</label>
-                                <input type="time" class="form-control" id="userEditLunchStart">
-                            </div>
-                            <div class="col-6 mb-3">
-                                <label for="userEditLunchEnd" class="form-label">Lunch End</label>
-                                <input type="time" class="form-control" id="userEditLunchEnd">
-                            </div>
+                            <label class="form-label text-muted small">Visitor / Guest Name</label>
+                            <input type="text" id="modalGuestName" class="form-control" readonly>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Purpose of Visit Options</label>
-                            <div class="input-group mb-2">
-                                <input type="text" class="form-control form-control-sm" id="userNewPurposeInput" placeholder="e.g. In-processing">
-                                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="addUserPurposeToForm()">Add</button>
-                            </div>
-                            <ul id="userPurposeListContainer" class="list-group list-group-flush border rounded" style="max-height: 120px; overflow-y: auto;"></ul>
+                            <label class="form-label text-muted small">Building / Facility</label>
+                            <input type="text" id="modalBuilding" class="form-control" readonly>
                         </div>
-                        <button type="submit" class="btn btn-info text-white w-100">Save Changes</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- DAY BOOKINGS MODAL (Clicked from Calendar) -->
-    <div class="modal fade" id="dayBookingsModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="dayModalTitle">Bookings for Date</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="dayBookingsContainer" class="table-responsive"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- BOOKING DETAIL & MANAGEMENT MODAL -->
-    <div class="modal fade" id="bookingDetailModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">Manage Booking - <span id="detailConfirmationCode"></span></h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="bookingManagementForm" onsubmit="saveBookingChanges(event)">
-                        <input type="hidden" id="editBookingCode">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">First Name</label>
-                                <input type="text" class="form-control" id="editBookingFirstName" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Last Name</label>
-                                <input type="text" class="form-control" id="editBookingLastName" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Email</label>
-                                <input type="email" class="form-control" id="editBookingEmail" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Branch of Service</label>
-                                <input type="text" class="form-control" id="editBookingBranch">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Building Number</label>
-                                <select class="form-select" id="editBookingBuilding" required onchange="updateBookingPurposeOptions()"></select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Date (Reschedule)</label>
-                                <input type="date" class="form-control" id="editBookingDate" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Time (Reschedule)</label>
-                                <input type="time" class="form-control" id="editBookingTime" required>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="form-label">Purpose of Visit</label>
-                                <select class="form-select" id="editBookingPurpose" required></select>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="form-label text-danger fw-bold">📝 Staff Internal Notes (Only viewed by staff)</label>
-                                <textarea class="form-control bg-light" id="editBookingInternalNotes" rows="3" placeholder="Add confidential staff notes regarding this booking..."></textarea>
-                            </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Appointment Date & Time</label>
+                            <input type="text" id="modalDateTime" class="form-control" readonly>
                         </div>
-                        <div class="mt-4 d-flex justify-content-between">
-                            <button type="button" class="btn btn-outline-danger" onclick="cancelBookingFromModal()">Cancel / Delete Booking</button>
-                            <div>
-                                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Close</button>
-                                <button type="submit" class="btn btn-primary">Save Changes</button>
-                            </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Current Status</label>
+                            <select id="modalStatus" class="form-select">
+                                <option value="Pending">Pending</option>
+                                <option value="Approved">Approved</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
                         </div>
                     </form>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- NOTIFICATION INBOX MODAL -->
-    <div class="modal fade" id="notificationModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title">📬 Notification Inbox</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="btn-group btn-group-sm" role="group">
-                            <button type="button" class="btn btn-outline-secondary active" id="filterAllBtn" onclick="filterNotifications('all')">All</button>
-                            <button type="button" class="btn btn-outline-secondary" id="filterUnreadBtn" onclick="filterNotifications('unread')">Unread</button>
-                            <button type="button" class="btn btn-outline-secondary" id="filterSavedBtn" onclick="filterNotifications('saved')">Saved</button>
-                        </div>
-                        <button class="btn btn-outline-primary btn-sm" onclick="markAllAsRead()">Mark All as Read</button>
-                    </div>
-                    <div id="notificationListContainer" style="max-height: 400px; overflow-y: auto;" class="border rounded p-2 bg-light"></div>
-                </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteCurrentBooking()">Delete Booking</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="saveBookingChanges()">Save Changes</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        const defaultBuildings = [
-            { id: 1, name: "Building 1", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"], assignedUsers: ["superadmin", "Admin", "User"] },
-            { id: 2, name: "Building 2", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"], assignedUsers: ["superadmin", "Admin"] },
-            { id: 3, name: "Building 4", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"], assignedUsers: ["superadmin", "User"] }
-        ];
+    <!-- FullCalendar JS -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 
-        let currentBuildingPurposes = ["In-processing", "Room Inspection", "Maintenance"];
-        let currentUserBuildingPurposesTemp = [];
-        let currentNotifFilter = 'all';
-        let calendarYear = new Date().getFullYear();
-        let calendarMonth = new Date().getMonth();
+    <script>
+        let calendar;
+        let allBookings = [];
+        let currentUser = null;
 
         function initDashboard() {
-            if (!localStorage.getItem('housing_buildings')) {
-                localStorage.setItem('housing_buildings', JSON.stringify(defaultBuildings));
-            }
-            
-            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'superadmin', role: 'Super Admin', email: 'superadmin@housing.mil' };
-            document.getElementById('currentUserRoleBadge').innerText = `${currentUser.role} (${currentUser.username})`;
-
-            const isNormalUser = currentUser.role === 'User';
-
-            if (isNormalUser) {
-                document.getElementById('portalHeaderTitle').innerText = `User Portal - ${currentUser.username}`;
-                document.getElementById('adminExportSection').style.display = 'none';
-                document.getElementById('adminBuildingFormCard').style.display = 'none';
-                document.getElementById('adminUserCreationCard').style.display = 'none';
-                document.getElementById('adminUsersTableCard').style.display = 'none';
-                document.getElementById('adminBuildingsTableCard').style.display = 'none';
-
-                document.getElementById('userAssignedBuildingCard').style.display = 'block';
-                renderUserAssignedBuildings();
-            } else {
-                renderPurposeList();
-                renderAssignedUsersChecklist([]);
-                renderBuildingsTable();
-                renderUsersTable();
-                populateExportUserDropdown();
-            }
-
-            updateNotificationBadge();
-            renderCalendar();
-        }
-
-        function renderUserAssignedBuildings() {
-            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'User' };
-            const buildings = getBuildings();
-            const assignedBuildings = buildings.filter(b => b.assignedUsers && b.assignedUsers.includes(currentUser.username));
-            const container = document.getElementById('userAssignedBuildingsContainer');
-            container.innerHTML = '';
-
-            if (assignedBuildings.length === 0) {
-                container.innerHTML = `<p class="text-muted small">No buildings are currently assigned to your account. Contact an administrator.</p>`;
+            // Check authentication session
+            const storedUser = localStorage.getItem('housing_current_user');
+            if (!storedUser) {
+                window.location.href = '/login';
                 return;
             }
 
-            assignedBuildings.forEach(b => {
-                const purposesHtml = (b.purposes || []).map(p => `<span class="badge bg-light text-dark border me-1">${p}</span>`).join('');
-                container.innerHTML += `
-                    <div class="card mb-3 p-3 bg-light border">
-                        <h6 class="text-primary fw-bold mb-1">${b.name}</h6>
-                        <p class="mb-1 small"><strong>Hours:</strong> ${b.startTime} - ${b.endTime} | <strong>Lunch:</strong> ${b.lunchStart || 'N/A'} - ${b.lunchEnd || 'N/A'}</p>
-                        <p class="mb-2 small"><strong>Purpose Options:</strong> ${purposesHtml || 'None'}</p>
-                        <button class="btn btn-outline-info btn-sm w-100" onclick="openUserEditBuildingModal(${b.id})">Edit Building Details & Purposes</button>
+            currentUser = JSON.parse(storedUser);
+            document.getElementById('userBadge').textContent = `Role: ${currentUser.role} (${currentUser.username})`;
+
+            // Seed sample bookings if none exist in localStorage for demo testing
+            if (!localStorage.getItem('housing_bookings')) {
+                const sampleBookings = [
+                    { id: 101, name: "Staff Sgt. Miller", building: "Building 402 - Room 101", date: "2026-07-26T10:00:00", status: "Approved" },
+                    { id: 102, name: "Capt. Davis", building: "Building 405 - Room 204", date: "2026-07-28T14:30:00", status: "Pending" },
+                    { id: 103, name: "Sgt. Roberts", building: "Building 402 - Room 112", date: "2026-07-30T09:00:00", status: "Approved" }
+                ];
+                localStorage.setItem('housing_bookings', JSON.stringify(sampleBookings));
+            }
+
+            initCalendar();
+            loadBookingsData();
+        }
+
+        function initCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listWeek'
+                },
+                events: fetchCalendarEvents,
+                eventClick: function(info) {
+                    openBookingModal(info.event.id);
+                }
+            });
+            calendar.render();
+        }
+
+        function fetchCalendarEvents(fetchInfo, successCallback, failureCallback) {
+            const bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
+            
+            // Map bookings to FullCalendar event objects
+            const events = bookings.map(b => ({
+                id: b.id.toString(),
+                title: `${b.name} (${b.building})`,
+                start: b.date,
+                backgroundColor: b.status === 'Approved' ? '#198754' : b.status === 'Cancelled' ? '#dc3545' : '#ffc107',
+                textColor: b.status === 'Pending' ? '#000' : '#fff'
+            }));
+
+            successCallback(events);
+        }
+
+        function loadBookingsData() {
+            allBookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
+            renderBookingsTable(allBookings);
+            if (calendar) {
+                calendar.refetchEvents();
+            }
+        }
+
+        function renderBookingsTable(bookings) {
+            const tbody = document.getElementById('bookingTableBody');
+            tbody.innerHTML = '';
+
+            if (bookings.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-4">No bookings found.</td></tr>`;
+                return;
+            }
+
+            bookings.forEach(b => {
+                const tr = document.createElement('tr');
+                const badgeClass = b.status === 'Approved' ? 'bg-success' : b.status === 'Cancelled' ? 'bg-danger' : 'bg-warning text-dark';
+                
+                tr.innerHTML = `
+                    <div>
+                        <strong>${b.name}</strong><br>
+                        <span class="text-muted">${b.building}</span><br>
+                        <span class="badge ${badgeClass} mt-1">${b.status}</span>
                     </div>
+                    </td>
+                    <td>${new Date(b.date).toLocaleDateString()}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" onclick="openBookingModal('${b.id}')"><i class="bi bi-pencil-square"></i></button>
+                    </td>
                 `;
+                tbody.appendChild(tr);
             });
         }
 
-        function openUserEditBuildingModal(buildingId) {
-            const buildings = getBuildings();
-            const b = buildings.find(item => item.id === buildingId);
-            if (!b) return;
+        function filterBookings() {
+            const query = document.getElementById('searchBooking').value.toLowerCase();
+            const filtered = allBookings.filter(b => 
+                b.name.toLowerCase().includes(query) || b.building.toLowerCase().includes(query)
+            );
+            renderBookingsTable(filtered);
+        }
 
-            document.getElementById('userEditBuildingId').value = b.id;
-            document.getElementById('userEditBuildingName').value = b.name;
-            document.getElementById('userEditStartTime').value = b.startTime;
-            document.getElementById('userEditEndTime').value = b.endTime;
-            document.getElementById('userEditLunchStart').value = b.lunchStart || '';
-            document.getElementById('userEditLunchEnd').value = b.lunchEnd || '';
-            currentUserBuildingPurposesTemp = [...(b.purposes || [])];
-            renderUserPurposeList();
+        function openBookingModal(id) {
+            const booking = allBookings.find(b => b.id.toString() === id.toString());
+            if (!booking) return;
 
-            const modal = new bootstrap.Modal(document.getElementById('editAssignedBuildingModal'));
+            document.getElementById('editBookingId').value = booking.id;
+            document.getElementById('modalGuestName').value = booking.name;
+            document.getElementById('modalBuilding').value = booking.building;
+            document.getElementById('modalDateTime').value = new Date(booking.date).toLocaleString();
+            document.getElementById('modalStatus').value = booking.status;
+
+            const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
             modal.show();
         }
 
-        function renderUserPurposeList() {
-            const container = document.getElementById('userPurposeListContainer');
-            container.innerHTML = '';
-            if (currentUserBuildingPurposesTemp.length === 0) {
-                container.innerHTML = '<li class="list-group-item text-muted small">No purposes added.</li>';
-                return;
-            }
-            currentUserBuildingPurposesTemp.forEach((p, idx) => {
-                container.innerHTML += `
-                    <li class="list-group-item d-flex justify-content-between align-items-center py-1 px-2">
-                        <span class="small">${p}</span>
-                        <button type="button" class="btn btn-sm text-danger p-0 border-0 fw-bold" onclick="removeUserPurpose(${idx})">&times;</button>
-                    </li>
-                `;
-            });
-        }
+        function saveBookingChanges() {
+            const id = document.getElementById('editBookingId').value;
+            const newStatus = document.getElementById('modalStatus').value;
 
-        function addUserPurposeToForm() {
-            const input = document.getElementById('userNewPurposeInput');
-            const val = input.value.trim();
-            if (val && !currentUserBuildingPurposesTemp.includes(val)) {
-                currentUserBuildingPurposesTemp.push(val);
-                input.value = '';
-                renderUserPurposeList();
-            }
-        }
-
-        function removeUserPurpose(idx) {
-            currentUserBuildingPurposesTemp.splice(idx, 1);
-            renderUserPurposeList();
-        }
-
-        function saveUserAssignedBuilding(event) {
-            event.preventDefault();
-            const buildingId = parseInt(document.getElementById('userEditBuildingId').value);
-            const newName = document.getElementById('userEditBuildingName').value.trim();
-            const startTime = document.getElementById('userEditStartTime').value;
-            const endTime = document.getElementById('userEditEndTime').value;
-            const lunchStart = document.getElementById('userEditLunchStart').value;
-            const lunchEnd = document.getElementById('userEditLunchEnd').value;
-
-            if (startTime >= endTime) {
-                alert("Start time must be earlier than end time.");
-                return;
-            }
-
-            let buildings = getBuildings();
-            const index = buildings.findIndex(b => b.id === buildingId);
-            if (index !== -1) {
-                buildings[index].name = newName;
-                buildings[index].startTime = startTime;
-                buildings[index].endTime = endTime;
-                buildings[index].lunchStart = lunchStart;
-                buildings[index].lunchEnd = lunchEnd;
-                buildings[index].purposes = [...currentUserBuildingPurposesTemp];
-
-                localStorage.setItem('housing_buildings', JSON.stringify(buildings));
-                
-                const modalEl = document.getElementById('editAssignedBuildingModal');
-                bootstrap.Modal.getInstance(modalEl).hide();
-
-                renderUserAssignedBuildings();
-                renderCalendar();
-                alert("Building details and purpose options successfully updated!");
-            }
-        }
-
-        function renderCalendar() {
-            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'superadmin', role: 'Super Admin', email: 'superadmin@housing.mil' };
-            const isAdminOrSuper = currentUser.role === 'Super Admin' || currentUser.role === 'Admin';
-            
-            const noticeEl = document.getElementById('calendarRoleNotice');
-            if (isAdminOrSuper) {
-                noticeEl.innerHTML = '<span class="text-success fw-semibold">Viewing Mode: Super Admin / Admin (Showing all user bookings and team coverages)</span>';
-            } else {
-                noticeEl.innerHTML = '<span class="text-info fw-semibold">Viewing Mode: User (Showing your bookings and assigned building schedules)</span>';
-            }
-
-            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            document.getElementById('calendarMonthYear').innerText = `${monthNames[calendarMonth]} ${calendarYear}`;
-
-            const firstDayIndex = new Date(calendarYear, calendarMonth, 1).getDay();
-            const totalDays = new Date(calendarYear, calendarMonth + 1, 0).getDate();
-
-            let bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
-            
-            if (!isAdminOrSuper) {
-                const buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [];
-                const assignedBuildingNames = buildings.filter(b => b.assignedUsers && b.assignedUsers.includes(currentUser.username)).map(b => b.name);
-                bookings = bookings.filter(b => (b.email && b.email.toLowerCase() === currentUser.email.toLowerCase()) || assignedBuildingNames.includes(b.buildingNumber));
-            }
-
-            const tbody = document.getElementById('calendarBody');
-            tbody.innerHTML = '';
-
-            let date = 1;
-            for (let i = 0; i < 6; i++) {
-                let row = document.createElement('tr');
-
-                for (let j = 0; j < 7; j++) {
-                    let cell = document.createElement('td');
-                    cell.style.height = '90px';
-                    cell.style.verticalAlign = 'top';
-                    cell.style.cursor = 'pointer';
-
-                    if (i === 0 && j < firstDayIndex) {
-                        cell.className = 'bg-light text-muted';
-                        row.appendChild(cell);
-                    } else if (date > totalDays) {
-                        cell.className = 'bg-light text-muted';
-                        row.appendChild(cell);
-                    } else {
-                        const formattedMonth = (calendarMonth + 1).toString().padStart(2, '0');
-                        const formattedDay = date.toString().padStart(2, '0');
-                        const dateString = `${calendarYear}-${formattedMonth}-${formattedDay}`;
-
-                        const dayBookings = bookings.filter(b => b.date === dateString);
-
-                        let badgeHtml = '';
-                        if (dayBookings.length > 0) {
-                            badgeHtml = `<div class="mt-1"><span class="badge bg-primary">${dayBookings.length} booking(s)</span></div>`;
-                        }
-
-                        cell.innerHTML = `<div class="fw-bold small">${date}</div>${badgeHtml}`;
-                        
-                        const capturedDate = dateString;
-                        cell.onclick = () => showDayBookingsModal(capturedDate);
-
-                        const todayStr = new Date().toISOString().split('T')[0];
-                        if (dateString === todayStr) {
-                            cell.className = 'table-warning';
-                        }
-
-                        date++;
-                    }
-                    row.appendChild(cell);
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
+            bookings = bookings.map(b => {
+                if (b.id.toString() === id.toString()) {
+                    b.status = newStatus;
                 }
-                tbody.appendChild(row);
-                if (date > totalDays) break;
-            }
-        }
-
-        function changeMonth(direction) {
-            calendarMonth += direction;
-            if (calendarMonth > 11) {
-                calendarMonth = 0;
-                calendarYear++;
-            } else if (calendarMonth < 0) {
-                calendarMonth = 11;
-                calendarYear--;
-            }
-            renderCalendar();
-        }
-
-        function showDayBookingsModal(dateStr) {
-            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'superadmin', role: 'Super Admin', email: 'superadmin@housing.mil' };
-            const isAdminOrSuper = currentUser.role === 'Super Admin' || currentUser.role === 'Admin';
-            let bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
-
-            if (!isAdminOrSuper) {
-                const buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [];
-                const assignedBuildingNames = buildings.filter(b => b.assignedUsers && b.assignedUsers.includes(currentUser.username)).map(b => b.name);
-                bookings = bookings.filter(b => (b.email && b.email.toLowerCase() === currentUser.email.toLowerCase()) || assignedBuildingNames.includes(b.buildingNumber));
-            }
-
-            const dayBookings = bookings.filter(b => b.date === dateStr);
-            document.getElementById('dayModalTitle').innerText = `Bookings for ${dateStr} (${dayBookings.length})`;
-
-            const container = document.getElementById('dayBookingsContainer');
-            if (dayBookings.length === 0) {
-                container.innerHTML = `<p class="text-muted text-center py-3">No bookings on this date.</p>`;
-            } else {
-                let html = `
-                    <table class="table table-striped table-sm align-middle">
-                        <thead>
-                            <tr>
-                                <th>Code</th><th>Name</th><th>Building</th><th>Time</th><th>Purpose</th><th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-                dayBookings.forEach(b => {
-                    html += `
-                        <tr>
-                            <td><span class="badge bg-secondary">${b.confirmationCode}</span></td>
-                            <td>${b.lastName}, ${b.firstName}</td>
-                            <td><strong>${b.buildingNumber}</strong></td>
-                            <td>${b.time}</td>
-                            <td>${b.purposeOfVisit}</td>
-                            <td><button class="btn btn-sm btn-outline-primary" onclick="openBookingDetail('${b.confirmationCode}')">Manage</button></td>
-                        </tr>
-                    `;
-                });
-                html += `</tbody></table>`;
-                container.innerHTML = html;
-            }
-
-            new bootstrap.Modal(document.getElementById('dayBookingsModal')).show();
-        }
-
-        function openBookingDetail(confirmationCode) {
-            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
-            const booking = bookings.find(b => b.confirmationCode === confirmationCode);
-            if (!booking) return;
-
-            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'superadmin', role: 'Super Admin', email: 'superadmin@housing.mil' };
-            const isAdminOrSuper = currentUser.role === 'Super Admin' || currentUser.role === 'Admin';
-            const buildings = getBuildings();
-            const assignedBuildingNames = buildings.filter(b => b.assignedUsers && b.assignedUsers.includes(currentUser.username)).map(b => b.name);
-
-            if (!isAdminOrSuper) {
-                const isOwner = booking.email && booking.email.toLowerCase() === currentUser.email.toLowerCase();
-                const isAssignedBuilding = assignedBuildingNames.includes(booking.buildingNumber);
-                if (!isOwner && !isAssignedBuilding) {
-                    alert("You do not have permission to modify or manage this booking.");
-                    return;
-                }
-            }
-
-            document.getElementById('detailConfirmationCode').innerText = booking.confirmationCode;
-            document.getElementById('editBookingCode').value = booking.confirmationCode;
-            document.getElementById('editBookingFirstName').value = booking.firstName || '';
-            document.getElementById('editBookingLastName').value = booking.lastName || '';
-            document.getElementById('editBookingEmail').value = booking.email || '';
-            document.getElementById('editBookingBranch').value = booking.branchOfService || '';
-            document.getElementById('editBookingDate').value = booking.date || '';
-            document.getElementById('editBookingTime').value = booking.time || '';
-            document.getElementById('editBookingInternalNotes').value = booking.internalNotes || '';
-
-            const buildingSelect = document.getElementById('editBookingBuilding');
-            buildingSelect.innerHTML = '';
-            buildings.forEach(b => {
-                const selected = b.name === booking.buildingNumber ? 'selected' : '';
-                buildingSelect.innerHTML += `<option value="${b.name}" ${selected}>${b.name}</option>`;
+                return b;
             });
 
-            updateBookingPurposeOptions(booking.purposeOfVisit);
-
-            const dayModalEl = document.getElementById('dayBookingsModal');
-            const dayModalInstance = bootstrap.Modal.getInstance(dayModalEl);
-            if (dayModalInstance) dayModalInstance.hide();
-
-            new bootstrap.Modal(document.getElementById('bookingDetailModal')).show();
-        }
-
-        function updateBookingPurposeOptions(selectedPurpose = '') {
-            const buildingName = document.getElementById('editBookingBuilding').value;
-            const buildings = getBuildings();
-            const building = buildings.find(b => b.name === buildingName);
-            const purposeSelect = document.getElementById('editBookingPurpose');
-            purposeSelect.innerHTML = '';
-
-            const purposes = (building && building.purposes) ? building.purposes : ["In-processing", "Room Inspection", "Maintenance"];
-            purposes.forEach(p => {
-                const isSel = p === selectedPurpose ? 'selected' : '';
-                purposeSelect.innerHTML += `<option value="${p}" ${isSel}>${p}</option>`;
-            });
-        }
-
-        function saveBookingChanges(event) {
-            event.preventDefault();
-            const code = document.getElementById('editBookingCode').value;
-            let bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
-            const index = bookings.findIndex(b => b.confirmationCode === code);
-
-            if (index === -1) {
-                alert("Booking record not found.");
-                return;
-            }
-
-            bookings[index].firstName = document.getElementById('editBookingFirstName').value.trim();
-            bookings[index].lastName = document.getElementById('editBookingLastName').value.trim();
-            bookings[index].email = document.getElementById('editBookingEmail').value.trim();
-            bookings[index].branchOfService = document.getElementById('editBookingBranch').value.trim();
-            bookings[index].buildingNumber = document.getElementById('editBookingBuilding').value;
-            bookings[index].date = document.getElementById('editBookingDate').value;
-            bookings[index].time = document.getElementById('editBookingTime').value;
-            bookings[index].purposeOfVisit = document.getElementById('editBookingPurpose').value;
-            bookings[index].internalNotes = document.getElementById('editBookingInternalNotes').value.trim();
-
-            localStorage.setItem('housing_bookings_list', JSON.stringify(bookings));
-
-            bootstrap.Modal.getInstance(document.getElementById('bookingDetailModal')).hide();
-            renderCalendar();
-            alert("Booking successfully updated/rescheduled!");
-        }
-
-        function cancelBookingFromModal() {
-            if (!confirm("Are you sure you want to cancel and delete this booking?")) return;
-
-            const code = document.getElementById('editBookingCode').value;
-            let bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
-            bookings = bookings.filter(b => b.confirmationCode !== code);
-
-            localStorage.setItem('housing_bookings_list', JSON.stringify(bookings));
-            bootstrap.Modal.getInstance(document.getElementById('bookingDetailModal')).hide();
-            renderCalendar();
-            alert("Booking has been successfully cancelled and removed.");
-        }
-
-        function renderAssignedUsersChecklist(selectedUsers = []) {
-            const users = getUsers();
-            const container = document.getElementById('assignedUsersChecklist');
-            if (!container) return;
-            container.innerHTML = '';
-
-            users.forEach(u => {
-                const isChecked = selectedUsers.includes(u.username) ? 'checked' : '';
-                container.innerHTML += `
-                    <div class="form-check">
-                        <input class="form-check-input assigned-user-checkbox" type="checkbox" value="${u.username}" id="userCheck_${u.username}" ${isChecked}>
-                        <label class="form-check-label small" for="userCheck_${u.username}">
-                            ${u.username} <span class="text-muted">(${u.role})</span>
-                        </label>
-                    </div>
-                `;
-            });
-        }
-
-        function getSelectedAssignedUsers() {
-            const checkboxes = document.querySelectorAll('.assigned-user-checkbox:checked');
-            let selected = [];
-            checkboxes.forEach(cb => selected.push(cb.value));
-            return selected;
-        }
-
-        function updateNotificationBadge() {
-            const notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
-            const unreadCount = notifications.filter(n => !n.read).length;
-            const badge = document.getElementById('notifBadge');
-            if (unreadCount > 0) {
-                badge.innerText = unreadCount;
-                badge.style.display = 'inline-block';
-            } else {
-                badge.style.display = 'none';
-            }
-        }
-
-        function openNotificationModal() {
-            renderNotifications();
-            new bootstrap.Modal(document.getElementById('notificationModal')).show();
-        }
-
-        function filterNotifications(filter) {
-            currentNotifFilter = filter;
-            document.querySelectorAll('#notificationModal .btn-group button').forEach(btn => btn.classList.remove('active'));
-            if (filter === 'all') document.getElementById('filterAllBtn').classList.add('active');
-            if (filter === 'unread') document.getElementById('filterUnreadBtn').classList.add('active');
-            if (filter === 'saved') document.getElementById('filterSavedBtn').classList.add('active');
-            renderNotifications();
-        }
-
-        function renderNotifications() {
-            let notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
-            const container = document.getElementById('notificationListContainer');
-            container.innerHTML = '';
-
-            if (currentNotifFilter === 'unread') {
-                notifications = notifications.filter(n => !n.read);
-            } else if (currentNotifFilter === 'saved') {
-                notifications = notifications.filter(n => n.saved);
-            }
-
-            if (notifications.length === 0) {
-                container.innerHTML = `<div class="text-center text-muted p-4">No notifications found.</div>`;
-                return;
-            }
-
-            notifications.forEach(n => {
-                const bgClass = n.read ? 'bg-white' : 'bg-white border-start border-primary border-4';
-                const savedBadge = n.saved ? '<span class="badge bg-success me-1">Saved</span>' : '';
-                const saveButtonText = n.saved ? 'Unsave' : 'Save';
-
-                container.innerHTML += `
-                    <div class="card mb-2 p-3 shadow-sm ${bgClass}">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h6 class="mb-1">${savedBadge}<strong>${n.title}</strong></h6>
-                                <p class="mb-1 text-muted small">${n.message}</p>
-                                <span class="text-secondary" style="font-size: 0.75rem;">${n.timestamp}</span>
-                            </div>
-                            <div class="btn-group btn-group-sm">
-                                ${!n.read ? `<button class="btn btn-outline-secondary" onclick="markAsRead(${n.id})">Mark Read</button>` : ''}
-                                <button class="btn btn-outline-success" onclick="toggleSaveNotification(${n.id})">${saveButtonText}</button>
-                                <button class="btn btn-outline-danger" onclick="deleteNotification(${n.id})">Delete</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-        }
-
-        function markAsRead(id) {
-            let notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
-            const n = notifications.find(item => item.id === id);
-            if (n) {
-                n.read = true;
-                localStorage.setItem('housing_notifications', JSON.stringify(notifications));
-                renderNotifications();
-                updateNotificationBadge();
-            }
-        }
-
-        function markAllAsRead() {
-            let notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
-            notifications.forEach(n => n.read = true);
-            localStorage.setItem('housing_notifications', JSON.stringify(notifications));
-            renderNotifications();
-            updateNotificationBadge();
-        }
-
-        function toggleSaveNotification(id) {
-            let notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
-            const n = notifications.find(item => item.id === id);
-            if (n) {
-                n.saved = !n.saved;
-                localStorage.setItem('housing_notifications', JSON.stringify(notifications));
-                renderNotifications();
-            }
-        }
-
-        function deleteNotification(id) {
-            let notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
-            notifications = notifications.filter(item => item.id !== id);
-            localStorage.setItem('housing_notifications', JSON.stringify(notifications));
-            renderNotifications();
-            updateNotificationBadge();
-        }
-
-        function exportBuildingGroupedBookings() {
-            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
-            const buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [];
-
-            if (bookings.length === 0) {
-                alert("No booking data available to export.");
-                return;
-            }
-
-            let csvContent = "data:text/csv;charset=utf-8,";
-            buildings.forEach(b => {
-                const buildingBookings = bookings.filter(item => item.buildingNumber === b.name);
-                const assignedStr = b.assignedUsers ? b.assignedUsers.join(', ') : 'None';
-                
-                csvContent += `"=== BUILDING: ${b.name} (Hours: ${b.startTime} - ${b.endTime}) | Assigned Staff: ${assignedStr} ==="\r\n`;
-                csvContent += `"Branch of Service","Last Name","First Name","Email","Date","Time","Purpose of Visit","Confirmation Code","Internal Notes"\r\n`;
-
-                if (buildingBookings.length === 0) {
-                    csvContent += `"No bookings recorded for this building"\r\n`;
-                } else {
-                    buildingBookings.forEach(row => {
-                        csvContent += [
-                            `"${row.branchOfService || ''}"`,
-                            `"${row.lastName || ''}"`,
-                            `"${row.firstName || ''}"`,
-                            `"${row.email || ''}"`,
-                            `"${row.date || ''}"`,
-                            `"${row.time || ''}"`,
-                            `"${row.purposeOfVisit || ''}"`,
-                            `"${row.confirmationCode || ''}"`,
-                            `"${(row.internalNotes || '').replace(/"/g, '""')}"`
-                        ].join(",") + "\r\n";
-                    });
-                }
-                csvContent += "\r\n\r\n";
-            });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "housing_bookings_by_building.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function renderPurposeList() {
-            const container = document.getElementById('purposeListContainer');
-            if (!container) return;
-            container.innerHTML = '';
-            currentBuildingPurposes.forEach((p, idx) => {
-                container.innerHTML += `
-                    <li class="list-group-item d-flex justify-content-between align-items-center py-1 px-2">
-                        <span class="small">${p}</span>
-                        <button type="button" class="btn btn-sm text-danger p-0 border-0 fw-bold" onclick="removePurposeFromForm(${idx})">&times;</button>
-                    </li>
-                `;
-            });
-        }
-
-        function addPurposeToForm() {
-            const input = document.getElementById('newPurposeInput');
-            const val = input.value.trim();
-            if (val && !currentBuildingPurposes.includes(val)) {
-                currentBuildingPurposes.push(val);
-                input.value = '';
-                renderPurposeList();
-            }
-        }
-
-        function removePurposeFromForm(idx) {
-            currentBuildingPurposes.splice(idx, 1);
-            renderPurposeList();
-        }
-
-        function getBuildings() {
-            return JSON.parse(localStorage.getItem('housing_buildings')) || [];
-        }
-
-        function saveBuilding(event) {
-            event.preventDefault();
-            const index = document.getElementById('buildingIndex').value;
-            const name = document.getElementById('buildingNameInput').value.trim();
-            const startTime = document.getElementById('startTimeInput').value;
-            const endTime = document.getElementById('endTimeInput').value;
-            const lunchStart = document.getElementById('lunchStartInput').value;
-            const lunchEnd = document.getElementById('lunchEndInput').value;
-            const assignedUsers = getSelectedAssignedUsers();
-
-            if (startTime >= endTime) {
-                alert("Start time must be earlier than end time.");
-                return;
-            }
-
-            let buildings = getBuildings();
-            if (index === "") {
-                const newId = buildings.length > 0 ? Math.max(...buildings.map(b => b.id)) + 1 : 1;
-                buildings.push({ id: newId, name, startTime, endTime, lunchStart, lunchEnd, purposes: [...currentBuildingPurposes], assignedUsers });
-            } else {
-                buildings[index] = { id: buildings[index].id, name, startTime, endTime, lunchStart, lunchEnd, purposes: [...currentBuildingPurposes], assignedUsers };
-            }
-
-            localStorage.setItem('housing_buildings', JSON.stringify(buildings));
-            resetBuildingForm();
-            renderBuildingsTable();
-            renderCalendar();
-            alert("Building operating hours, coverage staff, and purpose options successfully saved!");
-        }
-
-        function renderBuildingsTable() {
-            const buildings = getBuildings();
-            const tbody = document.getElementById('buildingsTableBody');
-            if (!tbody) return;
-            tbody.innerHTML = '';
-
-            buildings.forEach((b, idx) => {
-                const assignedHtml = (b.assignedUsers && b.assignedUsers.length > 0) ? b.assignedUsers.map(u => `<span class="badge bg-secondary me-1">${u}</span>`).join('') : '<span class="text-muted small">None</span>';
-                const purposesDisplay = (b.purposes && b.purposes.length > 0) ? b.purposes.map(p => `<span class="badge bg-light text-dark border me-1">${p}</span>`).join('') : '<span class="text-muted small">None</span>';
-                
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${b.name}</strong><br><small class="text-muted">${b.startTime} - ${b.endTime}</small></td>
-                        <td><span class="badge bg-warning text-dark">${(b.lunchStart && b.lunchEnd) ? `${b.lunchStart} - ${b.lunchEnd}` : 'No Lunch'}</span></td>
-                        <td>${assignedHtml}</td>
-                        <td>${purposesDisplay}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary me-1" onclick="editBuilding(${idx})">Edit</button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteBuilding(${b.id})">Delete</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        function editBuilding(index) {
-            const buildings = getBuildings();
-            const b = buildings[index];
-            document.getElementById('buildingIndex').value = index;
-            document.getElementById('buildingNameInput').value = b.name;
-            document.getElementById('startTimeInput').value = b.startTime;
-            document.getElementById('endTimeInput').value = b.endTime;
-            document.getElementById('lunchStartInput').value = b.lunchStart || "";
-            document.getElementById('lunchEndInput').value = b.lunchEnd || "";
-            currentBuildingPurposes = [...(b.purposes || ["In-processing", "Room Inspection", "Maintenance"])];
-            renderPurposeList();
-            renderAssignedUsersChecklist(b.assignedUsers || []);
-            document.getElementById('formTitle').innerText = "Edit Building & Coverage";
-            document.getElementById('cancelEditBtn').style.display = 'block';
-        }
-
-        function resetBuildingForm() {
-            document.getElementById('buildingForm').reset();
-            document.getElementById('buildingIndex').value = "";
-            document.getElementById('startTimeInput').value = "08:00";
-            document.getElementById('endTimeInput').value = "17:00";
-            document.getElementById('lunchStartInput').value = "12:00";
-            document.getElementById('lunchEndInput').value = "13:00";
-            currentBuildingPurposes = ["In-processing", "Room Inspection", "Maintenance"];
-            renderPurposeList();
-            renderAssignedUsersChecklist([]);
-            document.getElementById('formTitle').innerText = "Add New Building";
-            document.getElementById('cancelEditBtn').style.display = 'none';
-        }
-
-        function deleteBuilding(id) {
-            let buildings = getBuildings();
-            buildings = buildings.filter(b => b.id !== id);
-            localStorage.setItem('housing_buildings', JSON.stringify(buildings));
-            renderBuildingsTable();
-            renderCalendar();
-        }
-
-        function getUsers() {
-            return JSON.parse(localStorage.getItem('housing_users')) || [
-                { id: 1, username: "superadmin", password: "password123", role: "Super Admin" },
-                { id: 2, username: "Admin", password: "password123", role: "Admin" },
-                { id: 3, username: "User", password: "password123", role: "User" }
-            ];
-        }
-
-        function renderUsersTable() {
-            const users = getUsers();
-            const tbody = document.getElementById('usersTableBody');
-            if (!tbody) return;
-            tbody.innerHTML = '';
-
-            users.forEach((u) => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${u.username}</strong></td>
-                        <td><span class="badge bg-secondary">${u.role}</span></td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${u.id})">Remove</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        function saveUser(event) {
-            event.preventDefault();
-            const username = document.getElementById('newUsername').value.trim();
-            const password = document.getElementById('newPassword').value.trim();
-            const role = document.getElementById('newRole').value;
-
-            let users = getUsers();
-            if (users.some(u => u.username === username)) {
-                alert("A user with that username already exists.");
-                return;
-            }
-
-            const newId = users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1;
-            users.push({ id: newId, username, password, role });
-            localStorage.setItem('housing_users', JSON.stringify(users));
-
-            document.getElementById('userForm').reset();
-            renderUsersTable();
-            renderAssignedUsersChecklist([]);
-            alert(`User account "${username}" successfully created!`);
-        }
-
-        function deleteUser(id) {
-            let users = getUsers();
-            if (users.length <= 1) {
-                alert("Cannot remove the last remaining user account.");
-                return;
-            }
-            if (confirm("Are you sure you want to remove this user account?")) {
-                users = users.filter(u => u.id !== id);
-                localStorage.setItem('housing_users', JSON.stringify(users));
-                renderUsersTable();
-                renderAssignedUsersChecklist([]);
-            }
-        }
-
-        function populateExportUserDropdown() {
-            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
-            const select = document.getElementById('exportUserSelect');
-            if (!select) return;
-            select.innerHTML = '<option value="">-- Filter by User --</option>';
+            localStorage.setItem('housing_bookings', JSON.stringify(bookings));
             
-            const uniqueUsers = {};
-            bookings.forEach(b => {
-                if (b.email) {
-                    uniqueUsers[b.email] = `${b.lastName || ''}, ${b.firstName || ''} (${b.email})`;
-                }
-            });
+            // Hide modal and reload
+            const modalEl = document.getElementById('bookingModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
 
-            for (const [email, label] of Object.entries(uniqueUsers)) {
-                select.innerHTML += `<option value="${email}">${label}</option>`;
-            }
+            loadBookingsData();
+            showNotification("Booking status updated successfully.", "success");
         }
 
-        function exportSelectedUserBookings() {
-            const selectedEmail = document.getElementById('exportUserSelect').value;
-            if (!selectedEmail) {
-                alert("Please select a user from the dropdown first.");
-                return;
-            }
-            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
-            const userBookings = bookings.filter(b => b.email === selectedEmail);
-            
-            if (userBookings.length === 0) {
-                alert("No bookings found for the selected user.");
-                return;
-            }
+        function deleteCurrentBooking() {
+            if (!confirm("Are you sure you want to delete this booking?")) return;
 
-            const headers = ["Branch of Service", "Last name", "First name", "Email", "Building number", "Date", "Time", "Purpose of Visit", "Confirmation Code", "Internal Notes"];
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += headers.join(",") + "\r\n";
+            const id = document.getElementById('editBookingId').value;
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
+            bookings = bookings.filter(b => b.id.toString() !== id.toString());
 
-            userBookings.forEach(row => {
-                const rowData = [
-                    `"${row.branchOfService || ''}"`,
-                    `"${row.lastName || ''}"`,
-                    `"${row.firstName || ''}"`,
-                    `"${row.email || ''}"`,
-                    `"${row.buildingNumber || ''}"`,
-                    `"${row.date || ''}"`,
-                    `"${row.time || ''}"`,
-                    `"${row.purposeOfVisit || ''}"`,
-                    `"${row.confirmationCode || ''}"`,
-                    `"${(row.internalNotes || '').replace(/"/g, '""')}"`
-                ];
-                csvContent += rowData.join(",") + "\r\n";
-            });
+            localStorage.setItem('housing_bookings', JSON.stringify(bookings));
 
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `bookings_${selectedEmail.replace(/[@.]/g, '_')}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            const modalEl = document.getElementById('bookingModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+
+            loadBookingsData();
+            showNotification("Booking deleted successfully.", "danger");
+        }
+
+        function showNotification(message, type) {
+            const alert = document.getElementById('dashAlert');
+            alert.className = `alert alert-${type} mb-4`;
+            alert.textContent = message;
+            alert.classList.remove('d-none');
+            setTimeout(() => alert.classList.add('d-none'), 4000);
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('housing_current_user');
+            window.location.href = '/login';
         }
     </script>
 </body>
