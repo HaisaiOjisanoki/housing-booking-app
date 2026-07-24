@@ -6,6 +6,13 @@
     <title>Staff Dashboard - Housing Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .calendar-cell { min-height: 100px; border: 1px solid #dee2e6; background: #fff; padding: 5px; border-radius: 4px; }
+        .calendar-cell.header { background: #f8f9fa; font-weight: bold; text-align: center; min-height: 40px; padding-top: 8px; }
+        .calendar-cell.other-month { background: #fdfdfe; color: #adb5bd; }
+        .appointment-pill { font-size: 0.75rem; background: #e7f1ff; color: #0d6efd; border-radius: 3px; padding: 2px 4px; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+    </style>
 </head>
 <body class="bg-light" onload="initDashboard()">
 
@@ -34,7 +41,7 @@
                     <i class="bi bi-calendar-check me-2"></i>Appointments
                 </button>
             </li>
-            <li class="nav-item" role="presentation">
+            <li class="nav-item" role="presentation" id="campsTabItem">
                 <button class="nav-link fw-bold" id="camps-tab" data-bs-toggle="tab" data-bs-target="#campsPane" type="button" role="tab">
                     <i class="bi bi-buildings me-2"></i>Camps & Buildings
                 </button>
@@ -52,10 +59,15 @@
             <!-- APPOINTMENTS PANE -->
             <div class="tab-pane fade show active" id="appointmentsPane" role="tabpanel">
                 <div class="card shadow border-0 mb-4">
-                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-list-task me-2 text-primary"></i>Manage Appointment Requests</h5>
-                        <div class="d-flex gap-2">
-                            <select id="filterStatus" class="form-select form-select-sm" onchange="renderAppointmentsTable()">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-list-task me-2 text-primary"></i>Appointment Schedule</h5>
+                        <div class="d-flex gap-2 align-items-center">
+                            <!-- View Toggle Buttons -->
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-primary active" id="btnTableView" onclick="switchAppointmentView('table')"><i class="bi bi-table me-1"></i>Table</button>
+                                <button type="button" class="btn btn-outline-primary" id="btnCalendarView" onclick="switchAppointmentView('calendar')"><i class="bi bi-calendar3 me-1"></i>Calendar</button>
+                            </div>
+                            <select id="filterStatus" class="form-select form-select-sm" onchange="renderAppointmentsView()">
                                 <option value="">All Statuses</option>
                                 <option value="Pending">Pending</option>
                                 <option value="Confirmed">Confirmed</option>
@@ -64,8 +76,10 @@
                             </select>
                         </div>
                     </div>
+                    
                     <div class="card-body p-0">
-                        <div class="table-responsive">
+                        <!-- Table View Container -->
+                        <div id="appointmentsTableContainer" class="table-responsive">
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light text-uppercase fs-7 text-muted">
                                     <tr>
@@ -78,10 +92,27 @@
                                         <th class="text-end pe-3">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody id="appointmentsTableBody">
-                                    <!-- Dynamic rows injected via JS -->
-                                </tbody>
+                                <tbody id="appointmentsTableBody"></tbody>
                             </table>
+                        </div>
+
+                        <!-- Calendar View Container -->
+                        <div id="appointmentsCalendarContainer" class="p-3 d-none">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <button class="btn btn-outline-secondary btn-sm" onclick="changeCalendarMonth(-1)"><i class="bi bi-chevron-left"></i> Prev</button>
+                                <h4 id="calendarMonthTitle" class="fw-bold mb-0"></h4>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="changeCalendarMonth(1)">Next <i class="bi bi-chevron-right"></i></button>
+                            </div>
+                            <div class="calendar-grid mb-2">
+                                <div class="calendar-cell header">Sun</div>
+                                <div class="calendar-cell header">Mon</div>
+                                <div class="calendar-cell header">Tue</div>
+                                <div class="calendar-cell header">Wed</div>
+                                <div class="calendar-cell header">Thu</div>
+                                <div class="calendar-cell header">Fri</div>
+                                <div class="calendar-cell header">Sat</div>
+                            </div>
+                            <div id="calendarDaysGrid" class="calendar-grid"></div>
                         </div>
                     </div>
                 </div>
@@ -90,7 +121,6 @@
             <!-- CAMPS & BUILDINGS PANE -->
             <div class="tab-pane fade" id="campsPane" role="tabpanel">
                 <div class="row">
-                    <!-- Add Camp Column -->
                     <div class="col-md-4 mb-4">
                         <div class="card shadow border-0">
                             <div class="card-header bg-white py-3">
@@ -127,7 +157,6 @@
                         </div>
                     </div>
 
-                    <!-- View Camps & Buildings Column -->
                     <div class="col-md-8">
                         <div class="card shadow border-0">
                             <div class="card-header bg-white py-3">
@@ -158,13 +187,12 @@
                                         <th class="ps-3">Username</th>
                                         <th>Role</th>
                                         <th>Recovery Email</th>
+                                        <th>Assigned Buildings</th>
                                         <th>Status</th>
                                         <th class="text-end pe-3">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody id="staffTableBody">
-                                    <!-- Dynamic rows injected via JS -->
-                                </tbody>
+                                <tbody id="staffTableBody"></tbody>
                             </table>
                         </div>
                     </div>
@@ -233,7 +261,8 @@
                             <label class="form-label small text-muted">Role *</label>
                             <select id="newStaffRole" class="form-select" required>
                                 <option value="Housing Staff">Housing Staff</option>
-                                <option value="Super Admin">Super Admin</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Super Admin" id="superAdminRoleOption">Super Admin</option>
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 btn-sm fw-bold">Create Account</button>
@@ -261,7 +290,7 @@
                         <div class="mb-3">
                             <label class="form-label small text-muted">New Temporary Password *</label>
                             <input type="text" id="newTempPassword" class="form-control" required value="Reset123!">
-                            <div class="form-text small">User will be forced to change this password on their next login.</div>
+                            <div class="form-text small">User will be required to change this password on their next login.</div>
                         </div>
                         <button type="submit" class="btn btn-warning w-100 btn-sm fw-bold text-dark">Reset & Require Password Change</button>
                     </form>
@@ -270,9 +299,32 @@
         </div>
     </div>
 
+    <!-- Assign Buildings Modal -->
+    <div class="modal fade" id="assignBuildingsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-buildings-fill me-2"></i>Assign Buildings</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="assignTargetUsername">
+                    <p class="small text-muted mb-3">Select buildings this staff member is authorized to manage:</p>
+                    <div id="buildingsCheckboxList" style="max-height: 250px; overflow-y: auto;" class="border p-3 rounded bg-light"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="saveAssignedBuildings()">Save Assignments</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let currentUser = null;
+        let currentCalendarDate = new Date();
+        let currentViewMode = 'table';
 
         function initDashboard() {
             const userJson = localStorage.getItem('housing_current_user');
@@ -283,10 +335,17 @@
             currentUser = JSON.parse(userJson);
             document.getElementById('currentUserDisplay').innerHTML = `<i class="bi bi-person-circle me-1"></i>${currentUser.username} (${currentUser.role})`;
 
-            if (currentUser.role !== 'Super Admin') {
+            // Permissions setup
+            if (currentUser.role === 'Housing Staff') {
                 document.getElementById('staffTabItem').style.display = 'none';
+                document.getElementById('campsTabItem').style.display = 'none';
+            } else if (currentUser.role === 'Admin') {
+                // Admin cannot create Super Admins
+                const superOpt = document.getElementById('superAdminRoleOption');
+                if (superOpt) superOpt.remove();
             }
 
+            // Initialize storage defaults if empty
             if (!localStorage.getItem('housing_camps')) {
                 localStorage.setItem('housing_camps', JSON.stringify(["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"]));
             }
@@ -301,16 +360,45 @@
             }
             if (!localStorage.getItem('housing_users')) {
                 localStorage.setItem('housing_users', JSON.stringify([
-                    { username: "superadmin", password: "password123", role: "Super Admin", firstLogin: false, recoveryEmail: "admin@housing.mil" }
+                    { username: "superadmin", password: "password123", role: "Super Admin", firstLogin: false, recoveryEmail: "admin@housing.mil", assignedBuildings: [] }
                 ]));
             }
 
-            renderAppointmentsTable();
+            renderAppointmentsView();
             renderCampsManagement();
             renderStaffTable();
         }
 
-        // --- APPOINTMENTS LOGIC ---
+        // --- APPOINTMENTS VIEW TOGGLE & RENDER ---
+        function switchAppointmentView(mode) {
+            currentViewMode = mode;
+            const tableContainer = document.getElementById('appointmentsTableContainer');
+            const calendarContainer = document.getElementById('appointmentsCalendarContainer');
+            const btnTable = document.getElementById('btnTableView');
+            const btnCal = document.getElementById('btnCalendarView');
+
+            if (mode === 'table') {
+                tableContainer.classList.remove('d-none');
+                calendarContainer.classList.add('d-none');
+                btnTable.classList.add('active');
+                btnCal.classList.remove('active');
+            } else {
+                tableContainer.classList.add('d-none');
+                calendarContainer.classList.remove('d-none');
+                btnTable.classList.remove('active');
+                btnCal.classList.add('active');
+                renderAppointmentsCalendar();
+            }
+        }
+
+        function renderAppointmentsView() {
+            if (currentViewMode === 'table') {
+                renderAppointmentsTable();
+            } else {
+                renderAppointmentsCalendar();
+            }
+        }
+
         function renderAppointmentsTable() {
             const tbody = document.getElementById('appointmentsTableBody');
             const filter = document.getElementById('filterStatus').value;
@@ -354,13 +442,75 @@
                             <button class="btn btn-outline-primary btn-sm" onclick="openEditModal(${b.id})" title="Update Status & Notes">
                                 <i class="bi bi-pencil-square"></i>
                             </button>
+                            ${currentUser.role !== 'Housing Staff' ? `
                             <button class="btn btn-outline-danger btn-sm" onclick="deleteBooking(${b.id})" title="Delete Record">
                                 <i class="bi bi-trash"></i>
-                            </button>
+                            </button>` : ''}
                         </td>
                     </tr>
                 `;
             });
+        }
+
+        function renderAppointmentsCalendar() {
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+            
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            document.getElementById('calendarMonthTitle').textContent = `${monthNames[month]} ${year}`;
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+            const prevTotalDays = new Date(year, month, 0).getDate();
+
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
+            const filter = document.getElementById('filterStatus').value;
+            if (filter) {
+                bookings = bookings.filter(b => b.status === filter);
+            }
+
+            let daysGridHtml = '';
+
+            // Previous month trailing days
+            for (let i = firstDayIndex; i > 0; i--) {
+                let dayNum = prevTotalDays - i + 1;
+                daysGridHtml += `<div class="calendar-cell other-month"><span class="fw-bold small">${dayNum}</span></div>`;
+            }
+
+            // Current month days
+            for (let d = 1; d <= totalDays; d++) {
+                let monthStr = String(month + 1).padStart(2, '0');
+                let dayStr = String(d).padStart(2, '0');
+                let dateKey = `${year}-${monthStr}-${dayStr}`;
+
+                let dayBookings = bookings.filter(b => b.date === dateKey);
+                let pillsHtml = '';
+
+                dayBookings.forEach(b => {
+                    pillsHtml += `<div class="appointment-pill" onclick="openEditModal(${b.id})" title="${b.time} - ${b.firstName} ${b.lastName} (${b.camp})">${b.time} ${b.firstName}</div>`;
+                });
+
+                daysGridHtml += `
+                    <div class="calendar-cell">
+                        <div class="fw-bold small text-dark mb-1">${d}</div>
+                        <div>${pillsHtml}</div>
+                    </div>
+                `;
+            }
+
+            // Next month leading days to complete grid rows
+            let totalCellsRendered = firstDayIndex + totalDays;
+            let remainingCells = totalCellsRendered % 7 === 0 ? 0 : 7 - (totalCellsRendered % 7);
+            for (let n = 1; n <= remainingCells; n++) {
+                daysGridHtml += `<div class="calendar-cell other-month"><span class="fw-bold small">${n}</span></div>`;
+            }
+
+            document.getElementById('calendarDaysGrid').innerHTML = daysGridHtml;
+        }
+
+        function changeCalendarMonth(direction) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
+            renderAppointmentsCalendar();
         }
 
         function openEditModal(id) {
@@ -391,7 +541,7 @@
 
             localStorage.setItem('housing_bookings', JSON.stringify(bookings));
             bootstrap.Modal.getInstance(document.getElementById('editBookingModal')).hide();
-            renderAppointmentsTable();
+            renderAppointmentsView();
         }
 
         function deleteBooking(id) {
@@ -399,11 +549,12 @@
             let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
             bookings = bookings.filter(b => b.id !== id);
             localStorage.setItem('housing_bookings', JSON.stringify(bookings));
-            renderAppointmentsTable();
+            renderAppointmentsView();
         }
 
         // --- CAMPS & BUILDINGS LOGIC ---
         function renderCampsManagement() {
+            if (currentUser.role === 'Housing Staff') return;
             let camps = JSON.parse(localStorage.getItem('housing_camps')) || [];
             let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
 
@@ -426,7 +577,7 @@
                     <div class="border rounded p-3 mb-3 bg-white shadow-sm">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="fw-bold text-primary mb-0"><i class="bi bi-geo-fill me-1"></i>${camp}</h6>
-                            <button class="btn btn-outline-danger btn-sm py-0 px-2" onclick="removeCamp('${camp}')"><small>Delete Camp</small></button>
+                            ${currentUser.role === 'Super Admin' ? `<button class="btn btn-outline-danger btn-sm py-0 px-2" onclick="removeCamp('${camp}')"><small>Delete Camp</small></button>` : ''}
                         </div>
                         <div>${bldgBadges}</div>
                     </div>
@@ -491,28 +642,48 @@
 
         // --- STAFF MANAGEMENT LOGIC ---
         function renderStaffTable() {
-            if (currentUser.role !== 'Super Admin') return;
+            if (currentUser.role === 'Housing Staff') return;
             const tbody = document.getElementById('staffTableBody');
             let users = JSON.parse(localStorage.getItem('housing_users')) || [];
 
             if (users.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">No staff accounts found.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">No staff accounts found.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = '';
             users.forEach(u => {
+                // Admins can only see/manage Housing Staff and other Admins, but not Super Admins unless Super Admin.
+                if (currentUser.role === 'Admin' && u.role === 'Super Admin') return;
+
+                let assignedBldgsDisplay = (u.assignedBuildings && u.assignedBuildings.length > 0)
+                    ? u.assignedBuildings.map(b => `<span class="badge bg-secondary me-1">${b}</span>`).join('')
+                    : '<em class="text-muted small">None assigned</em>';
+
+                let canModify = true;
+                if (currentUser.role === 'Admin' && (u.role === 'Admin' || u.role === 'Super Admin')) {
+                    canModify = false;
+                }
+                if (u.username === 'superadmin') {
+                    canModify = false;
+                }
+
                 tbody.innerHTML += `
                     <tr>
                         <td class="ps-3 fw-bold">${u.username}</td>
                         <td><span class="badge bg-dark">${u.role}</span></td>
                         <td>${u.recoveryEmail || '<span class="text-muted italic">Not set</span>'}</td>
+                        <td>${assignedBldgsDisplay}</td>
                         <td>${u.firstLogin ? '<span class="badge bg-warning text-dark">Pending Setup</span>' : '<span class="badge bg-success">Active</span>'}</td>
                         <td class="text-end pe-3">
-                            <button class="btn btn-outline-warning btn-sm me-1" onclick="openResetPasswordModal('${u.username}')" title="Reset Password">
+                            ${u.role === 'Housing Staff' ? `
+                            <button class="btn btn-outline-primary btn-sm me-1" onclick="openAssignBuildingsModal('${u.username}')" title="Assign Buildings">
+                                <i class="bi bi-buildings"></i>
+                            </button>` : ''}
+                            <button class="btn btn-outline-warning btn-sm me-1" onclick="openResetPasswordModal('${u.username}')" title="Reset Password" ${!canModify && currentUser.role !== 'Super Admin' ? 'disabled' : ''}>
                                 <i class="bi bi-key"></i>
                             </button>
-                            <button class="btn btn-outline-danger btn-sm" onclick="deleteStaffUser('${u.username}')" title="Delete Account" ${u.username === 'superadmin' ? 'disabled' : ''}>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteStaffUser('${u.username}')" title="Delete Account" ${!canModify ? 'disabled' : ''}>
                                 <i class="bi bi-trash"></i>
                             </button>
                         </td>
@@ -528,6 +699,11 @@
             const recoveryEmail = document.getElementById('newStaffRecoveryEmail').value.trim();
             const role = document.getElementById('newStaffRole').value;
 
+            if (currentUser.role === 'Admin' && role === 'Super Admin') {
+                alert("Admins cannot create Super Admin accounts.");
+                return;
+            }
+
             let users = JSON.parse(localStorage.getItem('housing_users')) || [];
             if (users.some(u => u.username === username)) {
                 alert("Username already exists.");
@@ -539,7 +715,8 @@
                 password,
                 recoveryEmail,
                 role,
-                firstLogin: true
+                firstLogin: true,
+                assignedBuildings: []
             });
 
             localStorage.setItem('housing_users', JSON.stringify(users));
@@ -572,6 +749,60 @@
             localStorage.setItem('housing_users', JSON.stringify(users));
             bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal')).hide();
             alert(`Password successfully reset for ${username}. They will be required to change it upon their next login.`);
+            renderStaffTable();
+        }
+
+        function openAssignBuildingsModal(username) {
+            document.getElementById('assignTargetUsername').value = username;
+            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
+            let user = users.find(u => u.username === username);
+            let assigned = user ? (user.assignedBuildings || []) : [];
+
+            let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
+            let container = document.getElementById('buildingsCheckboxList');
+            container.innerHTML = '';
+
+            let hasBuildings = false;
+            for (let camp in campBuildingsMap) {
+                let bldgs = campBuildingsMap[camp];
+                if (bldgs && bldgs.length > 0) {
+                    hasBuildings = true;
+                    container.innerHTML += `<div class="fw-bold text-primary small mt-2">${camp}</div>`;
+                    bldgs.forEach(b => {
+                        let isChecked = assigned.includes(`${camp} - ${b}`) ? 'checked' : '';
+                        container.innerHTML += `
+                            <div class="form-check ms-3">
+                                <input class="form-check-input building-checkbox" type="checkbox" value="${camp} - ${b}" id="bldg_${camp}_${b}" ${isChecked}>
+                                <label class="form-check-label small" for="bldg_${camp}_${b}">${b}</label>
+                            </div>
+                        `;
+                    });
+                }
+            }
+
+            if (!hasBuildings) {
+                container.innerHTML = '<em class="small text-muted">No buildings configured in camps yet.</em>';
+            }
+
+            new bootstrap.Modal(document.getElementById('assignBuildingsModal')).show();
+        }
+
+        function saveAssignedBuildings() {
+            const username = document.getElementById('assignTargetUsername').value;
+            const checkboxes = document.querySelectorAll('.building-checkbox:checked');
+            let selectedBuildings = Array.from(checkboxes).map(cb => cb.value);
+
+            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
+            users = users.map(u => {
+                if (u.username === username) {
+                    u.assignedBuildings = selectedBuildings;
+                }
+                return u;
+            });
+
+            localStorage.setItem('housing_users', JSON.stringify(users));
+            bootstrap.Modal.getInstance(document.getElementById('assignBuildingsModal')).hide();
+            alert(`Building assignments updated for ${username}.`);
             renderStaffTable();
         }
 
