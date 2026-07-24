@@ -32,97 +32,223 @@
         <div class="row mb-4 align-items-center">
             <div class="col">
                 <h2 class="fw-bold text-dark mb-1"><i class="bi bi-speedometer2 me-2"></i>Management Control Center</h2>
-                <p class="text-muted small mb-0">Manage appointment requests, configure camp options, and assign buildings by camp location.</p>
+                <p class="text-muted small mb-0">Manage appointments, configure camps, assign camp-specific buildings, and control facility schedules.</p>
             </div>
         </div>
 
-        <!-- Super Admin: Camp & Building Mapping Management Section -->
-        <div class="card shadow-sm mb-4 border-0">
-            <div class="card-header bg-dark text-white fw-bold">
-                <i class="bi bi-geo-alt-fill me-2"></i>Super Admin: Camp & Building Assignment Management
+        <!-- Navigation Tabs for Dashboard Sections -->
+        <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold" id="appointments-tab" data-bs-toggle="tab" data-bs-target="#appointmentsPane" type="button" role="tab">
+                    <i class="bi bi-calendar-check me-2"></i>Appointments
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="camps-tab" data-bs-toggle="tab" data-bs-target="#campsPane" type="button" role="tab">
+                    <i class="bi bi-geo-alt-fill me-2"></i>Camps & Building Assignments
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settingsPane" type="button" role="tab">
+                    <i class="bi bi-sliders me-2"></i>Facility Schedule & Purposes
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content Container -->
+        <div class="tab-content" id="dashboardTabContent">
+            
+            <!-- TAB 1: APPOINTMENTS MANAGEMENT -->
+            <div class="tab-pane fade show active" id="appointmentsPane" role="tabpanel">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center py-3">
+                        <span><i class="bi bi-calendar-check me-2"></i>Public Appointment Requests</span>
+                        <button class="btn btn-light btn-sm" onclick="loadBookings()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date & Time</th>
+                                        <th>Name</th>
+                                        <th>Branch</th>
+                                        <th>Camp Location</th>
+                                        <th>Building</th>
+                                        <th>Purpose</th>
+                                        <th>Status</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bookingsTableBody">
+                                    <tr><td colspan="8" class="text-center text-muted py-4">No appointment requests found.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
+
+            <!-- TAB 2: CAMPS & BUILDING ASSIGNMENTS (SUPER ADMIN) -->
+            <div class="tab-pane fade" id="campsPane" role="tabpanel">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-dark text-white fw-bold py-3">
+                        <i class="bi bi-geo-alt-fill me-2"></i>Super Admin: Camp & Building Assignment Management
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- Left Column: Manage Camp Options -->
+                            <div class="col-md-5 border-end pe-4">
+                                <h6 class="fw-bold text-primary mb-3">1. Manage Camp Options</h6>
+                                <div class="input-group input-group-sm mb-3">
+                                    <input type="text" id="superNewCampInput" class="form-control" placeholder="Enter Camp Name (e.g. Camp Hansen)">
+                                    <button class="btn btn-outline-primary" type="button" onclick="superAddCamp()">Add Camp</button>
+                                </div>
+                                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                                    <table class="table table-sm table-striped align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Camp Name</th>
+                                                <th class="text-end">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="superCampsTableBody">
+                                            <!-- Populated dynamically -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Right Column: Assign Building Numbers by Camp -->
+                            <div class="col-md-7 ps-4">
+                                <h6 class="fw-bold text-primary mb-3">2. Assign Building Numbers by Camp</h6>
+                                <div class="mb-3">
+                                    <label class="form-label small text-muted">Select Target Camp</label>
+                                    <select id="superCampSelect" class="form-select form-select-sm" onchange="renderSuperCampBuildingsList()">
+                                        <option value="">-- Select Camp --</option>
+                                    </select>
+                                </div>
+                                <div class="input-group input-group-sm mb-3">
+                                    <input type="text" id="superNewBuildingInput" class="form-control" placeholder="Building Number (e.g. Bldg 2314)">
+                                    <button class="btn btn-outline-success" type="button" onclick="superAddBuildingToCamp()">Assign Building</button>
+                                </div>
+                                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                                    <table class="table table-sm table-striped align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Assigned Building Number</th>
+                                                <th class="text-end">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="superCampBuildingsTableBody">
+                                            <tr><td colspan="2" class="text-center text-muted small">Select a camp to view assigned buildings</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- General Assigned Buildings Backup Section -->
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-secondary text-white fw-bold py-2">
+                        <i class="bi bi-buildings me-2"></i>General Assigned Buildings (Legacy / Global List)
+                    </div>
+                    <div class="card-body">
+                        <div class="input-group input-group-sm mb-3" style="max-width: 400px;">
+                            <input type="text" id="generalBuildingInput" class="form-control" placeholder="General Building Number">
+                            <button class="btn btn-outline-secondary" type="button" onclick="addGeneralBuilding()">Add Building</button>
+                        </div>
+                        <div id="generalBuildingsList" class="d-flex flex-wrap gap-2">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: FACILITY SCHEDULE & PURPOSES -->
+            <div class="tab-pane fade" id="settingsPane" role="tabpanel">
                 <div class="row">
-                    <!-- Left Column: Manage Camp Options -->
-                    <div class="col-md-5 border-end pe-4">
-                        <h6 class="fw-bold text-primary mb-3">1. Manage Camp Options</h6>
-                        <div class="input-group input-group-sm mb-3">
-                            <input type="text" id="superNewCampInput" class="form-control" placeholder="Enter Camp Name (e.g. Camp Hansen)">
-                            <button class="btn btn-outline-primary" type="button" onclick="superAddCamp()">Add Camp</button>
-                        </div>
-                        <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
-                            <table class="table table-sm table-striped align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Camp Name</th>
-                                        <th class="text-end">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="superCampsTableBody">
-                                    <!-- Populated dynamically -->
-                                </tbody>
-                            </table>
+                    <!-- Operating Hours & Restrictions -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-header bg-dark text-white fw-bold py-3">
+                                <i class="bi bi-clock-history me-2"></i>Facility Schedule & Lunch Blocks
+                            </div>
+                            <div class="card-body">
+                                <form id="availabilityForm" onsubmit="saveAvailabilitySettings(event)">
+                                    <div class="row mb-3">
+                                        <div class="col-6">
+                                            <label class="form-label small text-muted">Opening Time</label>
+                                            <input type="time" id="availStart" class="form-control form-control-sm" required>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label small text-muted">Closing Time</label>
+                                            <input type="time" id="availEnd" class="form-control form-control-sm" required>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-6">
+                                            <label class="form-label small text-muted">Lunch Start</label>
+                                            <input type="time" id="availLunchStart" class="form-control form-control-sm" required>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label small text-muted">Lunch End</label>
+                                            <input type="time" id="availLunchEnd" class="form-control form-control-sm" required>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="mb-3">
+                                        <label class="form-label small text-muted">Restricted Window Category (Optional)</label>
+                                        <input type="text" id="availBlockedCategory" class="form-control form-control-sm" placeholder="e.g. Staff Training">
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-6">
+                                            <label class="form-label small text-muted">Blocked Start Time</label>
+                                            <input type="time" id="availBlockedStart" class="form-control form-control-sm">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label small text-muted">Blocked End Time</label>
+                                            <input type="time" id="availBlockedEnd" class="form-control form-control-sm">
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-dark btn-sm"><i class="bi bi-save me-1"></i>Save Schedule Settings</button>
+                                </form>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Right Column: Assign Building Numbers by Camp -->
-                    <div class="col-md-7 ps-4">
-                        <h6 class="fw-bold text-primary mb-3">2. Assign Building Numbers by Camp</h6>
-                        <div class="mb-3">
-                            <label class="form-label small text-muted">Select Target Camp</label>
-                            <select id="superCampSelect" class="form-select form-select-sm" onchange="renderSuperCampBuildingsList()">
-                                <option value="">-- Select Camp --</option>
-                            </select>
-                        </div>
-                        <div class="input-group input-group-sm mb-3">
-                            <input type="text" id="superNewBuildingInput" class="form-control" placeholder="Building Number (e.g. Bldg 2314)">
-                            <button class="btn btn-outline-success" type="button" onclick="superAddBuildingToCamp()">Assign Building</button>
-                        </div>
-                        <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
-                            <table class="table table-sm table-striped align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Assigned Building Number</th>
-                                        <th class="text-end">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="superCampBuildingsTableBody">
-                                    <tr><td colspan="2" class="text-center text-muted small">Select a camp to view assigned buildings</td></tr>
-                                </tbody>
-                            </table>
+                    <!-- Visit Purposes Management -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-header bg-dark text-white fw-bold py-3">
+                                <i class="bi bi-list-check me-2"></i>Manage Visit Purposes
+                            </div>
+                            <div class="card-body">
+                                <div class="input-group input-group-sm mb-3">
+                                    <input type="text" id="newPurposeInput" class="form-control" placeholder="New Visit Purpose">
+                                    <button class="btn btn-outline-primary" type="button" onclick="addPurpose()">Add Purpose</button>
+                                </div>
+                                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                                    <table class="table table-sm table-striped align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Purpose Description</th>
+                                                <th class="text-end">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="purposesTableBody">
+                                            <!-- Populated dynamically -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Appointments Management Section -->
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-calendar-check me-2"></i>Public Appointment Requests</span>
-                <button class="btn btn-light btn-sm" onclick="loadBookings()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Date & Time</th>
-                                <th>Name</th>
-                                <th>Branch</th>
-                                <th>Camp Location</th>
-                                <th>Building</th>
-                                <th>Purpose</th>
-                                <th>Status</th>
-                                <th class="text-end">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="bookingsTableBody">
-                            <tr><td colspan="8" class="text-center text-muted py-4">No appointment requests found.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </div>
 
     </div>
@@ -132,12 +258,60 @@
 
     <script>
         function initDashboard() {
-            initSuperAdminCamps();
             loadBookings();
+            initSuperAdminCamps();
+            loadGeneralAssignedBuildings();
+            loadAvailabilitySettings();
+            loadPurposes();
         }
 
-        // --- Super Admin Camp & Building Management Logic ---
+        // --- 1. Appointments Management Logic ---
+        function loadBookings() {
+            const bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
+            const tbody = document.getElementById('bookingsTableBody');
+            if (!tbody) return;
 
+            if (bookings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No appointment requests found.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            bookings.sort((a, b) => new Date(b.id) - new Date(a.id)).forEach((b) => {
+                let badgeClass = 'bg-warning text-dark';
+                if (b.status === 'Confirmed') badgeClass = 'bg-success';
+                if (b.status === 'Cancelled') badgeClass = 'bg-danger';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${b.date}</strong><br><small class="text-muted">${b.time}</small></td>
+                        <td>${b.lastName}, ${b.firstName}</td>
+                        <td><span class="badge bg-secondary">${b.branch}</span></td>
+                        <td>${b.camp || 'N/A'}</td>
+                        <td><strong>${b.building}</strong></td>
+                        <td>${b.purpose}</td>
+                        <td><span class="badge ${badgeClass}">${b.status}</span></td>
+                        <td class="text-end">
+                            <button class="btn btn-outline-success btn-sm py-0 px-1 me-1" title="Confirm" onclick="updateBookingStatus(${b.id}, 'Confirmed')"><i class="bi bi-check-lg"></i></button>
+                            <button class="btn btn-outline-danger btn-sm py-0 px-1" title="Cancel" onclick="updateBookingStatus(${b.id}, 'Cancelled')"><i class="bi bi-x-lg"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateBookingStatus(id, newStatus) {
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
+            bookings = bookings.map(b => {
+                if (b.id === id) b.status = newStatus;
+                return b;
+            });
+            localStorage.setItem('housing_bookings', JSON.stringify(bookings));
+            loadBookings();
+            showDashAlert(`Appointment status updated to ${newStatus}.`, "success");
+        }
+
+        // --- 2. Super Admin Camp & Building Assignment Logic ---
         function initSuperAdminCamps() {
             renderSuperCampsTable();
             populateSuperCampDropdowns();
@@ -187,7 +361,6 @@
                 camps.splice(index, 1);
                 localStorage.setItem('housing_camps', JSON.stringify(camps));
                 
-                // Clean up mappings
                 let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
                 delete campBuildingsMap[removedCamp];
                 localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildingsMap));
@@ -279,55 +452,143 @@
             }
         }
 
-        // --- Bookings Management Logic ---
+        // --- 3. General Assigned Buildings Logic ---
+        function loadGeneralAssignedBuildings() {
+            const buildings = JSON.parse(localStorage.getItem('housing_assigned_buildings')) || [];
+            const container = document.getElementById('generalBuildingsList');
+            if (!container) return;
 
-        function loadBookings() {
-            const bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
-            const tbody = document.getElementById('bookingsTableBody');
-            if (!tbody) return;
-
-            if (bookings.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No appointment requests found.</td></tr>';
+            if (buildings.length === 0) {
+                container.innerHTML = '<span class="text-muted small">No general buildings configured.</span>';
                 return;
             }
 
-            tbody.innerHTML = '';
-            bookings.sort((a, b) => new Date(b.id) - new Date(a.id)).forEach((b) => {
-                let badgeClass = 'bg-warning text-dark';
-                if (b.status === 'Confirmed') badgeClass = 'bg-success';
-                if (b.status === 'Cancelled') badgeClass = 'bg-danger';
+            container.innerHTML = '';
+            buildings.forEach((b, index) => {
+                const bName = typeof b === 'string' ? b : b.name;
+                container.innerHTML += `
+                    <span class="badge bg-light text-dark border d-flex align-items-center p-2">
+                        ${bName}
+                        <button type="button" class="btn-close btn-close-sm ms-2" onclick="removeGeneralBuilding(${index})"></button>
+                    </span>
+                `;
+            });
+        }
 
+        function addGeneralBuilding() {
+            const input = document.getElementById('generalBuildingInput');
+            const val = input.value.trim();
+            if (!val) return;
+
+            let buildings = JSON.parse(localStorage.getItem('housing_assigned_buildings')) || [];
+            if (!buildings.includes(val)) {
+                buildings.push(val);
+                localStorage.setItem('housing_assigned_buildings', JSON.stringify(buildings));
+                input.value = '';
+                loadGeneralAssignedBuildings();
+                showDashAlert("General building added.", "success");
+            }
+        }
+
+        function removeGeneralBuilding(index) {
+            let buildings = JSON.parse(localStorage.getItem('housing_assigned_buildings')) || [];
+            buildings.splice(index, 1);
+            localStorage.setItem('housing_assigned_buildings', JSON.stringify(buildings));
+            loadGeneralAssignedBuildings();
+            showDashAlert("General building removed.", "success");
+        }
+
+        // --- 4. Facility Schedule & Availability Logic ---
+        function loadAvailabilitySettings() {
+            const stored = localStorage.getItem('housing_availability');
+            const avail = stored ? JSON.parse(stored) : {
+                start: "08:00",
+                end: "17:00",
+                lunchStart: "12:00",
+                lunchEnd: "13:00",
+                publicBlockedCategory: "",
+                blockedStartTime: "",
+                blockedEndTime: ""
+            };
+
+            document.getElementById('availStart').value = avail.start || "08:00";
+            document.getElementById('availEnd').value = avail.end || "17:00";
+            document.getElementById('availLunchStart').value = avail.lunchStart || "12:00";
+            document.getElementById('availLunchEnd').value = avail.lunchEnd || "13:00";
+            document.getElementById('availBlockedCategory').value = avail.publicBlockedCategory || "";
+            document.getElementById('availBlockedStart').value = avail.blockedStartTime || "";
+            document.getElementById('availBlockedEnd').value = avail.blockedEndTime || "";
+        }
+
+        function saveAvailabilitySettings(event) {
+            event.preventDefault();
+            const avail = {
+                start: document.getElementById('availStart').value,
+                end: document.getElementById('availEnd').value,
+                lunchStart: document.getElementById('availLunchStart').value,
+                lunchEnd: document.getElementById('availLunchEnd').value,
+                publicBlockedCategory: document.getElementById('availBlockedCategory').value.trim(),
+                blockedStartTime: document.getElementById('availBlockedStart').value,
+                blockedEndTime: document.getElementById('availBlockedEnd').value
+            };
+
+            localStorage.setItem('housing_availability', JSON.stringify(avail));
+            showDashAlert("Facility schedule and restriction rules successfully updated.", "success");
+        }
+
+        // --- 5. Visit Purposes Logic ---
+        function loadPurposes() {
+            const purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [
+                "Check-in / In-processing", 
+                "Out-processing Inspection", 
+                "Maintenance Request", 
+                "Room Change Inquiry"
+            ];
+            const tbody = document.getElementById('purposesTableBody');
+            if (!tbody) return;
+
+            tbody.innerHTML = '';
+            purposes.forEach((p, index) => {
                 tbody.innerHTML += `
                     <tr>
-                        <td><strong>${b.date}</strong><br><small class="text-muted">${b.time}</small></td>
-                        <td>${b.lastName}, ${b.firstName}</td>
-                        <td><span class="badge bg-secondary">${b.branch}</span></td>
-                        <td>${b.camp || 'N/A'}</td>
-                        <td><strong>${b.building}</strong></td>
-                        <td>${b.purpose}</td>
-                        <td><span class="badge ${badgeClass}">${b.status}</span></td>
+                        <td>${p}</td>
                         <td class="text-end">
-                            <button class="btn btn-outline-success btn-sm py-0 px-1 me-1" title="Confirm" onclick="updateBookingStatus(${b.id}, 'Confirmed')"><i class="bi bi-check-lg"></i></button>
-                            <button class="btn btn-outline-danger btn-sm py-0 px-1" title="Cancel" onclick="updateBookingStatus(${b.id}, 'Cancelled')"><i class="bi bi-x-lg"></i></button>
+                            <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="removePurpose(${index})"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>
                 `;
             });
         }
 
-        function updateBookingStatus(id, newStatus) {
-            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
-            bookings = bookings.map(b => {
-                if (b.id === id) {
-                    b.status = newStatus;
-                }
-                return b;
-            });
-            localStorage.setItem('housing_bookings', JSON.stringify(bookings));
-            loadBookings();
-            showDashAlert(`Appointment status updated to ${newStatus}.`, "success");
+        function addPurpose() {
+            const input = document.getElementById('newPurposeInput');
+            const val = input.value.trim();
+            if (!val) return;
+
+            let purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [
+                "Check-in / In-processing", 
+                "Out-processing Inspection", 
+                "Maintenance Request", 
+                "Room Change Inquiry"
+            ];
+            if (!purposes.includes(val)) {
+                purposes.push(val);
+                localStorage.setItem('housing_purposes', JSON.stringify(purposes));
+                input.value = '';
+                loadPurposes();
+                showDashAlert("Visit purpose added.", "success");
+            }
         }
 
+        function removePurpose(index) {
+            let purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [];
+            purposes.splice(index, 1);
+            localStorage.setItem('housing_purposes', JSON.stringify(purposes));
+            loadPurposes();
+            showDashAlert("Visit purpose removed.", "success");
+        }
+
+        // --- Utility Alert ---
         function showDashAlert(message, type) {
             const alert = document.getElementById('dashAlert');
             alert.className = `alert alert-${type} mb-4`;
