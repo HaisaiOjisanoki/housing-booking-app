@@ -179,7 +179,6 @@
                                         <th>Role</th>
                                         <th>Recovery Email</th>
                                         <th>Assigned Buildings</th>
-                                        <th>Status</th>
                                         <th class="text-end pe-3">Actions</th>
                                     </tr>
                                 </thead>
@@ -249,13 +248,42 @@
                         <div class="mb-3">
                             <label class="form-label small text-muted">Role *</label>
                             <select id="newStaffRole" class="form-select" required>
-                                <option value="Housing Staff">Housing Staff</option>
+                                <option value="UH Building Managers">UH Building Managers</option>
                                 <option value="Admin">Admin</option>
                                 <option value="Super Admin" id="superAdminRoleOption">Super Admin</option>
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 btn-sm fw-bold">Create Account</button>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit/Manage User Modal (Password Reset & Building Assignment) -->
+    <div class="modal fade" id="editUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-person-gear me-2"></i>Manage User: <span id="editUserUsernameDisplay"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editUserUsername">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted fw-bold">Reset Password</label>
+                        <input type="text" id="editUserNewPassword" class="form-control" placeholder="Enter new password (leave blank to keep current)">
+                    </div>
+                    <div class="mb-3" id="assignedBuildingsContainer">
+                        <label class="form-label small text-muted fw-bold">Assign Buildings (UH Building Managers)</label>
+                        <div id="buildingCheckboxes" class="border rounded p-2 bg-light" style="max-height: 180px; overflow-y: auto;">
+                            <!-- Checkboxes injected dynamically -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="saveUserManagementChanges()">Save Changes</button>
                 </div>
             </div>
         </div>
@@ -277,9 +305,12 @@
             currentUser = JSON.parse(userJson);
             document.getElementById('currentUserDisplay').textContent = `${currentUser.username} (${currentUser.role})`;
 
-            if (currentUser.role === 'Housing Staff') {
+            if (currentUser.role === 'UH Building Managers') {
                 document.getElementById('staffTabItem').style.display = 'none';
                 document.getElementById('campsTabItem').style.display = 'none';
+            } else if (currentUser.role === 'Admin') {
+                const superAdminOpt = document.getElementById('superAdminRoleOption');
+                if (superAdminOpt) superAdminOpt.style.display = 'none';
             }
 
             await refreshState();
@@ -352,7 +383,7 @@
                         <td><span class="badge ${badge}">${b.status}</span></td>
                         <td class="text-end pe-3">
                             <button class="btn btn-outline-primary btn-sm" onclick="openEditModal(${b.id})"><i class="bi bi-pencil-square"></i></button>
-                            ${currentUser.role !== 'Housing Staff' ? `<button class="btn btn-outline-danger btn-sm" onclick="deleteBooking(${b.id})"><i class="bi bi-trash"></i></button>` : ''}
+                            ${currentUser.role !== 'UH Building Managers' ? `<button class="btn btn-outline-danger btn-sm" onclick="deleteBooking(${b.id})"><i class="bi bi-trash"></i></button>` : ''}
                         </td>
                     </tr>
                 `;
@@ -423,7 +454,7 @@
         }
 
         function renderCampsManagement() {
-            if (currentUser.role === 'Housing Staff') return;
+            if (currentUser.role === 'UH Building Managers') return;
             const targetSelect = document.getElementById('targetCampSelect');
             targetSelect.innerHTML = '<option value="">-- Select Camp --</option>';
             (appState.camps || []).forEach(c => {
@@ -472,23 +503,97 @@
         }
 
         function renderStaffTable() {
-            if (currentUser.role === 'Housing Staff') return;
+            if (currentUser.role === 'UH Building Managers') return;
             const tbody = document.getElementById('staffTableBody');
             tbody.innerHTML = '';
             (appState.users || []).forEach(u => {
                 if (currentUser.role === 'Admin' && u.role === 'Super Admin') return;
+
+                let bldgsDisplay = (u.role === 'Super Admin' || u.role === 'Admin') ? 'All Access' : ((u.assignedBuildings || []).join(', ') || 'None');
+
                 tbody.innerHTML += `
                     <tr>
                         <td class="ps-3 fw-bold">${u.username}</td>
                         <td><span class="badge bg-dark">${u.role}</span></td>
                         <td>${u.recoveryEmail || 'None'}</td>
-                        <td><span class="badge bg-success">${u.role === 'Super Admin' ? 'All Access' : 'Configured'}</span></td>
+                        <td><span class="badge bg-secondary">${bldgsDisplay}</span></td>
                         <td class="text-end pe-3">
-                            ${u.username !== 'superadmin' ? `<button class="btn btn-outline-danger btn-sm" onclick="deleteStaff('${u.username}')"><i class="bi bi-trash"></i></button>` : ''}
+                            <button class="btn btn-outline-secondary btn-sm me-1" onclick="openEditUserModal('${u.username}')" title="Manage User (Password & Buildings)"><i class="bi bi-gear"></i></button>
+                            ${u.username !== 'superadmin' && (currentUser.role === 'Super Admin' || (currentUser.role === 'Admin' && u.role === 'UH Building Managers')) ? `<button class="btn btn-outline-danger btn-sm" onclick="deleteStaff('${u.username}')" title="Delete User"><i class="bi bi-trash"></i></button>` : ''}
                         </td>
                     </tr>
                 `;
             });
+        }
+
+        function openEditUserModal(username) {
+            const u = (appState.users || []).find(user => user.username === username);
+            if (!u) return;
+
+            if (currentUser.role === 'Admin' && u.role !== 'UH Building Managers') {
+                alert("Admins can only manage UH Building Managers users.");
+                return;
+            }
+
+            document.getElementById('editUserUsername').value = u.username;
+            document.getElementById('editUserUsernameDisplay').textContent = u.username;
+            document.getElementById('editUserNewPassword').value = '';
+
+            const container = document.getElementById('buildingCheckboxes');
+            container.innerHTML = '';
+
+            if (u.role === 'Super Admin' || u.role === 'Admin') {
+                document.getElementById('assignedBuildingsContainer').style.display = 'none';
+            } else {
+                document.getElementById('assignedBuildingsContainer').style.display = 'block';
+                let allBuildings = [];
+                Object.keys(appState.camp_buildings || {}).forEach(camp => {
+                    (appState.camp_buildings[camp] || []).forEach(bldg => {
+                        allBuildings.push(`${camp} - ${bldg}`);
+                    });
+                });
+
+                if (allBuildings.length === 0) {
+                    container.innerHTML = '<em class="small text-muted">No buildings configured in the system. Add camps & buildings first.</em>';
+                } else {
+                    allBuildings.forEach(fullBldg => {
+                        let isChecked = (u.assignedBuildings || []).includes(fullBldg);
+                        container.innerHTML += `
+                            <div class="form-check">
+                                <input class="form-check-input user-bldg-checkbox" type="checkbox" value="${fullBldg}" id="bldg_${fullBldg.replace(/[^a-zA-Z0-9]/g, '_')}" ${isChecked ? 'checked' : ''}>
+                                <label class="form-check-label small" for="bldg_${fullBldg.replace(/[^a-zA-Z0-9]/g, '_')}">
+                                    ${fullBldg}
+                                </label>
+                            </div>
+                        `;
+                    });
+                }
+            }
+
+            new bootstrap.Modal(document.getElementById('editUserModal')).show();
+        }
+
+        async function saveUserManagementChanges() {
+            const username = document.getElementById('editUserUsername').value;
+            const newPassword = document.getElementById('editUserNewPassword').value.trim();
+
+            appState.users = appState.users.map(u => {
+                if (u.username === username) {
+                    if (newPassword) {
+                        u.password = newPassword;
+                    }
+                    if (u.role === 'UH Building Managers') {
+                        let checkboxes = document.querySelectorAll('.user-bldg-checkbox:checked');
+                        u.assignedBuildings = Array.from(checkboxes).map(cb => cb.value);
+                    }
+                }
+                return u;
+            });
+
+            await saveState();
+            bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
+            renderStaffTable();
+            alert(`User ${username} updated successfully.`);
         }
 
         async function createStaffUser(e) {
@@ -504,6 +609,7 @@
             appState.users.push(newU);
             await saveState();
             bootstrap.Modal.getInstance(document.getElementById('addStaffModal')).hide();
+            document.getElementById('addStaffForm').reset();
             renderStaffTable();
         }
 
