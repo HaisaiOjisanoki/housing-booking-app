@@ -165,7 +165,7 @@
                                         </div>
                                     </div>
 
-                                    <!-- Blocked Time Categories (Meeting, Escorting, VIP) -->
+                                    <!-- Blocked Time Categories -->
                                     <div class="border-top pt-3 mt-2 mb-3">
                                         <label class="form-label small fw-bold text-dark mb-2"><i class="bi bi-shield-exclamation me-1"></i>Blocked Time Categories / Reason Tags:</label>
                                         <div class="d-flex gap-4">
@@ -279,8 +279,8 @@
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label text-muted small">Building Number / Facility</label>
-                            <input type="text" id="modalBuilding" class="form-control form-control-sm" required placeholder="Building 402 - Room 101">
+                            <label class="form-label text-muted small fw-bold text-primary">Assigned Building / Facility</label>
+                            <select id="modalBuilding" class="form-select form-select-sm border-primary" required></select>
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-muted small fw-bold text-primary">Purpose of Visit</label>
@@ -314,12 +314,12 @@
         </div>
     </div>
 
-    <!-- Building Assignment Modal (Admin Only) -->
+    <!-- Building Assignment Modal (Admin/Super Admin Only) -->
     <div class="modal fade" id="buildingModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold">Assign Building to User</h5>
+                    <h5 class="modal-title fw-bold">Assign Building to Staff</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -330,8 +330,8 @@
                             <input type="text" id="modalBuildingName" class="form-control" required placeholder="Building 402 (Unaccompanied Enlisted)">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label text-muted small">Assign To Username</label>
-                            <input type="text" id="modalBuildingUser" class="form-control" required placeholder="Enter username...">
+                            <label class="form-label text-muted small fw-bold text-primary">Assign To Staff (From User List)</label>
+                            <select id="modalBuildingUser" class="form-select border-primary" required></select>
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-muted small">Total Rooms</label>
@@ -463,8 +463,8 @@
 
             if (!localStorage.getItem('housing_bookings')) {
                 const sampleBookings = [
-                    { id: 101, branch: "USMC", lastName: "Miller", firstName: "John", building: "Building 402 - Room 101", purpose: "Check-in / In-processing", date: "2026-07-26", time: "10:00", status: "Approved", internalNote: "Verified PCS orders.", username: "user" },
-                    { id: 102, branch: "US Army", lastName: "Davis", firstName: "Sarah", building: "Building 405 - Room 204", purpose: "Maintenance Request", date: "2026-07-28", time: "14:30", status: "Pending", internalNote: "Pending clearance confirmation.", username: "admin" }
+                    { id: 101, branch: "USMC", lastName: "Miller", firstName: "John", building: "Building 402 (Unaccompanied Enlisted)", purpose: "Check-in / In-processing", date: "2026-07-26", time: "10:00", status: "Approved", internalNote: "Verified PCS orders.", username: "user" },
+                    { id: 102, branch: "US Army", lastName: "Davis", firstName: "Sarah", building: "Building 405 (NCO Quarters)", purpose: "Maintenance Request", date: "2026-07-28", time: "14:30", status: "Pending", internalNote: "Pending clearance confirmation.", username: "admin" }
                 ];
                 localStorage.setItem('housing_bookings', JSON.stringify(sampleBookings));
             }
@@ -494,6 +494,7 @@
             loadAvailability();
             loadPurposes();
             loadPurposeDropdown();
+            loadBuildingDropdown();
             if (isStaff) loadUserManagementTable();
         }
 
@@ -583,12 +584,31 @@
             });
         }
 
+        function loadBuildingDropdown() {
+            const buildings = JSON.parse(localStorage.getItem('housing_assigned_buildings')) || [];
+            const select = document.getElementById('modalBuilding');
+            select.innerHTML = '<option value="">-- Select Building / Facility --</option>';
+            buildings.forEach(b => {
+                select.innerHTML += `<option value="${b.name}">${b.name} (Staff: ${b.assignedTo})</option>`;
+            });
+        }
+
+        function loadUserDropdownForBuildings() {
+            const users = JSON.parse(localStorage.getItem('housing_users')) || [];
+            const select = document.getElementById('modalBuildingUser');
+            select.innerHTML = '<option value="">-- Select Staff User --</option>';
+            users.forEach(u => {
+                select.innerHTML += `<option value="${u.username}">${u.username} (${u.fullName || u.role})</option>`;
+            });
+        }
+
         function openNewBookingModal(defaultDateTime = '') {
             document.getElementById('editBookingId').value = '';
             document.getElementById('modalTitle').textContent = 'Create New Booking';
             document.getElementById('modalBranch').value = currentUser.branch || 'USMC';
             document.getElementById('modalLastName').value = currentUser.fullName ? currentUser.fullName.split(',')[0].trim() : '';
             document.getElementById('modalFirstName').value = currentUser.fullName && currentUser.fullName.includes(',') ? currentUser.fullName.split(',')[1].trim() : currentUser.username;
+            loadBuildingDropdown();
             document.getElementById('modalBuilding').value = '';
             document.getElementById('modalDateTime').value = defaultDateTime || new Date().toISOString().slice(0, 16);
             document.getElementById('modalStatus').value = 'Pending';
@@ -602,6 +622,7 @@
             const booking = allBookings.find(b => b.id.toString() === id.toString());
             if (!booking) return;
             loadPurposeDropdown();
+            loadBuildingDropdown();
             document.getElementById('editBookingId').value = booking.id;
             document.getElementById('modalTitle').textContent = 'Edit Booking # ' + booking.id;
             document.getElementById('modalBranch').value = booking.branch;
@@ -621,7 +642,7 @@
             const branch = document.getElementById('modalBranch').value;
             const lastName = document.getElementById('modalLastName').value.trim();
             const firstName = document.getElementById('modalFirstName').value.trim();
-            const building = document.getElementById('modalBuilding').value.trim();
+            const building = document.getElementById('modalBuilding').value;
             const purpose = document.getElementById('modalPurpose').value;
             const datetimeVal = document.getElementById('modalDateTime').value;
             const status = document.getElementById('modalStatus').value;
@@ -726,22 +747,23 @@
                     </tr>
                 `;
             });
+            loadBuildingDropdown();
         }
 
         function openBuildingModal() {
             document.getElementById('modalBuildingName').value = '';
-            document.getElementById('modalBuildingUser').value = '';
+            loadUserDropdownForBuildings();
             document.getElementById('modalBuildingRooms').value = '32';
             new bootstrap.Modal(document.getElementById('buildingModal')).show();
         }
 
         function saveBuildingAssignment() {
             const name = document.getElementById('modalBuildingName').value.trim();
-            const assignedTo = document.getElementById('modalBuildingUser').value.trim();
+            const assignedTo = document.getElementById('modalBuildingUser').value;
             const rooms = document.getElementById('modalBuildingRooms').value;
 
             if (!name || !assignedTo) {
-                alert("Please fill in building name and assigned username.");
+                alert("Please fill in building name and select an assigned staff user.");
                 return;
             }
 
@@ -911,6 +933,7 @@
             localStorage.setItem('housing_users', JSON.stringify(users));
             bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
             loadUserManagementTable();
+            loadUserDropdownForBuildings();
             showNotification("User account saved successfully.", "success");
         }
 
@@ -938,6 +961,7 @@
             users = users.filter(u => u.username !== username);
             localStorage.setItem('housing_users', JSON.stringify(users));
             loadUserManagementTable();
+            loadUserDropdownForBuildings();
             showNotification("User account removed.", "danger");
         }
 
