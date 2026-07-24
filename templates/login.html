@@ -8,34 +8,58 @@
 </head>
 <body class="bg-light d-flex align-items-center justify-content-center vh-100" onload="initAuthStorage()">
 
-    <div class="card shadow p-4" style="width: 100%; max-width: 400px;">
-        <div class="text-center mb-4">
-            <h3 class="fw-bold">Housing Portal Login</h3>
-            <p class="text-muted small">Sign in to manage bookings and schedules</p>
+    <div class="card shadow p-4" style="width: 100%; max-width: 420px;">
+        <!-- Standard Login View -->
+        <div id="loginCardView">
+            <div class="text-center mb-4">
+                <h3 class="fw-bold">Housing Portal Login</h3>
+                <p class="text-muted small">Sign in with your assigned credentials</p>
+            </div>
+            <form onsubmit="handleLogin(event)">
+                <div class="mb-3">
+                    <label for="usernameInput" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="usernameInput" required placeholder="Enter assigned username">
+                </div>
+                <div class="mb-3">
+                    <label for="passwordInput" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="passwordInput" required placeholder="Enter password">
+                </div>
+                <button type="submit" class="btn btn-primary w-100 mb-3">Sign In</button>
+                <div class="text-center">
+                    <a href="/" class="text-decoration-none small">&larr; Back to Public Booking Form</a>
+                </div>
+            </form>
         </div>
-        <form onsubmit="handleLogin(event)">
-            <div class="mb-3">
-                <label for="usernameInput" class="form-label">Username</label>
-                <input type="text" class="form-control" id="usernameInput" required placeholder="e.g. user, admin, superadmin">
+
+        <!-- First-Time Setup / Password Change View -->
+        <div id="setupCardView" style="display: none;">
+            <div class="text-center mb-4">
+                <h3 class="fw-bold text-warning">Security Setup Required</h3>
+                <p class="text-muted small">First-time login detected. Please update your password and add a recovery email.</p>
             </div>
-            <div class="mb-3">
-                <label for="passwordInput" class="form-label">Password</label>
-                <input type="password" class="form-control" id="passwordInput" required placeholder="password123">
-            </div>
-            <button type="submit" class="btn btn-primary w-100 mb-3">Sign In</button>
-            <div class="text-center">
-                <a href="/" class="text-decoration-none small">&larr; Back to Public Booking Form</a>
-            </div>
-        </form>
+            <form onsubmit="handleFirstTimeSetup(event)">
+                <div class="mb-3">
+                    <label for="newPasswordInput" class="form-label">New Password</label>
+                    <input type="password" class="form-control" id="newPasswordInput" required placeholder="At least 6 characters">
+                </div>
+                <div class="mb-3">
+                    <label for="recoveryEmailInput" class="form-label">Recovery Email</label>
+                    <input type="email" class="form-control" id="recoveryEmailInput" required placeholder="name@example.com">
+                </div>
+                <button type="submit" class="btn btn-success w-100">Complete Setup & Login</button>
+            </form>
+        </div>
     </div>
 
     <script>
+        let pendingUser = null;
+
         function initAuthStorage() {
             if (!localStorage.getItem('housing_users')) {
                 const defaultUsers = [
-                    { id: 1, username: "superadmin", password: "password123", role: "Super Admin", email: "superadmin@housing.mil" },
-                    { id: 2, username: "Admin", password: "password123", role: "Admin", email: "admin@housing.mil" },
-                    { id: 3, username: "User", password: "password123", role: "User", email: "user@housing.mil" }
+                    { id: 1, username: "superadmin", password: "password123", role: "Super Admin", mustChangePassword: false, recoveryEmail: "superadmin@housing.mil" },
+                    { id: 2, username: "admin", password: "password123", role: "Admin", mustChangePassword: false, recoveryEmail: "admin@housing.mil" },
+                    { id: 3, username: "user1", password: "tempPassword", role: "User", mustChangePassword: true, recoveryEmail: "" }
                 ];
                 localStorage.setItem('housing_users', JSON.stringify(defaultUsers));
             }
@@ -50,10 +74,41 @@
             const foundUser = users.find(u => u.username.toLowerCase() === usernameInput && u.password === passwordInput);
 
             if (foundUser) {
-                localStorage.setItem('housing_current_user', JSON.stringify(foundUser));
-                window.location.href = '/dashboard';
+                pendingUser = foundUser;
+                if (foundUser.mustChangePassword) {
+                    document.getElementById('loginCardView').style.display = 'none';
+                    document.getElementById('setupCardView').style.display = 'block';
+                } else {
+                    localStorage.setItem('housing_current_user', JSON.stringify(foundUser));
+                    window.location.href = '/dashboard';
+                }
             } else {
                 alert("Invalid username or password.");
+            }
+        }
+
+        function handleFirstTimeSetup(event) {
+            event.preventDefault();
+            const newPassword = document.getElementById('newPasswordInput').value.trim();
+            const recoveryEmail = document.getElementById('recoveryEmailInput').value.trim();
+
+            if (newPassword.length < 6) {
+                alert("Password must be at least 6 characters long.");
+                return;
+            }
+
+            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
+            const index = users.findIndex(u => u.id === pendingUser.id);
+
+            if (index !== -1) {
+                users[index].password = newPassword;
+                users[index].recoveryEmail = recoveryEmail;
+                users[index].mustChangePassword = false;
+                
+                localStorage.setItem('housing_users', JSON.stringify(users));
+                localStorage.setItem('housing_current_user', JSON.stringify(users[index]));
+                
+                window.location.href = '/dashboard';
             }
         }
     </script>
