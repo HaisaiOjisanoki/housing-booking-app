@@ -15,6 +15,9 @@
             <p class="text-muted small">Sign in to manage bookings and schedules</p>
         </div>
 
+        <!-- Error Alert Banner -->
+        <div id="loginAlert" class="alert alert-danger d-none py-2 small" role="alert"></div>
+
         <form onsubmit="handleLogin(event)">
             <div class="mb-3">
                 <label for="usernameInput" class="form-label">Username</label>
@@ -44,12 +47,13 @@
 
     <script>
         function initAuthStorage() {
+            const defaultUsers = [
+                { id: 1, username: "superadmin", password: "password123", role: "Super Admin", email: "superadmin@housing.mil" },
+                { id: 2, username: "Admin", password: "password123", role: "Admin", email: "admin@housing.mil" },
+                { id: 3, username: "User", password: "password123", role: "User", email: "user@housing.mil" }
+            ];
+
             if (!localStorage.getItem('housing_users')) {
-                const defaultUsers = [
-                    { id: 1, username: "superadmin", password: "password123", role: "Super Admin", email: "superadmin@housing.mil" },
-                    { id: 2, username: "Admin", password: "password123", role: "Admin", email: "admin@housing.mil" },
-                    { id: 3, username: "User", password: "password123", role: "User", email: "user@housing.mil" }
-                ];
                 localStorage.setItem('housing_users', JSON.stringify(defaultUsers));
             }
         }
@@ -57,21 +61,53 @@
         function fillCredentials(username, password) {
             document.getElementById('usernameInput').value = username;
             document.getElementById('passwordInput').value = password;
+            hideAlert();
+        }
+
+        function showAlert(message) {
+            const alertBox = document.getElementById('loginAlert');
+            alertBox.textContent = message;
+            alertBox.classList.remove('d-none');
+        }
+
+        function hideAlert() {
+            const alertBox = document.getElementById('loginAlert');
+            alertBox.classList.add('d-none');
         }
 
         function handleLogin(event) {
             event.preventDefault();
+            hideAlert();
+
             const usernameInput = document.getElementById('usernameInput').value.trim().toLowerCase();
             const passwordInput = document.getElementById('passwordInput').value.trim();
 
-            const users = JSON.parse(localStorage.getItem('housing_users')) || [];
-            const foundUser = users.find(u => u.username.toLowerCase() === usernameInput && u.password === passwordInput);
+            let users = [];
+            try {
+                users = JSON.parse(localStorage.getItem('housing_users')) || [];
+            } catch (e) {
+                users = [];
+            }
+
+            // Ensure fallback defaults exist if localStorage was wiped or corrupted
+            if (users.length === 0) {
+                users = [
+                    { id: 1, username: "superadmin", password: "password123", role: "Super Admin", email: "superadmin@housing.mil" },
+                    { id: 2, username: "Admin", password: "password123", role: "Admin", email: "admin@housing.mil" },
+                    { id: 3, username: "User", password: "password123", role: "User", email: "user@housing.mil" }
+                ];
+                localStorage.setItem('housing_users', JSON.stringify(users));
+            }
+
+            const foundUser = users.find(u => u && u.username && u.username.toLowerCase() === usernameInput && u.password === passwordInput);
 
             if (foundUser) {
                 localStorage.setItem('housing_current_user', JSON.stringify(foundUser));
                 window.location.href = 'dashboard.html';
             } else {
-                alert("Invalid username or password. Please check your credentials.");
+                showAlert("Invalid username or password. Please check your credentials.");
             }
         }
     </script>
+</body>
+</html>
