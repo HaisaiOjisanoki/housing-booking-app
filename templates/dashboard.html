@@ -326,8 +326,10 @@
                     <form id="buildingForm">
                         <input type="hidden" id="editBuildingIndex">
                         <div class="mb-3">
-                            <label class="form-label text-muted small">Building Name / Block</label>
-                            <input type="text" id="modalBuildingName" class="form-control" required placeholder="Building 402 (Unaccompanied Enlisted)">
+                            <label class="form-label text-muted small fw-bold text-primary">Building Number / Name (Type or Select)</label>
+                            <input class="form-control border-primary" list="buildingSuggestions" id="modalBuildingName" required placeholder="Type building number or select from list...">
+                            <datalist id="buildingSuggestions"></datalist>
+                            <div class="form-text small">Select an existing building suggestion or type a new building number.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-muted small fw-bold text-primary">Assign To Staff (From User List)</label>
@@ -750,8 +752,19 @@
             loadBuildingDropdown();
         }
 
+        function loadBuildingSuggestions() {
+            const buildings = JSON.parse(localStorage.getItem('housing_assigned_buildings')) || [];
+            const datalist = document.getElementById('buildingSuggestions');
+            datalist.innerHTML = '';
+            const uniqueNames = [...new Set(buildings.map(b => b.name))];
+            uniqueNames.forEach(name => {
+                datalist.innerHTML += `<option value="${name}">`;
+            });
+        }
+
         function openBuildingModal() {
             document.getElementById('modalBuildingName').value = '';
+            loadBuildingSuggestions();
             loadUserDropdownForBuildings();
             document.getElementById('modalBuildingRooms').value = '32';
             new bootstrap.Modal(document.getElementById('buildingModal')).show();
