@@ -33,7 +33,7 @@
         <div class="row mb-4 align-items-center">
             <div class="col">
                 <h2 class="fw-bold text-dark mb-1"><i class="bi bi-speedometer2 me-2"></i>Management Control Center</h2>
-                <p class="text-muted small mb-0">Manage appointments, calendar schedules, camp options, and user access credentials.</p>
+                <p class="text-muted small mb-0">Manage appointments, calendar schedules, camp options, and user building assignments.</p>
             </div>
         </div>
 
@@ -55,8 +55,8 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation" id="usersNavTab">
-                <button class="nav-link fw-bold" id="users-tab" data-bs-toggle="tab" data-bs-target="#usersPane" type="button" role="tab">
-                    <i class="bi bi-people-fill me-2"></i>User & Password Management
+                <button class="nav-link fw-bold" id="users-tab" data-bs-toggle="tab" data-bs-target="#usersPane" type="button" role="tab" onclick="loadUsersManagement()">
+                    <i class="bi bi-people-fill me-2"></i>User & Building Assignment
                 </button>
             </li>
             <li class="nav-item" role="presentation" id="settingsNavTab">
@@ -168,10 +168,10 @@
                 </div>
             </div>
 
-            <!-- TAB 4: USER & PASSWORD MANAGEMENT -->
+            <!-- TAB 4: USER & BUILDING ASSIGNMENT -->
             <div class="tab-pane fade" id="usersPane" role="tabpanel">
                 <div class="row">
-                    <!-- Create User Form -->
+                    <!-- Create User & Assign Form -->
                     <div class="col-md-4 mb-4">
                         <div class="card shadow-sm border-0 h-100">
                             <div class="card-header bg-dark text-white fw-bold py-3">
@@ -181,7 +181,7 @@
                                 <form id="createUserForm" onsubmit="createNewUserAccount(event)">
                                     <div class="mb-3">
                                         <label class="form-label small text-muted">Username *</label>
-                                        <input type="text" id="newUsername" class="form-control form-control-sm" required placeholder="e.g. admin_schwab">
+                                        <input type="text" id="newUsername" class="form-control form-control-sm" required placeholder="e.g. pfc_smith">
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label small text-muted">Password *</label>
@@ -195,7 +195,19 @@
                                             <option value="Super Admin">Super Admin</option>
                                         </select>
                                     </div>
-                                    <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-person-check-fill me-1"></i>Create Account</button>
+                                    <div class="mb-3">
+                                        <label class="form-label small text-muted">Assigned Camp</label>
+                                        <select id="newUserCamp" class="form-select form-select-sm" onchange="updateCreateUserBuildings()">
+                                            <option value="">-- No Camp Assigned --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small text-muted">Assigned Building Number</label>
+                                        <select id="newUserBuilding" class="form-select form-select-sm">
+                                            <option value="">-- Select Camp First --</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-person-check-fill me-1"></i>Create & Assign Account</button>
                                 </form>
                             </div>
                         </div>
@@ -205,22 +217,23 @@
                     <div class="col-md-8 mb-4">
                         <div class="card shadow-sm border-0 h-100">
                             <div class="card-header bg-dark text-white fw-bold py-3 d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-people-fill me-2"></i>Registered User Accounts & Credentials</span>
+                               <span><i class="bi bi-people-fill me-2"></i>User Accounts & Building Assignments</span>
                                 <button class="btn btn-light btn-sm" onclick="loadUsersManagement()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
                             </div>
                             <div class="card-body">
-                                <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
                                     <table class="table table-hover align-middle mb-0">
                                         <thead class="table-light">
                                             <tr>
                                                 <th>Username</th>
                                                 <th>Role</th>
+                                                <th>Camp / Building</th>
                                                 <th>Password</th>
                                                 <th class="text-end">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody id="usersTableBody">
-                                            <tr><td colspan="4" class="text-center text-muted py-3">No user accounts found.</td></tr>
+                                            <tr><td colspan="5" class="text-center text-muted py-3">No user accounts found.</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -321,6 +334,41 @@
         </div>
     </div>
 
+    <!-- User Camp & Building Assignment Modal -->
+    <div class="modal fade" id="assignUserModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-geo-alt-fill me-2"></i>Assign User to Camp & Building</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="assignModalUsername">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Target User:</label>
+                        <div id="assignModalUserDisplay" class="fw-bold text-dark"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Select Camp Location</label>
+                        <select id="assignModalCamp" class="form-select" onchange="updateAssignModalBuildings()">
+                            <option value="">-- No Camp Assigned --</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Select Building Number</label>
+                        <select id="assignModalBuilding" class="form-select">
+                            <option value="">-- Select Camp First --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="saveUserBuildingAssignment()"><i class="bi bi-save me-1"></i>Save Assignment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -348,11 +396,15 @@
             loadAvailabilitySettings();
             loadPurposes();
             renderCalendarView();
+            populateCreateUserCamps();
 
             // Listen for cross-tab storage changes
             window.addEventListener('storage', function(e) {
                 if (e.key === 'housing_bookings') loadBookings();
-                if (e.key === 'housing_camps' || e.key === 'housing_camp_buildings') initSuperAdminCamps();
+                if (e.key === 'housing_camps' || e.key === 'housing_camp_buildings') {
+                    initSuperAdminCamps();
+                    populateCreateUserCamps();
+                }
                 if (e.key === 'housing_users') loadUsersManagement();
             });
         }
@@ -456,13 +508,54 @@
             showDashAlert("Staff notes successfully saved.", "success");
         }
 
+        // --- USER & BUILDING ASSIGNMENT MANAGEMENT ---
+        function getAvailableCampsForUser() {
+            let currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { role: "Super Admin" };
+            let allCamps = JSON.parse(localStorage.getItem('housing_camps')) || ["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"];
+            
+            if (currentUser.role === 'Super Admin') {
+                return allCamps;
+            } else if (currentUser.role === 'Admin') {
+                return currentUser.assignedCamps || [];
+            }
+            return [];
+        }
+
+        function populateCreateUserCamps() {
+            const select = document.getElementById('newUserCamp');
+            if (!select) return;
+
+            let camps = getAvailableCampsForUser();
+            select.innerHTML = '<option value="">-- No Camp Assigned --</option>';
+            camps.forEach(c => {
+                select.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+            updateCreateUserBuildings();
+        }
+
+        function updateCreateUserBuildings() {
+            const selectedCamp = document.getElementById('newUserCamp').value;
+            const bldgSelect = document.getElementById('newUserBuilding');
+            if (!bldgSelect) return;
+
+            bldgSelect.innerHTML = '<option value="">-- Select Building --</option>';
+            if (!selectedCamp) return;
+
+            let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
+            let buildings = campBuildingsMap[selectedCamp] || [];
+
+            buildings.forEach(b => {
+                bldgSelect.innerHTML += `<option value="${b}">${b}</option>`;
+            });
+        }
+
         function loadUsersManagement() {
             let users = JSON.parse(localStorage.getItem('housing_users'));
             if (!users) {
                 users = [
-                    { username: "superadmin", password: "password123", role: "Super Admin", assignedCamps: [] },
-                    { username: "admin1", password: "password123", role: "Admin", assignedCamps: ["Camp Hansen"] },
-                    { username: "john", password: "password123", role: "User", assignedCamps: [] }
+                    { username: "superadmin", password: "password123", role: "Super Admin", assignedCamps: [], camp: "", building: "" },
+                    { username: "admin1", password: "password123", role: "Admin", assignedCamps: ["Camp Hansen"], camp: "Camp Hansen", building: "Bldg 100" },
+                    { username: "john", password: "password123", role: "User", assignedCamps: [], camp: "Camp Hansen", building: "Bldg 101" }
                 ];
                 localStorage.setItem('housing_users', JSON.stringify(users));
             }
@@ -471,22 +564,26 @@
             if (!tbody) return;
 
             if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No user accounts found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No user accounts found.</td></tr>';
                 return;
             }
 
             tbody.innerHTML = '';
-            users.forEach((u, index) => {
+            users.forEach((u) => {
                 let badgeClass = 'bg-secondary';
                 if (u.role === 'Super Admin') badgeClass = 'bg-danger';
                 if (u.role === 'Admin') badgeClass = 'bg-primary';
+
+                let locationDisplay = (u.camp && u.building) ? `<span class="fw-bold text-dark">${u.camp}</span><br><small class="text-muted">Bldg ${u.building}</small>` : '<span class="text-muted fst-italic">Unassigned</span>';
 
                 tbody.innerHTML += `
                     <tr>
                         <td><strong>${u.username}</strong></td>
                         <td><span class="badge ${badgeClass}">${u.role}</span></td>
+                        <td>${locationDisplay}</td>
                         <td><code>${u.password}</code></td>
                         <td class="text-end">
+                            <button class="btn btn-outline-primary btn-sm py-0 px-1 me-1" title="Assign Camp & Building" onclick="openAssignUserModal('${u.username}')"><i class="bi bi-geo-alt"></i></button>
                             <button class="btn btn-outline-warning btn-sm py-0 px-1 me-1" title="Reset Password" onclick="resetUserPassword('${u.username}')"><i class="bi bi-key-fill"></i></button>
                             <button class="btn btn-outline-danger btn-sm py-0 px-1" title="Delete User" onclick="deleteUserAccount('${u.username}')"><i class="bi bi-trash"></i></button>
                         </td>
@@ -500,6 +597,8 @@
             const username = document.getElementById('newUsername').value.trim().toLowerCase();
             const password = document.getElementById('newPassword').value.trim();
             const role = document.getElementById('newUserRole').value;
+            const camp = document.getElementById('newUserCamp').value;
+            const building = document.getElementById('newUserBuilding').value;
 
             if (!username || !password) return;
 
@@ -509,12 +608,86 @@
                 return;
             }
 
-            users.push({ username, password, role, assignedCamps: [] });
+            users.push({ username, password, role, assignedCamps: camp ? [camp] : [], camp, building });
             localStorage.setItem('housing_users', JSON.stringify(users));
 
             document.getElementById('createUserForm').reset();
+            populateCreateUserCamps();
             loadUsersManagement();
-            showDashAlert(`User account '${username}' created successfully.`, "success");
+            showDashAlert(`User account '${username}' created and assigned successfully.`, "success");
+        }
+
+        function openAssignUserModal(username) {
+            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
+            let user = users.find(u => u.username === username);
+            if (!user) return;
+
+            document.getElementById('assignModalUsername').value = user.username;
+            document.getElementById('assignModalUserDisplay').textContent = `${user.username} (${user.role})`;
+
+            const campSelect = document.getElementById('assignModalCamp');
+            let camps = getAvailableCampsForUser();
+            campSelect.innerHTML = '<option value="">-- No Camp Assigned --</option>';
+            camps.forEach(c => {
+                campSelect.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+
+            if (user.camp && camps.includes(user.camp)) {
+                campSelect.value = user.camp;
+            } else {
+                campSelect.value = "";
+            }
+
+            updateAssignModalBuildings();
+            if (user.building) {
+                document.getElementById('assignModalBuilding').value = user.building;
+            }
+
+            let modal = new bootstrap.Modal(document.getElementById('assignUserModal'));
+            modal.show();
+        }
+
+        function updateAssignModalBuildings() {
+            const selectedCamp = document.getElementById('assignModalCamp').value;
+            const bldgSelect = document.getElementById('assignModalBuilding');
+            if (!bldgSelect) return;
+
+            bldgSelect.innerHTML = '<option value="">-- Select Building --</option>';
+            if (!selectedCamp) return;
+
+            let campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
+            let buildings = campBuildingsMap[selectedCamp] || [];
+
+            buildings.forEach(b => {
+                bldgSelect.innerHTML += `<option value="${b}">${b}</option>`;
+            });
+        }
+
+        function saveUserBuildingAssignment() {
+            const username = document.getElementById('assignModalUsername').value;
+            const camp = document.getElementById('assignModalCamp').value;
+            const building = document.getElementById('assignModalBuilding').value;
+
+            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
+            users = users.map(u => {
+                if (u.username === username) {
+                    u.camp = camp;
+                    u.building = building;
+                    if (camp && !u.assignedCamps.includes(camp)) {
+                        u.assignedCamps.push(camp);
+                    }
+                }
+                return u;
+            });
+
+            localStorage.setItem('housing_users', JSON.stringify(users));
+
+            let modalEl = document.getElementById('assignUserModal');
+            let modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+
+            loadUsersManagement();
+            showDashAlert(`Building assignment updated for user '${username}'.`, "success");
         }
 
         function resetUserPassword(username) {
@@ -665,6 +838,7 @@
             localStorage.setItem('housing_camps', JSON.stringify(camps));
             input.value = '';
             initSuperAdminCamps();
+            populateCreateUserCamps();
             showDashAlert("Camp successfully added.", "success");
         }
 
@@ -681,6 +855,7 @@
                 localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildingsMap));
 
                 initSuperAdminCamps();
+                populateCreateUserCamps();
                 showDashAlert("Camp removed successfully.", "success");
             }
         }
@@ -754,6 +929,7 @@
             localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildingsMap));
             input.value = '';
             renderSuperCampBuildingsList();
+            updateCreateUserBuildings();
             showDashAlert("Building successfully assigned.", "success");
         }
 
@@ -763,6 +939,7 @@
                 campBuildingsMap[campName].splice(index, 1);
                 localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildingsMap));
                 renderSuperCampBuildingsList();
+                updateCreateUserBuildings();
                 showDashAlert("Building removed.", "success");
             }
         }
