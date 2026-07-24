@@ -188,8 +188,12 @@
                                         <input type="text" id="staffUsername" class="form-control" required placeholder="username">
                                     </div>
                                     <div class="col-md-3">
-                                        <label class="form-label small fw-bold">Password *</label>
+                                        <label class="form-label small fw-bold">Initial Password *</label>
                                         <input type="password" id="staffPassword" class="form-control" required placeholder="password">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small fw-bold">Recovery Email *</label>
+                                        <input type="email" id="staffRecoveryEmail" class="form-control" required placeholder="email@mil.mil">
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label small fw-bold">Role *</label>
@@ -198,7 +202,9 @@
                                             <option value="staff">UH Building Manager</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-3">
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
                                         <label class="form-label small fw-bold">Assign Camp *</label>
                                         <select id="staffCampSelect" class="form-select" required onchange="renderBuildingCheckboxes()">
                                             <option value="">-- Select Camp --</option>
@@ -227,6 +233,7 @@
                                             <th>Role</th>
                                             <th>Assigned Camp</th>
                                             <th>Assigned Buildings</th>
+                                            <th>Recovery Email</th>
                                             <th class="text-end">Actions</th>
                                         </tr>
                                     </thead>
@@ -360,10 +367,22 @@
 
         function renderStaff() {
             const tbody = document.getElementById('staffTableBody');
-            tbody.innerHTML = appState.staff_users.length === 0 ? `<tr><td colspan="5" class="text-center text-muted py-3">No managers found.</td></tr>` : '';
+            tbody.innerHTML = appState.staff_users.length === 0 ? `<tr><td colspan="6" class="text-center text-muted py-3">No managers found.</td></tr>` : '';
             appState.staff_users.forEach((s, idx) => {
                 const bldgs = s.buildings ? s.buildings.join(', ') : (s.building ? s.building : 'None');
-                tbody.innerHTML += `<tr><td class="fw-bold">${s.username}</td><td><span class="badge bg-secondary">${s.role === 'camp_admin' ? 'Camp Admin' : 'UH Building Manager'}</span></td><td>${s.camp}</td><td>Bldg ${bldgs}</td><td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="deleteStaff(${idx})"><i class="bi bi-trash"></i></button></td></tr>`;
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="fw-bold">${s.username}</td>
+                        <td><span class="badge bg-secondary">${s.role === 'camp_admin' ? 'Camp Admin' : 'UH Building Manager'}</span></td>
+                        <td>${s.camp}</td>
+                        <td>Bldg ${bldgs}</td>
+                        <td>${s.recovery_email || 'N/A'}</td>
+                        <td class="text-end">
+                            <button class="btn btn-outline-warning btn-sm me-1" onclick="resetStaffPassword(${idx})" title="Reset Password"><i class="bi bi-key"></i></button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteStaff(${idx})" title="Delete Account"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
             });
         }
 
@@ -381,18 +400,31 @@
             const newUser = {
                 username: document.getElementById('staffUsername').value.trim(),
                 password: document.getElementById('staffPassword').value.trim(),
+                recovery_email: document.getElementById('staffRecoveryEmail').value.trim(),
                 role: document.getElementById('staffRole').value,
                 camp: camp,
-                buildings: selectedBuildings
+                buildings: selectedBuildings,
+                must_change_password: true
             };
             appState.staff_users.push(newUser);
             await saveStateToServer();
             document.getElementById('staffUsername').value = '';
             document.getElementById('staffPassword').value = '';
+            document.getElementById('staffRecoveryEmail').value = '';
             document.getElementById('staffCampSelect').value = '';
             document.getElementById('buildingCheckboxesContainer').innerHTML = '<span class="text-muted small">Please select a camp first.</span>';
             renderStaff();
             renderOverview();
+        }
+
+        async function resetStaffPassword(idx) {
+            const newPass = prompt("Enter temporary password for this user:");
+            if (!newPass) return;
+            appState.staff_users[idx].password = newPass;
+            appState.staff_users[idx].must_change_password = true;
+            await saveStateToServer();
+            alert(`Password reset successfully! User will be required to change it upon next login.`);
+            renderStaff();
         }
 
         async function deleteStaff(idx) {

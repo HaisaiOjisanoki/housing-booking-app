@@ -21,14 +21,18 @@ DEFAULT_STATE = {
             "password": "password123",
             "role": "camp_admin",
             "camp": "Camp Foster",
-            "buildings": ["1001", "1002", "1003"]
+            "buildings": ["1001", "1002", "1003"],
+            "recovery_email": "foster.admin@mil.mil",
+            "must_change_password": True
         },
         {
             "username": "manager_1001",
             "password": "password123",
             "role": "staff",
             "camp": "Camp Foster",
-            "buildings": ["1001"]
+            "buildings": ["1001"],
+            "recovery_email": "manager1001@mil.mil",
+            "must_change_password": True
         }
     ],
     "bookings": [
@@ -72,6 +76,8 @@ def booking_page():
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
     if 'username' in session:
+        if session.get('pending_password_change'):
+            return redirect(url_for('change_password_page'))
         if session['role'] == 'superadmin':
             return redirect(url_for('superadmin_dashboard'))
         else:
@@ -93,11 +99,62 @@ def login_page():
                 session['role'] = user['role']
                 session['camp'] = user['camp']
                 session['buildings'] = user.get('buildings', [user.get('building')] if user.get('building') else [])
+                
+                if user.get('must_change_password', False):
+                    session['pending_password_change'] = True
+                    return redirect(url_for('change_password_page'))
+                    
                 return redirect(url_for('staff_dashboard'))
 
         return render_template('login.html', error='Invalid username or password.')
         
     return render_template('login.html')
+
+@app.route('/change-password', methods=['GET', 'POST'])
+def change_password_page():
+    if 'username' not in session or session.get('role') == 'superadmin':
+        return redirect(url_for('login_page'))
+        
+    if request.method == 'POST':
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if not new_password or new_password != confirm_password:
+            return render_template('change_password.html', error='Passwords do not match or are empty.')
+            
+        username = session.get('username')
+        state = load_state()
+        for user in state.get('staff_users', []):
+            if user['username'] == username:
+                user['password'] = new_password
+                user['must_change_password'] = False
+                save_state(state)
+                break
+                
+        session.pop('pending_password_change', None)
+        return redirect(url_for('staff_dashboard'))
+        
+    return render_template('change_password.html')
+
+@app.route('/api/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.get_json()
+    username = data.get('username')
+    email = data.get('email')
+    
+    state = load_state()
+    found = False
+    for user in state.get('staff_users', []):
+        if user['username'] == username and user.get('recovery_email') == email:
+            found = True
+            user['password'] = 'TempPass123!'
+            user['must_change_password'] = True
+            save_state(state)
+            break
+            
+    if found:
+        return jsonify({"status": "success", "message": "Recovery successful! Temporary password generated: TempPass123!. Please log in and change your password."})
+    return jsonify({"status": "error", "message": "Username and recovery email do not match."}), 400
 
 @app.route('/logout')
 def logout():
@@ -114,6 +171,8 @@ def superadmin_dashboard():
 def staff_dashboard():
     if session.get('role') not in ['camp_admin', 'staff']:
         return redirect(url_for('login_page'))
+    if session.get('pending_password_change'):
+        return redirect(url_for('change_password_page'))
     return render_template(
         'dashboard.html',
         username=session.get('username'),

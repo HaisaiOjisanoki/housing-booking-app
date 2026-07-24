@@ -21,19 +21,77 @@
         {% if error %}
         <div class="alert alert-danger py-2 small" role="alert">{{ error }}</div>
         {% endif %}
-        <form action="{{ url_for('login') }}" method="POST">
+        <form action="{{ url_for('login_page') }}" method="POST">
             <div class="mb-3">
                 <label class="form-label small fw-bold">Username</label>
                 <input type="text" name="username" class="form-control" required placeholder="Enter username">
             </div>
-            <div class="mb-4">
+            <div class="mb-3">
                 <label class="form-label small fw-bold">Password</label>
                 <input type="password" name="password" class="form-control" required placeholder="Enter password">
             </div>
-            <button type="submit" class="btn btn-primary w-100 fw-bold py-2">
+            <div class="mb-3 text-end">
+                <a href="#" class="small text-decoration-none" data-bs-toggle="modal" data-bs-target="#forgotModal">Forgot Password?</a>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 fw-bold py-2 mb-2">
                 <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
             </button>
+            <a href="{{ url_for('booking_page') }}" class="btn btn-outline-secondary w-100 btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Public Booking
+            </a>
         </form>
     </div>
+
+    <!-- Forgot Password Modal -->
+    <div class="modal fade" id="forgotModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Password Recovery</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="recoveryAlert" class="alert d-none small" role="alert"></div>
+                    <form id="recoveryForm" onsubmit="submitRecovery(event)">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Username</label>
+                            <input type="text" id="recUsername" class="form-control" required placeholder="Enter your username">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Recovery Email Address</label>
+                            <input type="email" id="recEmail" class="form-control" required placeholder="Enter your recovery email">
+                        </div>
+                        <button type="submit" class="btn btn-success w-100 fw-bold">Send Recovery Instructions</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function submitRecovery(e) {
+            e.preventDefault();
+            const username = document.getElementById('recUsername').value.trim();
+            const email = document.getElementById('recEmail').value.trim();
+            const alertBox = document.getElementById('recoveryAlert');
+
+            try {
+                const res = await fetch('/api/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email })
+                });
+                const data = await res.json();
+                alertBox.className = data.status === 'success' ? 'alert alert-success small' : 'alert alert-danger small';
+                alertBox.textContent = data.message;
+                alertBox.classList.remove('d-none');
+            } catch (err) {
+                alertBox.className = 'alert alert-danger small';
+                alertBox.textContent = 'Connection error. Please try again.';
+                alertBox.classList.remove('d-none');
+            }
+        }
+    </script>
 </body>
 </html>
