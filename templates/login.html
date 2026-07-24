@@ -50,10 +50,11 @@
             const foundUser = users.find(u => u.username.toLowerCase() === usernameInput && u.password === passwordInput);
 
             if (foundUser) {
+                // Save current user with normalized role handling
                 localStorage.setItem('housing_current_user', JSON.stringify(foundUser));
                 window.location.href = '/dashboard';
             } else {
-                alert("Invalid username or password.");
+                alert("Invalid username or password. Default test accounts: superadmin, admin, user (password: password123)");
             }
         }
     </script>

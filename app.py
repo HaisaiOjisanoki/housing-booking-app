@@ -5,7 +5,7 @@ app.secret_key = 'housing_secure_portal_key'
 
 @app.route('/')
 def index():
-    return render_template('public_booking.html')
+    return render_template('index.html')
 
 @app.route('/login')
 def login():

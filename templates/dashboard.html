@@ -23,95 +23,289 @@
     </nav>
 
     <div class="container my-4">
-        <h2 class="mb-4" id="portalHeaderTitle">Dashboard</h2>
+        <h2 class="mb-4" id="portalHeaderTitle">Housing Management & Calendar Portal</h2>
         
-        <!-- NORMAL USER ASSIGNED BUILDING & RULES CARD -->
-        <div class="card p-4 shadow-sm mb-4 border-info" id="userAssignedBuildingCard" style="display: none;">
-            <h4 class="mb-3 text-info">🏢 My Assigned Building Rules & Lunch Blocking</h4>
-            <p class="text-muted small">Update your building's operating hours and lunch break windows. Public bookings will automatically be blocked during your designated lunch hours.</p>
-            <div id="userAssignedBuildingsContainer"></div>
+        <!-- CALENDAR VIEW SECTION -->
+        <div class="card p-3 shadow-sm mb-4 bg-white border-primary">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="text-primary mb-0">📅 Bookings Calendar & Schedule</h5>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="changeMonth(-1)">&#9664; Prev</button>
+                    <h5 id="calendarMonthYear" class="mb-0 align-self-center fw-bold">Month Year</h5>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="changeMonth(1)">Next &#9654;</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered text-center align-middle" style="table-layout: fixed; min-width: 700px;">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calendarBody">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-muted small mt-2" id="calendarRoleNotice"></div>
         </div>
 
-        <!-- PURPOSE OF VISIT MANAGEMENT CARD (Visible to Admins / Super Admins) -->
-        <div class="card p-4 shadow-sm mb-4 border-success" id="adminPurposeManagementCard">
-            <h4 class="mb-3 text-success">📋 Manage Purpose of Visit Options</h4>
-            <p class="text-muted small">Add or remove the categories available to users in the public booking form dropdown.</p>
-            <form onsubmit="addPurposeItem(event)" class="row g-3 mb-3">
-                <div class="col-md-9">
-                    <input type="text" class="form-control" id="newPurposeInput" required placeholder="e.g. Check-in, Maintenance, Clearance Interview">
+        <!-- Admin Export Controls Toolbar -->
+        <div class="card p-3 shadow-sm mb-4 bg-white border-success" id="adminExportSection">
+            <h5 class="mb-3 text-success">📊 Booking Data Export (Excel / CSV Format)</h5>
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-5">
+                    <button class="btn btn-success w-100" onclick="exportBuildingGroupedBookings()">Export All Bookings (Grouped by Building)</button>
                 </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-success w-100">Add Purpose</button>
+                <div class="col-12 col-md-4">
+                    <select class="form-select form-select-sm" id="exportUserSelect">
+                        <option value="">-- Filter by User --</option>
+                    </select>
                 </div>
-            </form>
-            <ul id="purposeListContainer" class="list-group list-group-flush border rounded"></ul>
+                <div class="col-12 col-md-3">
+                    <button class="btn btn-outline-success w-100" onclick="exportSelectedUserBookings()">Export Selected User</button>
+                </div>
+            </div>
         </div>
 
-        <!-- ADMIN USER CREATION CARD -->
-        <div class="card p-4 shadow-sm mb-4 border-primary" id="adminUserCreationCard">
-            <h4 class="mb-3 text-primary">👥 Create New User Account</h4>
-            <form id="userForm" onsubmit="saveNewUser(event)">
-                <div class="row g-3">
-                    <div class="col-md-5">
-                        <label for="newUsername" class="form-label">Username</label>
-                        <input type="text" class="form-control" id="newUsername" required placeholder="e.g. user2">
-                    </div>
-                    <div class="col-md-5">
-                        <label for="newRole" class="form-label">Role</label>
-                        <select class="form-select" id="newRole" required>
-                            <option value="User">User</option>
-                            <option value="Admin">Admin</option>
-                            <option value="Super Admin">Super Admin</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100">Create</button>
+        <!-- MAIN CONTENT AREA -->
+        <div class="row g-4" id="mainContentRow">
+            <div class="col-12 col-lg-4" id="leftColumnControls">
+                
+                <!-- ADMIN BUILDING FORM -->
+                <div class="card p-3 shadow-sm mb-4" id="adminBuildingFormCard">
+                    <h5 id="formTitle" class="mb-3">Add New Building</h5>
+                    <form id="buildingForm" onsubmit="saveBuilding(event)">
+                        <input type="hidden" id="buildingIndex" value="">
+                        <div class="mb-3">
+                            <label for="buildingNameInput" class="form-label">Building Number/Name</label>
+                            <input type="text" class="form-control" id="buildingNameInput" required placeholder="e.g. Building 4">
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label for="startTimeInput" class="form-label">Start Time</label>
+                                <input type="time" class="form-control" id="startTimeInput" value="08:00" required>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label for="endTimeInput" class="form-label">End Time</label>
+                                <input type="time" class="form-control" id="endTimeInput" value="17:00" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label for="lunchStartInput" class="form-label">Lunch Start</label>
+                                <input type="time" class="form-control" id="lunchStartInput" value="12:00">
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label for="lunchEndInput" class="form-label">Lunch End</label>
+                                <input type="time" class="form-control" id="lunchEndInput" value="13:00">
+                            </div>
+                        </div>
+
+                        <div class="mb-3" id="assignedUsersWrapper">
+                            <label class="form-label">Assign Team Members (Coverage)</label>
+                            <div id="assignedUsersChecklist" class="border rounded p-2 bg-light" style="max-height: 120px; overflow-y: auto;"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Purpose of Visit Options</label>
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control form-control-sm" id="newPurposeInput" placeholder="e.g. In-processing">
+                                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="addPurposeToForm()">Add</button>
+                            </div>
+                            <ul id="purposeListContainer" class="list-group list-group-flush border rounded" style="max-height: 100px; overflow-y: auto;"></ul>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 mb-2">Save Building Rules</button>
+                        <button type="button" class="btn btn-outline-secondary w-100" onclick="resetBuildingForm()" id="cancelEditBtn" style="display:none;">Cancel Edit</button>
+                    </form>
+                </div>
+
+                <!-- NORMAL USER ASSIGNED BUILDING CARD -->
+                <div class="card p-3 shadow-sm mb-4 border-info" id="userAssignedBuildingCard" style="display: none;">
+                    <h5 class="mb-3 text-info">🏢 My Assigned Buildings</h5>
+                    <p class="text-muted small">Manage operating hours and visit purposes for your assigned buildings.</p>
+                    <div id="userAssignedBuildingsContainer"></div>
+                </div>
+
+                <!-- ADD USER ACCOUNT CARD -->
+                <div class="card p-3 shadow-sm border-primary" id="adminUserCreationCard">
+                    <h5 class="mb-3 text-primary">👥 Add New User Account</h5>
+                    <form id="userForm" onsubmit="saveUser(event)">
+                        <div class="mb-3">
+                            <label for="newUsername" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="newUsername" required placeholder="username">
+                        </div>
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="newPassword" required placeholder="password">
+                        </div>
+                        <div class="mb-3">
+                            <label for="newRole" class="form-label">Role</label>
+                            <select class="form-select" id="newRole" required>
+                                <option value="User">User</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Super Admin">Super Admin</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Create User</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN TABLES -->
+            <div class="col-12 col-lg-8" id="rightColumnContainer">
+                <div class="card p-3 shadow-sm mb-4" id="adminBuildingsTableCard">
+                    <h5 class="mb-3">Configured Buildings & Staff Coverage</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Building Number</th>
+                                    <th>Hours</th>
+                                    <th>Assigned Staff</th>
+                                    <th>Purposes</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="buildingsTableBody"></tbody>
+                        </table>
                     </div>
                 </div>
-            </form>
-            <div class="mt-3">
-                <h6 class="text-muted">Existing Users:</h6>
-                <ul id="userListContainer" class="list-group list-group-flush border rounded"></ul>
+
+                <div class="card p-3 shadow-sm" id="adminUsersTableCard">
+                    <h5 class="mb-3">Managed User Accounts</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Role</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- EDIT ASSIGNED BUILDING MODAL -->
-    <div class="modal fade" id="editBuildingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="editAssignedBuildingModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title">Edit Building Hours & Lunch Block</h5>
+                    <h5 class="modal-title">Edit Assigned Building</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="buildingRulesForm" onsubmit="saveBuildingRules(event)">
-                        <input type="hidden" id="editBuildingId">
+                    <form id="userBuildingEditForm" onsubmit="saveUserAssignedBuilding(event)">
+                        <input type="hidden" id="userEditBuildingId">
                         <div class="mb-3">
-                            <label class="form-label fw-bold" id="modalBuildingNameLabel"></label>
+                            <label for="userEditBuildingName" class="form-label">Building Name</label>
+                            <input type="text" class="form-control" id="userEditBuildingName" required>
                         </div>
                         <div class="row">
                             <div class="col-6 mb-3">
-                                <label for="editStartTime" class="form-label">Start Time</label>
-                                <input type="time" class="form-control" id="editStartTime" required>
+                                <label for="userEditStartTime" class="form-label">Start Time</label>
+                                <input type="time" class="form-control" id="userEditStartTime" required>
                             </div>
                             <div class="col-6 mb-3">
-                                <label for="editEndTime" class="form-label">End Time</label>
-                                <input type="time" class="form-control" id="editEndTime" required>
+                                <label for="userEditEndTime" class="form-label">End Time</label>
+                                <input type="time" class="form-control" id="userEditEndTime" required>
                             </div>
                         </div>
-                        <div class="row border-top pt-2 mt-2">
-                            <p class="text-danger small mb-2 fw-semibold">⛔ Lunch Break Blocking (Prevents Public Bookings)</p>
-                            <div class="col-6 mb-3">
-                                <label for="editLunchStart" class="form-label">Lunch Start</label>
-                                <input type="time" class="form-control" id="editLunchStart" required>
+                        <div class="mb-3">
+                            <label class="form-label">Purpose Options</label>
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control form-control-sm" id="userNewPurposeInput" placeholder="New purpose">
+                                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="addUserPurposeToForm()">Add</button>
                             </div>
-                            <div class="col-6 mb-3">
-                                <label for="editLunchEnd" class="form-label">Lunch End</label>
-                                <input type="time" class="form-control" id="editLunchEnd" required>
+                            <ul id="userPurposeListContainer" class="list-group list-group-flush border rounded" style="max-height: 100px; overflow-y: auto;"></ul>
+                        </div>
+                        <button type="submit" class="btn btn-info text-white w-100">Save Changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DAY BOOKINGS MODAL -->
+    <div class="modal fade" id="dayBookingsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="dayModalTitle">Bookings for Date</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="dayBookingsContainer" class="table-responsive"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOOKING MANAGEMENT & DETAIL MODAL -->
+    <div class="modal fade" id="bookingDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Manage Booking - <span id="detailConfirmationCode"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="bookingManagementForm" onsubmit="saveBookingChanges(event)">
+                        <input type="hidden" id="editBookingCode">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="editBookingFirstName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="editBookingLastName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" id="editBookingEmail" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Branch of Service</label>
+                                <input type="text" class="form-control" id="editBookingBranch">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Building</label>
+                                <select class="form-select" id="editBookingBuilding" required onchange="updateBookingPurposeOptions()"></select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Date (Reschedule)</label>
+                                <input type="date" class="form-control" id="editBookingDate" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Time (Reschedule)</label>
+                                <input type="time" class="form-control" id="editBookingTime" required>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Purpose of Visit</label>
+                                <select class="form-select" id="editBookingPurpose" required></select>
+                            </div>
+                            <div class="col-md-12" id="staffInternalNotesWrapper">
+                                <label class="form-label text-danger fw-bold">🔒 Staff Internal Notes (Viewable only by Staff)</label>
+                                <textarea class="form-control bg-light" id="editBookingInternalNotes" rows="3" placeholder="Confidential staff notes..."></textarea>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-info text-white w-100">Save Rules & Block Lunch Slots</button>
+                        <div class="mt-4 d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-danger" onclick="cancelBookingFromModal()">Cancel / Delete Booking</button>
+                            <div>
+                                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </div>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -129,203 +323,402 @@
                 <div class="modal-body">
                     <div id="notificationListContainer" style="max-height: 400px; overflow-y: auto;" class="border rounded p-2 bg-light"></div>
                 </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const defaultBuildings = [
+            { id: 1, name: "Building 1", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"], assignedUsers: ["superadmin", "admin", "user"] },
+            { id: 2, name: "Building 2", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"], assignedUsers: ["superadmin", "admin"] },
+            { id: 3, name: "Building 4", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", purposes: ["In-processing", "Room Inspection", "Maintenance"], assignedUsers: ["superadmin", "user"] }
+        ];
+
+        let currentBuildingPurposes = ["In-processing", "Room Inspection", "Maintenance"];
+        let currentUserBuildingPurposesTemp = [];
+        let calendarYear = new Date().getFullYear();
+        let calendarMonth = new Date().getMonth();
+
         function initDashboard() {
-            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'user', role: 'User' };
+            if (!localStorage.getItem('housing_buildings')) {
+                localStorage.setItem('housing_buildings', JSON.stringify(defaultBuildings));
+            }
+            
+            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'superadmin', role: 'Super Admin', email: 'superadmin@housing.mil' };
+            const userRole = (currentUser.role || '').toLowerCase();
             document.getElementById('currentUserRoleBadge').innerText = `${currentUser.role} (${currentUser.username})`;
 
-            const userRole = (currentUser.role || '').toLowerCase();
             const isNormalUser = userRole === 'user';
 
             if (isNormalUser) {
                 document.getElementById('portalHeaderTitle').innerText = `User Portal - ${currentUser.username}`;
+                document.getElementById('adminExportSection').style.display = 'none';
+                document.getElementById('adminBuildingFormCard').style.display = 'none';
                 document.getElementById('adminUserCreationCard').style.display = 'none';
-                document.getElementById('adminPurposeManagementCard').style.display = 'none'; // Optional: Hide purpose mgmt from normal users if preferred
+                document.getElementById('adminUsersTableCard').style.display = 'none';
+                document.getElementById('adminBuildingsTableCard').style.display = 'none';
                 document.getElementById('userAssignedBuildingCard').style.display = 'block';
                 renderUserAssignedBuildings();
             } else {
-                renderUserAccountList();
+                renderPurposeList();
+                renderAssignedUsersChecklist([]);
+                renderBuildingsTable();
+                renderUsersTable();
+                populateExportUserDropdown();
             }
 
-            renderPurposeList();
             updateNotificationBadge();
-        }
-
-        function renderPurposeList() {
-            if (!localStorage.getItem('housing_purposes')) {
-                const defaultPurposes = ["Check-in", "Check-out", "Maintenance", "Inquiry"];
-                localStorage.setItem('housing_purposes', JSON.stringify(defaultPurposes));
-            }
-
-            const purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [];
-            const container = document.getElementById('purposeListContainer');
-            if (!container) return;
-            
-            container.innerHTML = '';
-            purposes.forEach((item, index) => {
-                container.innerHTML += `
-                    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
-                        <span>${item}</span>
-                        <button class="btn btn-outline-danger btn-sm" onclick="removePurposeItem(${index})">Remove</button>
-                    </li>
-                `;
-            });
-        }
-
-        function addPurposeItem(event) {
-            event.preventDefault();
-            const input = document.getElementById('newPurposeInput');
-            const val = input.value.trim();
-            if (!val) return;
-
-            let purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [];
-            if (purposes.map(p => p.toLowerCase()).includes(val.toLowerCase())) {
-                alert("This purpose already exists.");
-                return;
-            }
-
-            purposes.push(val);
-            localStorage.setItem('housing_purposes', JSON.stringify(purposes));
-            input.value = '';
-            renderPurposeList();
-        }
-
-        function removePurposeItem(index) {
-            let purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [];
-            purposes.splice(index, 1);
-            localStorage.setItem('housing_purposes', JSON.stringify(purposes));
-            renderPurposeList();
+            renderCalendar();
         }
 
         function renderUserAssignedBuildings() {
-            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'user1' };
-            let buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [
-                { id: 1, name: "Building 1", startTime: "08:00", endTime: "17:00", lunchStart: "12:00", lunchEnd: "13:00", assignedUsers: ["user1"] }
-            ];
-
-            const assigned = buildings.filter(b => b.assignedUsers && b.assignedUsers.includes(currentUser.username));
+            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'user' };
+            const buildings = getBuildings();
+            const assignedBuildings = buildings.filter(b => b.assignedUsers && b.assignedUsers.includes(currentUser.username));
             const container = document.getElementById('userAssignedBuildingsContainer');
             container.innerHTML = '';
 
-            if (assigned.length === 0) {
-                container.innerHTML = `<p class="text-muted small">No buildings are currently assigned to your account.</p>`;
+            if (assignedBuildings.length === 0) {
+                container.innerHTML = `<p class="text-muted small">No buildings assigned.</p>`;
                 return;
             }
 
-            assigned.forEach(b => {
+            assignedBuildings.forEach(b => {
                 container.innerHTML += `
-                    <div class="card mb-3 p-3 bg-white border">
-                        <h5 class="text-primary fw-bold mb-1">${b.name}</h5>
-                        <p class="mb-1 small"><strong>Operating Hours:</strong> ${b.startTime} - ${b.endTime}</p>
-                        <p class="mb-2 small text-danger"><strong>Lunch Block Window:</strong> ${b.lunchStart} - ${b.lunchEnd} (Bookings blocked)</p>
-                        <button class="btn btn-outline-info btn-sm" onclick="openEditBuildingModal(${b.id})">Edit Rules & Lunch Time</button>
+                    <div class="card mb-3 p-3 bg-light border">
+                        <h6 class="text-primary fw-bold mb-1">${b.name}</h6>
+                        <p class="mb-2 small"><strong>Hours:</strong> ${b.startTime} - ${b.endTime}</p>
+                        <button class="btn btn-outline-info btn-sm w-100" onclick="openUserEditBuildingModal(${b.id})">Edit Building Details</button>
                     </div>
                 `;
             });
         }
 
-        function openEditBuildingModal(buildingId) {
-            let buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [];
+        function openUserEditBuildingModal(buildingId) {
+            const buildings = getBuildings();
             const b = buildings.find(item => item.id === buildingId);
             if (!b) return;
 
-            document.getElementById('editBuildingId').value = b.id;
-            document.getElementById('modalBuildingNameLabel').innerText = `Editing Rules for: ${b.name}`;
-            document.getElementById('editStartTime').value = b.startTime || "08:00";
-            document.getElementById('editEndTime').value = b.endTime || "17:00";
-            document.getElementById('editLunchStart').value = b.lunchStart || "12:00";
-            document.getElementById('editLunchEnd').value = b.lunchEnd || "13:00";
+            document.getElementById('userEditBuildingId').value = b.id;
+            document.getElementById('userEditBuildingName').value = b.name;
+            document.getElementById('userEditStartTime').value = b.startTime;
+            document.getElementById('userEditEndTime').value = b.endTime;
+            currentUserBuildingPurposesTemp = [...(b.purposes || [])];
+            renderUserPurposeList();
 
-            new bootstrap.Modal(document.getElementById('editBuildingModal')).show();
+            new bootstrap.Modal(document.getElementById('editAssignedBuildingModal')).show();
         }
 
-        function saveBuildingRules(event) {
-            event.preventDefault();
-            const id = parseInt(document.getElementById('editBuildingId').value);
-            let buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [];
-            const index = buildings.findIndex(b => b.id === id);
-
-            if (index !== -1) {
-                buildings[index].startTime = document.getElementById('editStartTime').value;
-                buildings[index].endTime = document.getElementById('editEndTime').value;
-                buildings[index].lunchStart = document.getElementById('editLunchStart').value;
-                buildings[index].lunchEnd = document.getElementById('editLunchEnd').value;
-
-                localStorage.setItem('housing_buildings', JSON.stringify(buildings));
-                bootstrap.Modal.getInstance(document.getElementById('editBuildingModal')).hide();
-                renderUserAssignedBuildings();
-                alert("Building rules and lunch time blocks updated successfully!");
-            }
-        }
-
-        function saveNewUser(event) {
-            event.preventDefault();
-            const username = document.getElementById('newUsername').value.trim();
-            const role = document.getElementById('newRole').value;
-
-            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
-            if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
-                alert("Username already exists.");
-                return;
-            }
-
-            const newUser = {
-                id: Date.now(),
-                username: username,
-                password: "tempPassword123",
-                role: role,
-                mustChangePassword: true,
-                recoveryEmail: ""
-            };
-
-            users.push(newUser);
-            localStorage.setItem('housing_users', JSON.stringify(users));
-            document.getElementById('userForm').reset();
-            renderUserAccountList();
-            alert(`User '${username}' created successfully! Temporary password is 'tempPassword123'.`);
-        }
-
-        function renderUserAccountList() {
-            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
-            const container = document.getElementById('userListContainer');
-            if (!container) return;
+        function renderUserPurposeList() {
+            const container = document.getElementById('userPurposeListContainer');
             container.innerHTML = '';
-
-            users.forEach(u => {
+            currentUserBuildingPurposesTemp.forEach((p, idx) => {
                 container.innerHTML += `
-                    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
-                        <span><strong>${u.username}</strong> <span class="badge bg-secondary ms-2">${u.role}</span></span>
-                        <span class="text-muted small">${u.mustChangePassword ? '⚠️ Pending Setup' : '✅ Active'}</span>
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-1 px-2">
+                        <span class="small">${p}</span>
+                        <button type="button" class="btn btn-sm text-danger p-0 border-0 fw-bold" onclick="removeUserPurpose(${idx})">&times;</button>
                     </li>
                 `;
             });
         }
 
-        function updateNotificationBadge() {
-            let notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [
-                { title: "System Initialized", message: "Welcome to the Housing Portal management system." }
-            ];
-            localStorage.setItem('housing_notifications', JSON.stringify(notifications));
+        function addUserPurposeToForm() {
+            const input = document.getElementById('userNewPurposeInput');
+            const val = input.value.trim();
+            if (val && !currentUserBuildingPurposesTemp.includes(val)) {
+                currentUserBuildingPurposesTemp.push(val);
+                input.value = '';
+                renderUserPurposeList();
+            }
+        }
+
+        function removeUserPurpose(idx) {
+            currentUserBuildingPurposesTemp.splice(idx, 1);
+            renderUserPurposeList();
+        }
+
+        function saveUserAssignedBuilding(event) {
+            event.preventDefault();
+            const buildingId = parseInt(document.getElementById('userEditBuildingId').value);
+            let buildings = getBuildings();
+            const index = buildings.findIndex(b => b.id === buildingId);
+            if (index !== -1) {
+                buildings[index].name = document.getElementById('userEditBuildingName').value.trim();
+                buildings[index].startTime = document.getElementById('userEditStartTime').value;
+                buildings[index].endTime = document.getElementById('userEditEndTime').value;
+                buildings[index].purposes = [...currentUserBuildingPurposesTemp];
+                localStorage.setItem('housing_buildings', JSON.stringify(buildings));
+                
+                bootstrap.Modal.getInstance(document.getElementById('editAssignedBuildingModal')).hide();
+                renderUserAssignedBuildings();
+                renderCalendar();
+                alert("Building updated successfully!");
+            }
+        }
+
+        function renderCalendar() {
+            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'superadmin', role: 'Super Admin', email: 'superadmin@housing.mil' };
+            const userRole = (currentUser.role || '').toLowerCase();
+            const isAdminOrSuper = userRole === 'super admin' || userRole === 'admin';
             
+            const noticeEl = document.getElementById('calendarRoleNotice');
+            noticeEl.innerHTML = isAdminOrSuper ? '<span class="text-success fw-semibold">Viewing Mode: Staff (Showing all bookings)</span>' : '<span class="text-info fw-semibold">Viewing Mode: User (Showing your bookings & assigned buildings)</span>';
+
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            document.getElementById('calendarMonthYear').innerText = `${monthNames[calendarMonth]} ${calendarYear}`;
+
+            const firstDayIndex = new Date(calendarYear, calendarMonth, 1).getDay();
+            const totalDays = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            
+            if (!isAdminOrSuper) {
+                const buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [];
+                const assignedBuildingNames = buildings.filter(b => b.assignedUsers && b.assignedUsers.includes(currentUser.username)).map(b => b.name);
+                bookings = bookings.filter(b => (b.email && b.email.toLowerCase() === currentUser.email.toLowerCase()) || assignedBuildingNames.includes(b.buildingNumber));
+            }
+
+            const tbody = document.getElementById('calendarBody');
+            tbody.innerHTML = '';
+
+            let date = 1;
+            for (let i = 0; i < 6; i++) {
+                let row = document.createElement('tr');
+                for (let j = 0; j < 7; j++) {
+                    let cell = document.createElement('td');
+                    cell.style.height = '90px';
+                    cell.style.verticalAlign = 'top';
+                    cell.style.cursor = 'pointer';
+
+                    if ((i === 0 && j < firstDayIndex) || date > totalDays) {
+                        cell.className = 'bg-light text-muted';
+                    } else {
+                        const dateString = `${calendarYear}-${(calendarMonth + 1).toString().padStart(2, '0')}-${date.toString().padStart(2, '0')}`;
+                        const dayBookings = bookings.filter(b => b.date === dateString);
+                        let badgeHtml = dayBookings.length > 0 ? `<div class="mt-1"><span class="badge bg-primary">${dayBookings.length} booking(s)</span></div>` : '';
+                        
+                        cell.innerHTML = `<div class="fw-bold small">${date}</div>${badgeHtml}`;
+                        cell.onclick = () => showDayBookingsModal(dateString);
+                        if (dateString === new Date().toISOString().split('T')[0]) cell.className = 'table-warning';
+                        date++;
+                    }
+                    row.appendChild(cell);
+                }
+                tbody.appendChild(row);
+                if (date > totalDays) break;
+            }
+        }
+
+        function changeMonth(direction) {
+            calendarMonth += direction;
+            if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+            else if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+            renderCalendar();
+        }
+
+        function showDayBookingsModal(dateStr) {
+            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'superadmin', role: 'Super Admin', email: 'superadmin@housing.mil' };
+            const userRole = (currentUser.role || '').toLowerCase();
+            const isAdminOrSuper = userRole === 'super admin' || userRole === 'admin';
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+
+            if (!isAdminOrSuper) {
+                const buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [];
+                const assignedBuildingNames = buildings.filter(b => b.assignedUsers && b.assignedUsers.includes(currentUser.username)).map(b => b.name);
+                bookings = bookings.filter(b => (b.email && b.email.toLowerCase() === currentUser.email.toLowerCase()) || assignedBuildingNames.includes(b.buildingNumber));
+            }
+
+            const dayBookings = bookings.filter(b => b.date === dateStr);
+            document.getElementById('dayModalTitle').innerText = `Bookings for ${dateStr} (${dayBookings.length})`;
+
+            const container = document.getElementById('dayBookingsContainer');
+            if (dayBookings.length === 0) {
+                container.innerHTML = `<p class="text-muted text-center py-3">No bookings on this date.</p>`;
+            } else {
+                let html = `<table class="table table-striped table-sm align-middle"><thead><tr><th>Code</th><th>Name</th><th>Building</th><th>Time</th><th>Purpose</th><th>Action</th></tr></thead><tbody>`;
+                dayBookings.forEach(b => {
+                    html += `<tr><td><span class="badge bg-secondary">${b.confirmationCode}</span></td><td>${b.lastName}, ${b.firstName}</td><td><strong>${b.buildingNumber}</strong></td><td>${b.time}</td><td>${b.purposeOfVisit}</td><td><button class="btn btn-sm btn-outline-primary" onclick="openBookingDetail('${b.confirmationCode}')">Manage</button></td></tr>`;
+                });
+                html += `</tbody></table>`;
+                container.innerHTML = html;
+            }
+            new bootstrap.Modal(document.getElementById('dayBookingsModal')).show();
+        }
+
+        function openBookingDetail(confirmationCode) {
+            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            const booking = bookings.find(b => b.confirmationCode === confirmationCode);
+            if (!booking) return;
+
+            const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || { username: 'superadmin', role: 'Super Admin', email: 'superadmin@housing.mil' };
+            const userRole = (currentUser.role || '').toLowerCase();
+            const isAdminOrSuper = userRole === 'super admin' || userRole === 'admin';
+            const buildings = getBuildings();
+
+            document.getElementById('detailConfirmationCode').innerText = booking.confirmationCode;
+            document.getElementById('editBookingCode').value = booking.confirmationCode;
+            document.getElementById('editBookingFirstName').value = booking.firstName || '';
+            document.getElementById('editBookingLastName').value = booking.lastName || '';
+            document.getElementById('editBookingEmail').value = booking.email || '';
+            document.getElementById('editBookingBranch').value = booking.branchOfService || '';
+            document.getElementById('editBookingDate').value = booking.date || '';
+            document.getElementById('editBookingTime').value = booking.time || '';
+            document.getElementById('editBookingInternalNotes').value = booking.internalNotes || '';
+
+            // Hide internal notes for normal users if they are not staff
+            document.getElementById('staffInternalNotesWrapper').style.display = isAdminOrSuper ? 'block' : 'none';
+
+            const buildingSelect = document.getElementById('editBookingBuilding');
+            buildingSelect.innerHTML = '';
+            buildings.forEach(b => {
+                buildingSelect.innerHTML += `<option value="${b.name}" ${b.name === booking.buildingNumber ? 'selected' : ''}>${b.name}</option>`;
+            });
+
+            updateBookingPurposeOptions(booking.purposeOfVisit);
+
+            const dayModal = bootstrap.Modal.getInstance(document.getElementById('dayBookingsModal'));
+            if (dayModal) dayModal.hide();
+
+            new bootstrap.Modal(document.getElementById('bookingDetailModal')).show();
+        }
+
+        function updateBookingPurposeOptions(selectedPurpose = '') {
+            const buildingName = document.getElementById('editBookingBuilding').value;
+            const buildings = getBuildings();
+            const building = buildings.find(b => b.name === buildingName);
+            const purposeSelect = document.getElementById('editBookingPurpose');
+            purposeSelect.innerHTML = '';
+
+            const purposes = (building && building.purposes) ? building.purposes : ["In-processing", "Room Inspection", "Maintenance"];
+            purposes.forEach(p => {
+                purposeSelect.innerHTML += `<option value="${p}" ${p === selectedPurpose ? 'selected' : ''}>${p}</option>`;
+            });
+        }
+
+        function saveBookingChanges(event) {
+            event.preventDefault();
+            const code = document.getElementById('editBookingCode').value;
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            const index = bookings.findIndex(b => b.confirmationCode === code);
+
+            if (index !== -1) {
+                bookings[index].firstName = document.getElementById('editBookingFirstName').value.trim();
+                bookings[index].lastName = document.getElementById('editBookingLastName').value.trim();
+                bookings[index].email = document.getElementById('editBookingEmail').value.trim();
+                bookings[index].branchOfService = document.getElementById('editBookingBranch').value.trim();
+                bookings[index].buildingNumber = document.getElementById('editBookingBuilding').value;
+                bookings[index].date = document.getElementById('editBookingDate').value;
+                bookings[index].time = document.getElementById('editBookingTime').value;
+                bookings[index].purposeOfVisit = document.getElementById('editBookingPurpose').value;
+                
+                const currentUser = JSON.parse(localStorage.getItem('housing_current_user')) || {};
+                const userRole = (currentUser.role || '').toLowerCase();
+                if (userRole === 'super admin' || userRole === 'admin') {
+                    bookings[index].internalNotes = document.getElementById('editBookingInternalNotes').value.trim();
+                }
+
+                localStorage.setItem('housing_bookings_list', JSON.stringify(bookings));
+                bootstrap.Modal.getInstance(document.getElementById('bookingDetailModal')).hide();
+                renderCalendar();
+                alert("Booking updated successfully!");
+            }
+        }
+
+        function cancelBookingFromModal() {
+            if (!confirm("Are you sure you want to cancel and delete this booking?")) return;
+            const code = document.getElementById('editBookingCode').value;
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            bookings = bookings.filter(b => b.confirmationCode !== code);
+            localStorage.setItem('housing_bookings_list', JSON.stringify(bookings));
+            
+            bootstrap.Modal.getInstance(document.getElementById('bookingDetailModal')).hide();
+            renderCalendar();
+            alert("Booking cancelled successfully.");
+        }
+
+        function getBuildings() { return JSON.parse(localStorage.getItem('housing_buildings')) || []; }
+        function getUsers() { return JSON.parse(localStorage.getItem('housing_users')) || []; }
+
+        function renderBuildingsTable() {
+            const buildings = getBuildings();
+            const tbody = document.getElementById('buildingsTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            buildings.forEach((b, idx) => {
+                const assignedHtml = (b.assignedUsers || []).map(u => `<span class="badge bg-secondary me-1">${u}</span>`).join('');
+                tbody.innerHTML += `<tr><td><strong>${b.name}</strong></td><td>${b.startTime} - ${b.endTime}</td><td>${assignedHtml}</td><td>${(b.purposes || []).join(', ')}</td><td><button class="btn btn-sm btn-outline-primary" onclick="editBuilding(${idx})">Edit</button></td></tr>`;
+            });
+        }
+
+        function renderUsersTable() {
+            const users = getUsers();
+            const tbody = document.getElementById('usersTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            users.forEach(u => {
+                tbody.innerHTML += `<tr><td><strong>${u.username}</strong></td><td><span class="badge bg-secondary">${u.role}</span></td><td><button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${u.id})">Remove</button></td></tr>`;
+            });
+        }
+
+        function updateNotificationBadge() {
+            const notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
+            const unreadCount = notifications.filter(n => !n.read).length;
             const badge = document.getElementById('notifBadge');
-            badge.innerText = notifications.length;
-            badge.style.display = 'inline-block';
+            if (unreadCount > 0) { badge.innerText = unreadCount; badge.style.display = 'inline-block'; }
+            else { badge.style.display = 'none'; }
         }
 
         function openNotificationModal() {
-            let notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
+            const notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
             const container = document.getElementById('notificationListContainer');
             container.innerHTML = notifications.length === 0 ? '<div class="text-center text-muted p-3">No notifications.</div>' : '';
-            
             notifications.forEach(n => {
                 container.innerHTML += `<div class="card mb-2 p-2 bg-white"><h6>${n.title}</h6><p class="mb-1 small">${n.message}</p></div>`;
             });
             new bootstrap.Modal(document.getElementById('notificationModal')).show();
+        }
+
+        function exportBuildingGroupedBookings() {
+            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            let csv = "data:text/csv;charset=utf-8,Branch,Last Name,First Name,Email,Building,Date,Time,Purpose,Code,Internal Notes\r\n";
+            bookings.forEach(b => {
+                csv += `"${b.branchOfService || ''}","${b.lastName || ''}","${b.firstName || ''}","${b.email || ''}","${b.buildingNumber || ''}","${b.date || ''}","${b.time || ''}","${b.purposeOfVisit || ''}","${b.confirmationCode || ''}","${(b.internalNotes || '').replace(/"/g, '""')}"\r\n`;
+            });
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csv));
+            link.setAttribute("download", "all_bookings.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function populateExportUserDropdown() {
+            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            const select = document.getElementById('exportUserSelect');
+            if (!select) return;
+            select.innerHTML = '<option value="">-- Filter by User --</option>';
+            const emails = [...new Set(bookings.map(b => b.email))];
+            emails.forEach(e => { if (e) select.innerHTML += `<option value="${e}">${e}</option>`; });
+        }
+
+        function exportSelectedUserBookings() {
+            const email = document.getElementById('exportUserSelect').value;
+            if (!email) { alert("Select a user first."); return; }
+            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            const filtered = bookings.filter(b => b.email === email);
+            let csv = "data:text/csv;charset=utf-8,Branch,Last Name,First Name,Email,Building,Date,Time,Purpose,Code,Internal Notes\r\n";
+            filtered.forEach(b => {
+                csv += `"${b.branchOfService || ''}","${b.lastName || ''}","${b.firstName || ''}","${b.email || ''}","${b.buildingNumber || ''}","${b.date || ''}","${b.time || ''}","${b.purposeOfVisit || ''}","${b.confirmationCode || ''}","${(b.internalNotes || '').replace(/"/g, '""')}"\r\n`;
+            });
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csv));
+            link.setAttribute("download", `bookings_${email}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>
