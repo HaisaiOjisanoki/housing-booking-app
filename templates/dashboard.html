@@ -3,12 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Staff Dashboard - Unaccompanied Housing</title>
+    <title>UH Management Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body { background-color: #f4f6f9; }
         .card { border: none; border-radius: 0.5rem; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .calendar-day-header { text-align: center; font-weight: bold; background: #e9ecef; padding: 8px; border-radius: 4px; font-size: 0.85rem; }
+        .calendar-cell { min-height: 110px; background: #fff; border: 1px solid #dee2e6; border-radius: 4px; padding: 6px; font-size: 0.8rem; overflow-y: auto; }
+        .calendar-cell.other-month { background: #f8f9fa; color: #adb5bd; }
+        .booking-badge { font-size: 0.7rem; padding: 2px 5px; border-radius: 3px; margin-bottom: 2px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     </style>
 </head>
 <body onload="initStaffDashboard()">
@@ -16,10 +21,10 @@
     <nav class="navbar navbar-dark bg-dark shadow-sm">
         <div class="container-fluid px-4">
             <span class="navbar-brand fw-bold">
-                <i class="bi bi-building me-2"></i>Staff Dashboard — <span class="text-info">{{ camp }} (Bldg {{ building }})</span>
+                <i class="bi bi-building me-2"></i>UH Management Dashboard — <span class="text-info">{{ camp }} {% if role == 'camp_admin' %}(All Camp Bldgs){% else %}(Bldgs: {{ buildings|join(', ') }}){% endif %}</span>
             </span>
             <div class="d-flex align-items-center">
-                <span class="text-light me-3 small">Logged in as: <strong>{{ username }}</strong> ({{ role }})</span>
+                <span class="text-light me-3 small">Logged in as: <strong>{{ username }}</strong> ({{ role == 'camp_admin' and 'Camp Admin' or 'UH Building Manager' }})</span>
                 <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">
                     <i class="bi bi-box-arrow-right me-1"></i>Sign Out
                 </a>
@@ -29,33 +34,63 @@
 
     <div class="container py-4">
         
-        <!-- Camp Building Management Card (Visible for Camp Admins) -->
+        <!-- Camp Controls Card (Camp Admin Only) -->
         {% if role == 'camp_admin' %}
         <div class="row mb-4">
             <div class="col-md-12">
                 <div class="card shadow-sm p-4 bg-white">
-                    <h5 class="fw-bold mb-3"><i class="bi bi-building-add me-2"></i>Manage Building Numbers for {{ camp }}</h5>
-                    <p class="text-muted small">As a Camp Admin, you can add new building numbers to your assigned camp so users can select them during booking.</p>
-                    <div class="input-group mb-3" style="max-width: 400px;">
-                        <input type="text" id="newBuildingInput" class="form-control" placeholder="New Building Number (e.g., 1004)">
-                        <button class="btn btn-success fw-bold" onclick="addBuildingToCamp()">Add Building</button>
+                    <h5 class="fw-bold mb-3"><i class="bi bi-building-add me-2"></i>Camp Admin Controls for {{ camp }}</h5>
+                    <p class="text-muted small">Manage building numbers and UH Building Managers assigned to your camp.</p>
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-secondary">Add New Building Number</h6>
+                            <div class="input-group mb-2">
+                                <input type="text" id="newBuildingInput" class="form-control" placeholder="Building # (e.g., 1004)">
+                                <button class="btn btn-success fw-bold" onclick="addBuildingToCamp()">Add Building</button>
+                            </div>
+                            <div id="campBuildingsList" class="small text-muted"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-secondary">Assign UH Building Manager</h6>
+                            <form onsubmit="campAdminCreateManager(event)" class="border p-3 rounded bg-light">
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6">
+                                        <input type="text" id="caMgrUsername" class="form-control form-control-sm" required placeholder="Username">
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="password" id="caMgrPassword" class="form-control form-control-sm" required placeholder="Password">
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold mb-1">Select Buildings:</label>
+                                    <div id="caBuildingCheckboxes" class="d-flex flex-wrap gap-2 small"></div>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-sm fw-bold w-100">Create Manager</button>
+                            </form>
+                        </div>
                     </div>
-                    <div id="campBuildingsList" class="small text-muted"></div>
                 </div>
             </div>
         </div>
         {% endif %}
 
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="card shadow-sm p-4 bg-white">
-                    <h4 class="fw-bold mb-2"><i class="bi bi-calendar-check me-2"></i>Appointments for Your Assigned Building</h4>
-                    <p class="text-muted small mb-0">Review, update status, and add notes for appointments scheduled at {{ camp }}, Building {{ building }}.</p>
+        <!-- View Selector / Header -->
+        <div class="row mb-4 align-items-center">
+            <div class="col-md-6">
+                <h4 class="fw-bold mb-0"><i class="bi bi-calendar-check me-2"></i>Appointments Management</h4>
+            </div>
+            <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                <div class="btn-group shadow-sm" role="group">
+                    <button type="button" class="btn btn-primary fw-bold" id="btnTableView" onclick="switchView('table')"><i class="bi bi-table me-1"></i> Table View</button>
+                    <button type="button" class="btn btn-outline-primary fw-bold" id="btnCalendarView" onclick="switchView('calendar')"><i class="bi bi-calendar3 me-1"></i> Calendar View</button>
                 </div>
             </div>
         </div>
 
-        <div class="card shadow-sm">
+        <!-- Table View Section -->
+        <div id="tableViewSection" class="card shadow-sm">
             <div class="card-body p-4">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
@@ -75,25 +110,127 @@
                 </div>
             </div>
         </div>
+
+        <!-- Calendar View Section -->
+        <div id="calendarViewSection" class="card shadow-sm p-4 bg-white" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="fw-bold mb-0"><i class="bi bi-calendar3 me-2"></i>Calendar View</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-outline-secondary btn-sm fw-bold" onclick="changeMonth(-1)"><i class="bi bi-chevron-left"></i> Prev</button>
+                    <span id="calendarMonthTitle" class="fw-bold fs-5 px-2">Month Year</span>
+                    <button class="btn btn-outline-secondary btn-sm fw-bold" onclick="changeMonth(1)">Next <i class="bi bi-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="calendar-grid mb-2">
+                <div class="calendar-day-header">Sun</div>
+                <div class="calendar-day-header">Mon</div>
+                <div class="calendar-day-header">Tue</div>
+                <div class="calendar-day-header">Wed</div>
+                <div class="calendar-day-header">Thu</div>
+                <div class="calendar-day-header">Fri</div>
+                <div class="calendar-day-header">Sat</div>
+            </div>
+            <div id="calendarDaysGrid" class="calendar-grid"></div>
+        </div>
+
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let appState = {};
         const staffCamp = "{{ camp }}";
-        const staffBuilding = "{{ building }}";
+        const staffAssignedBuildings = {{ buildings|tojson }};
         const userRole = "{{ role }}";
+        let currentCalendarDate = new Date();
 
         async function initStaffDashboard() {
             try {
                 const res = await fetch('/api/state');
                 appState = await res.json();
                 renderStaffAppointments();
+                renderCalendar();
                 if (userRole === 'camp_admin') {
                     renderCampBuildings();
+                    renderCaBuildingCheckboxes();
                 }
             } catch (err) {
                 console.error("Error loading state:", err);
+            }
+        }
+
+        function getEffectiveBuildings() {
+            if (userRole === 'camp_admin') {
+                return (appState.camp_buildings && appState.camp_buildings[staffCamp]) ? appState.camp_buildings[staffCamp] : [];
+            } else {
+                return staffAssignedBuildings;
+            }
+        }
+
+        function switchView(viewType) {
+            const tableView = document.getElementById('tableViewSection');
+            const calView = document.getElementById('calendarViewSection');
+            const btnTable = document.getElementById('btnTableView');
+            const btnCal = document.getElementById('btnCalendarView');
+
+            if (viewType === 'table') {
+                tableView.style.display = 'block';
+                calView.style.display = 'none';
+                btnTable.className = 'btn btn-primary fw-bold';
+                btnCal.className = 'btn btn-outline-primary fw-bold';
+            } else {
+                tableView.style.display = 'none';
+                calView.style.display = 'block';
+                btnTable.className = 'btn btn-outline-primary fw-bold';
+                btnCal.className = 'btn btn-primary fw-bold';
+                renderCalendar();
+            }
+        }
+
+        function changeMonth(direction) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            document.getElementById('calendarMonthTitle').textContent = `${monthNames[month]} ${year}`;
+
+            const grid = document.getElementById('calendarDaysGrid');
+            grid.innerHTML = '';
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+            const prevTotalDays = new Date(year, month, 0).getDate();
+            const effectiveBldgs = getEffectiveBuildings();
+
+            for (let i = firstDayIndex; i > 0; i--) {
+                const dayNum = prevTotalDays - i + 1;
+                grid.innerHTML += `<div class="calendar-cell other-month"><div class="fw-bold mb-1">${dayNum}</div></div>`;
+            }
+
+            for (let day = 1; day <= totalDays; day++) {
+                const formattedMonth = String(month + 1).padStart(2, '0');
+                const formattedDay = String(day).padStart(2, '0');
+                const dateStr = `${year}-${formattedMonth}-${formattedDay}`;
+
+                let cellHtml = `<div class="calendar-cell"><div class="fw-bold mb-1 text-dark">${day}</div>`;
+                
+                const bookingsOnDay = (appState.bookings || []).filter(b => b.camp === staffCamp && effectiveBldgs.includes(b.building) && b.date === dateStr && b.status !== 'Cancelled');
+                bookingsOnDay.forEach(b => {
+                    const badgeColor = b.status === 'Confirmed' ? 'bg-success' : 'bg-primary';
+                    cellHtml += `<span class="booking-badge ${badgeColor}" title="${b.time} - ${b.firstName} ${b.lastName} (Bldg ${b.building})">${b.time} Bldg ${b.building} (${b.firstName})</span>`;
+                });
+
+                cellHtml += `</div>`;
+                grid.innerHTML += cellHtml;
+            }
+
+            const totalCellsSoFar = firstDayIndex + totalDays;
+            const remainingCells = (totalCellsSoFar % 7 === 0) ? 0 : 7 - (totalCellsSoFar % 7);
+            for (let i = 1; i <= remainingCells; i++) {
+                grid.innerHTML += `<div class="calendar-cell other-month"><div class="fw-bold mb-1">${i}</div></div>`;
             }
         }
 
@@ -103,7 +240,24 @@
                 container.innerHTML = 'Current Buildings: None';
                 return;
             }
-            container.innerHTML = `<strong>Current Registered Buildings:</strong> ${appState.camp_buildings[staffCamp].join(', ')}`;
+            container.innerHTML = `<strong>Registered Buildings:</strong> ${appState.camp_buildings[staffCamp].join(', ')}`;
+        }
+
+        function renderCaBuildingCheckboxes() {
+            const container = document.getElementById('caBuildingCheckboxes');
+            container.innerHTML = '';
+            if (!appState.camp_buildings || !appState.camp_buildings[staffCamp] || appState.camp_buildings[staffCamp].length === 0) {
+                container.innerHTML = '<span class="text-muted">No buildings available.</span>';
+                return;
+            }
+            appState.camp_buildings[staffCamp].forEach(b => {
+                container.innerHTML += `
+                    <div class="form-check">
+                        <input class="form-check-input ca-bldg-chk" type="checkbox" value="${b}" id="ca_chk_${b}">
+                        <label class="form-check-label" for="ca_chk_${b}">Bldg ${b}</label>
+                    </div>
+                `;
+            });
         }
 
         async function addBuildingToCamp() {
@@ -122,20 +276,43 @@
             appState.camp_buildings[staffCamp].push(bldg);
             input.value = '';
 
-            try {
-                const res = await fetch('/api/state', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(appState)
-                });
-                if (res.ok) {
-                    alert('Building added successfully!');
-                    renderCampBuildings();
-                } else {
-                    alert('Error saving building.');
-                }
-            } catch (err) {
-                console.error("Error saving state:", err);
+            const res = await saveState();
+            if (res) {
+                alert('Building added successfully!');
+                renderCampBuildings();
+                renderCaBuildingCheckboxes();
+            }
+        }
+
+        async function campAdminCreateManager(e) {
+            e.preventDefault();
+            const username = document.getElementById('caMgrUsername').value.trim();
+            const password = document.getElementById('caMgrPassword').value.trim();
+            const checkboxes = document.querySelectorAll('.ca-bldg-chk:checked');
+            const selectedBldgs = Array.from(checkboxes).map(chk => chk.value);
+
+            if (selectedBldgs.length === 0) {
+                alert('Please select at least one building.');
+                return;
+            }
+
+            if (!appState.staff_users) appState.staff_users = [];
+
+            const newMgr = {
+                username: username,
+                password: password,
+                role: 'staff',
+                camp: staffCamp,
+                buildings: selectedBldgs
+            };
+
+            appState.staff_users.push(newMgr);
+            const res = await saveState();
+            if (res) {
+                alert('UH Building Manager created successfully!');
+                document.getElementById('caMgrUsername').value = '';
+                document.getElementById('caMgrPassword').value = '';
+                renderCaBuildingCheckboxes();
             }
         }
 
@@ -148,10 +325,11 @@
                 return;
             }
 
-            const filtered = appState.bookings.filter(b => b.camp === staffCamp && b.building === staffBuilding);
+            const effectiveBldgs = getEffectiveBuildings();
+            const filtered = appState.bookings.filter(b => b.camp === staffCamp && effectiveBldgs.includes(b.building));
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No appointments found for ${staffCamp} - Building ${staffBuilding}.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No appointments found for ${staffCamp} in buildings: ${effectiveBldgs.join(', ')}.</td></tr>`;
                 return;
             }
 
@@ -173,7 +351,7 @@
                                     <option value="Completed" ${b.status === 'Completed' ? 'selected' : ''}>Completed</option>
                                     <option value="Cancelled" ${b.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
                                 </select>
-                                <input type="text" class="form-control form-control-sm" placeholder="Add staff notes..." value="${b.staffNotes || ''}" onchange="updateNotes('${b.confirmationCode}', this.value)">
+                                <input type="text" class="form-control form-control-sm" placeholder="Add manager notes..." value="${b.staffNotes || ''}" onchange="updateNotes('${b.confirmationCode}', this.value)">
                             </div>
                         </td>
                     </tr>
@@ -199,13 +377,20 @@
 
         async function saveState() {
             try {
-                await fetch('/api/state', {
+                const res = await fetch('/api/state', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(appState)
                 });
+                if (res.ok) {
+                    return true;
+                } else {
+                    alert('Error saving changes to server.');
+                    return false;
+                }
             } catch (err) {
                 console.error("Error saving state:", err);
+                return false;
             }
         }
     </script>

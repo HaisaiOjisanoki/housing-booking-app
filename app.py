@@ -1,125 +1,129 @@
-import os
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import json
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+import os
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'housing_portal_secure_key_2026')
+app.secret_key = 'unaccompanied_housing_secret_key'
 
-STATE_FILE = 'state.json'
+DATA_FILE = 'state.json'
+
+DEFAULT_STATE = {
+    "camps": ["Camp Foster", "Camp Hansen", "Camp Schwab"],
+    "camp_buildings": {
+        "Camp Foster": ["1001", "1002", "1003"],
+        "Camp Hansen": ["2001", "2002"],
+        "Camp Schwab": ["3001"]
+    },
+    "staff_users": [
+        {
+            "username": "campadmin_foster",
+            "password": "password123",
+            "role": "camp_admin",
+            "camp": "Camp Foster",
+            "buildings": ["1001", "1002", "1003"]
+        },
+        {
+            "username": "manager_1001",
+            "password": "password123",
+            "role": "staff",
+            "camp": "Camp Foster",
+            "buildings": ["1001"]
+        }
+    ],
+    "bookings": [
+        {
+            "confirmationCode": "UH-8821",
+            "firstName": "John",
+            "lastName": "Doe",
+            "branch": "USMC",
+            "camp": "Camp Foster",
+            "building": "1001",
+            "date": "2026-06-15",
+            "time": "09:00",
+            "purpose": "Check-in / In-processing",
+            "status": "Confirmed",
+            "staffNotes": ""
+        }
+    ],
+    "purposes": ["Check-in / In-processing", "Out-processing Inspection", "Maintenance Request"]
+}
 
 def load_state():
-    default_state = {
-        "camps": ["Camp Hansen", "Camp Schwab", "Camp Courtney", "Camp Foster", "Kadena AB"],
-        "camp_buildings": {
-            "Camp Hansen": ["1001", "1002", "1003"],
-            "Camp Schwab": ["2001", "2002"],
-            "Camp Courtney": ["3001", "3002"],
-            "Camp Foster": ["4001", "4002"],
-            "Kadena AB": ["5001", "5002"]
-        },
-        "bookings": [],
-        "staff_users": [
-            {"username": "hansen_manager", "password": "password123", "camp": "Camp Hansen", "building": "1001", "role": "camp_admin"}
-        ],
-        "purposes": [
-            "Check-in / In-processing",
-            "Out-processing Inspection",
-            "Maintenance Request",
-            "Room Change Inquiry"
-        ]
-    }
-    
-    if os.path.exists(STATE_FILE):
+    if os.path.exists(DATA_FILE):
         try:
-            with open(STATE_FILE, 'r') as f:
-                data = json.load(f)
-                for key in default_state:
-                    if key not in data:
-                        data[key] = default_state[key]
-                return data
-        except Exception as e:
-            print(f"Error loading state file: {e}")
-            return default_state
-    return default_state
+            with open(DATA_FILE, 'r') as f:
+                return json.load(f)
+        except Exception:
+            return DEFAULT_STATE
+    return DEFAULT_STATE
 
 def save_state(state):
-    try:
-        with open(STATE_FILE, 'w') as f:
-            json.dump(state, f, indent=4)
-        return True
-    except Exception as e:
-        print(f"Error saving state file: {e}")
-        return False
+    with open(DATA_FILE, 'w') as f:
+        json.dump(state, f, indent=4)
 
 @app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/superadmin')
-def superadmin():
-    if session.get('role') != 'superadmin':
-        return redirect(url_for('login'))
-    return render_template('superadmin.html')
-
-@app.route('/dashboard')
-def dashboard():
-    if session.get('role') not in ['staff', 'camp_admin']:
-        return redirect(url_for('login'))
-    return render_template('dashboard.html', 
-                         username=session.get('username'), 
-                         camp=session.get('camp'), 
-                         building=session.get('building'),
-                         role=session.get('role'))
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        # Superadmin check
-        if username == 'superadmin' and password == 'admin123':
-            session['role'] = 'superadmin'
-            return redirect(url_for('superadmin'))
-            
-        # Staff / Camp Admin check
-        state = load_state()
-        for staff in state.get('staff_users', []):
-            if staff.get('username') == username and staff.get('password') == password:
-                session['role'] = staff.get('role', 'camp_admin')
-                session['username'] = username
-                session['camp'] = staff.get('camp')
-                session['building'] = staff.get('building')
-                return redirect(url_for('dashboard'))
-                
-        return render_template('login.html', error='Invalid credentials')
+def login_page():
+    if 'username' in session:
+        if session['role'] == 'superadmin':
+            return redirect(url_for('superadmin_dashboard'))
+        else:
+            return redirect(url_for('staff_dashboard'))
     return render_template('login.html')
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form.get('username')
+    password = request.form.get('password')
+
+    if username == 'superadmin' and password == 'admin123':
+        session['username'] = 'superadmin'
+        session['role'] = 'superadmin'
+        return redirect(url_for('superadmin_dashboard'))
+
+    state = load_state()
+    for user in state.get('staff_users', []):
+        if user['username'] == username and user['password'] == password:
+            session['username'] = user['username']
+            session['role'] = user['role']
+            session['camp'] = user['camp']
+            session['buildings'] = user.get('buildings', [user.get('building')] if user.get('building') else [])
+            return redirect(url_for('staff_dashboard'))
+
+    return render_template('login.html', error='Invalid username or password.')
 
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('index'))
+    return redirect(url_for('login_page'))
+
+@app.route('/superadmin')
+def superadmin_dashboard():
+    if session.get('role') != 'superadmin':
+        return redirect(url_for('login_page'))
+    return render_template('superadmin.html')
+
+@app.route('/dashboard')
+def staff_dashboard():
+    if session.get('role') not in ['camp_admin', 'staff']:
+        return redirect(url_for('login_page'))
+    return render_template(
+        'dashboard.html',
+        username=session.get('username'),
+        role=session.get('role'),
+        camp=session.get('camp'),
+        buildings=session.get('buildings', [])
+    )
 
 @app.route('/api/state', methods=['GET', 'POST'])
 def api_state():
-    if request.method == 'GET':
+    if request.method == 'POST':
+        new_state = request.get_json()
+        if new_state:
+            save_state(new_state)
+            return jsonify({"status": "success"})
+        return jsonify({"status": "error", "message": "Invalid data"}), 400
+    else:
         return jsonify(load_state())
-    
-    incoming_state = request.json
-    if not incoming_state:
-        return jsonify({"error": "Invalid state payload"}), 400
-    
-    # Server-side validation: Restrict appointments during lunch hours (11:30 - 13:00)
-    for booking in incoming_state.get('bookings', []):
-        time_val = booking.get('time', '')
-        status = booking.get('status', 'Pending')
-        if status != 'Cancelled' and time_val:
-            if '11:30' <= time_val <= '13:00':
-                return jsonify({"error": "Appointments are strictly restricted during lunch hours (11:30 - 13:00)."}), 400
-
-    if save_state(incoming_state):
-        return jsonify({"success": True})
-    return jsonify({"error": "Failed to save state"}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(debug=True, port=5000)
