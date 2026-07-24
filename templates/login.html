@@ -30,7 +30,8 @@
             <button type="submit" class="btn btn-primary w-100 mb-3">Sign In</button>
             
             <div class="text-center">
-                <a href="index.html" class="text-decoration-none small">&larr; Back to Public Booking Form</a>
+                <!-- Updated to Flask Route Endpoint -->
+                <a href="/" class="text-decoration-none small">&larr; Back to Public Booking Form</a>
             </div>
         </form>
 
@@ -89,7 +90,6 @@
                 users = [];
             }
 
-            // Ensure fallback defaults exist if localStorage was wiped or corrupted
             if (users.length === 0) {
                 users = [
                     { id: 1, username: "superadmin", password: "password123", role: "Super Admin", email: "superadmin@housing.mil" },
@@ -103,7 +103,8 @@
 
             if (foundUser) {
                 localStorage.setItem('housing_current_user', JSON.stringify(foundUser));
-                window.location.href = 'dashboard.html';
+                // Updated to match Flask route endpoint instead of static .html file
+                window.location.href = '/dashboard';
             } else {
                 showAlert("Invalid username or password. Please check your credentials.");
             }

@@ -1,23 +1,19 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template
 
 app = Flask(__name__)
-app.secret_key = 'housing_secure_portal_key'
 
-# Route: Public Room Booking & Management Page
 @app.route('/')
+@app.route('/index')
 def index():
     return render_template('index.html')
 
-# Route: Login Portal Page
 @app.route('/login')
-def login():
+def login_page():
     return render_template('login.html')
 
-# Route: Admin/Staff Dashboard
 @app.route('/dashboard')
 def dashboard():
-    # Optional: Add server-side session checks here if migrating auth from localStorage
     return render_template('dashboard.html')
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True)
