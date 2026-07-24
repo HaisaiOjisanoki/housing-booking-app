@@ -141,7 +141,6 @@
             const selectedBuilding = buildings.find(b => b.name === buildingName);
             if (!selectedBuilding) return;
 
-            // Populate available times excluding lunch break
             timeSelect.innerHTML = '<option value="">-- Select an available time slot --</option>';
             timeSelect.disabled = false;
 
@@ -166,7 +165,6 @@
                 currentMinutes += 60;
             }
 
-            // Populate purposes dropdown
             purposeSelect.innerHTML = '<option value="">-- Select Purpose of Visit --</option>';
             purposeSelect.disabled = false;
             const purposes = selectedBuilding.purposes || ["In-processing", "Room Inspection", "Maintenance"];
@@ -202,9 +200,23 @@
                 purposeOfVisit: document.getElementById('purposeOfVisitSelect').value
             };
 
+            // Save Booking
             let bookingsList = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
             bookingsList.push(newBooking);
             localStorage.setItem('housing_bookings_list', JSON.stringify(bookingsList));
+
+            // Create Notification for Inbox
+            let notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
+            notifications.unshift({
+                id: Date.now(),
+                title: `New Booking in ${newBooking.buildingNumber}`,
+                message: `${newBooking.firstName} ${newBooking.lastName} booked for "${newBooking.purposeOfVisit}" on ${newBooking.date} at ${newBooking.time}.`,
+                building: newBooking.buildingNumber,
+                timestamp: new Date().toLocaleString(),
+                read: false,
+                saved: false
+            });
+            localStorage.setItem('housing_notifications', JSON.stringify(notifications));
 
             alert(`Booking Confirmed!\n\nConfirmation Code: ${confirmCode}\n(An email confirmation has been simulated and sent to ${newBooking.email})`);
             document.getElementById('publicBookingForm').reset();

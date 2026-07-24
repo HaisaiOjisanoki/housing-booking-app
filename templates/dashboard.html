@@ -11,8 +11,13 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">Admin Portal</a>
-            <div class="d-flex">
-                <a href="/" class="btn btn-outline-light btn-sm me-2">Public Form</a>
+            <div class="d-flex align-items-center gap-2">
+                <!-- Notification Bell & Inbox Trigger -->
+                <button class="btn btn-outline-light btn-sm position-relative" type="button" onclick="openNotificationModal()">
+                    🔔 Notifications 
+                    <span id="notifBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display:none;">0</span>
+                </button>
+                <a href="/" class="btn btn-outline-light btn-sm">Public Form</a>
                 <a href="/login" class="btn btn-outline-danger btn-sm">Log Out</a>
             </div>
         </div>
@@ -25,13 +30,12 @@
         <div class="card p-3 shadow-sm mb-4 bg-white border-success">
             <h5 class="mb-3 text-success">📊 Booking Data Export (Excel / CSV Format)</h5>
             <div class="row g-3 align-items-end">
-                <div class="col-12 col-md-4">
-                    <button class="btn btn-success w-100" onclick="exportAllBookings()">Export All Bookings (CSV)</button>
-                </div>
                 <div class="col-12 col-md-5">
-                    <label for="exportUserSelect" class="form-label form-label-sm mb-1">Filter by User (Email / Name):</label>
+                    <button class="btn btn-success w-100" onclick="exportBuildingGroupedBookings()">Export All Bookings (Grouped by Building)</button>
+                </div>
+                <div class="col-12 col-md-4">
                     <select class="form-select form-select-sm" id="exportUserSelect">
-                        <option value="">-- Select a User --</option>
+                        <option value="">-- Filter by User --</option>
                     </select>
                 </div>
                 <div class="col-12 col-md-3">
@@ -158,6 +162,35 @@
         </div>
     </div>
 
+    <!-- NOTIFICATION INBOX MODAL -->
+    <div class="modal fade" id="notificationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title">📬 Notification Inbox</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary active" id="filterAllBtn" onclick="filterNotifications('all')">All</button>
+                            <button type="button" class="btn btn-outline-secondary" id="filterUnreadBtn" onclick="filterNotifications('unread')">Unread</button>
+                            <button type="button" class="btn btn-outline-secondary" id="filterSavedBtn" onclick="filterNotifications('saved')">Saved</button>
+                        </div>
+                        <button class="btn btn-outline-primary btn-sm" onclick="markAllAsRead()">Mark All as Read</button>
+                    </div>
+
+                    <div id="notificationListContainer" style="max-height: 400px; overflow-y: auto;" class="border rounded p-2 bg-light">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const defaultBuildings = [
@@ -167,6 +200,7 @@
         ];
 
         let currentBuildingPurposes = ["In-processing", "Room Inspection", "Maintenance"];
+        let currentNotifFilter = 'all';
 
         function initDashboard() {
             if (!localStorage.getItem('housing_buildings')) {
@@ -176,8 +210,182 @@
             renderBuildingsTable();
             renderUsersTable();
             populateExportUserDropdown();
+            updateNotificationBadge();
         }
 
+        // --- NOTIFICATION INBOX LOGIC ---
+        function updateNotificationBadge() {
+            const notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
+            const unreadCount = notifications.filter(n => !n.read).length;
+            const badge = document.getElementById('notifBadge');
+            if (unreadCount > 0) {
+                badge.innerText = unreadCount;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function openNotificationModal() {
+            renderNotifications();
+            const modal = new bootstrap.Modal(document.getElementById('notificationModal'));
+            modal.show();
+        }
+
+        function filterNotifications(filter) {
+            currentNotifFilter = filter;
+            document.querySelectorAll('#notificationModal .btn-group button').forEach(btn => btn.classList.remove('active'));
+            if (filter === 'all') document.getElementById('filterAllBtn').classList.add('active');
+            if (filter === 'unread') document.getElementById('filterUnreadBtn').classList.add('active');
+            if (filter === 'saved') document.getElementById('filterSavedBtn').classList.add('active');
+            renderNotifications();
+        }
+
+        function renderNotifications() {
+            let notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
+            const container = document.getElementById('notificationListContainer');
+            container.innerHTML = '';
+
+            if (currentNotifFilter === 'unread') {
+                notifications = notifications.filter(n => !n.read);
+            } else if (currentNotifFilter === 'saved') {
+                notifications = notifications.filter(n => n.saved);
+            }
+
+            if (notifications.length === 0) {
+                container.innerHTML = `<div class="text-center text-muted p-4">No notifications found.</div>`;
+                return;
+            }
+
+            notifications.forEach(n => {
+                const bgClass = n.read ? 'bg-white' : 'bg-white border-start border-primary border-4';
+                const savedBadge = n.saved ? '<span class="badge bg-success me-1">Saved</span>' : '';
+                const saveButtonText = n.saved ? 'Unsave' : 'Save';
+
+                container.innerHTML += `
+                    <div class="card mb-2 p-3 shadow-sm ${bgClass}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">${savedBadge}<strong>${n.title}</strong></h6>
+                                <p class="mb-1 text-muted small">${n.message}</p>
+                                <span class="text-secondary" style="font-size: 0.75rem;">${n.timestamp}</span>
+                            </div>
+                            <div class="btn-group btn-group-sm">
+                                ${!n.read ? `<button class="btn btn-outline-secondary" onclick="markAsRead(${n.id})">Mark Read</button>` : ''}
+                                <button class="btn btn-outline-success" onclick="toggleSaveNotification(${n.id})">${saveButtonText}</button>
+                                <button class="btn btn-outline-danger" onclick="deleteNotification(${n.id})">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function markAsRead(id) {
+            let notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
+            const n = notifications.find(item => item.id === id);
+            if (n) {
+                n.read = true;
+                localStorage.setItem('housing_notifications', JSON.stringify(notifications));
+                renderNotifications();
+                updateNotificationBadge();
+            }
+        }
+
+        function markAllAsRead() {
+            let notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
+            notifications.forEach(n => n.read = true);
+            localStorage.setItem('housing_notifications', JSON.stringify(notifications));
+            renderNotifications();
+            updateNotificationBadge();
+        }
+
+        function toggleSaveNotification(id) {
+            let notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
+            const n = notifications.find(item => item.id === id);
+            if (n) {
+                n.saved = !n.saved;
+                localStorage.setItem('housing_notifications', JSON.stringify(notifications));
+                renderNotifications();
+            }
+        }
+
+        function deleteNotification(id) {
+            let notifications = JSON.parse(localStorage.getItem('housing_notifications')) || [];
+            notifications = notifications.filter(item => item.id !== id);
+            localStorage.setItem('housing_notifications', JSON.stringify(notifications));
+            renderNotifications();
+            updateNotificationBadge();
+        }
+
+        // --- BUILDING-SEPARATED EXPORT LOGIC ---
+        function exportBuildingGroupedBookings() {
+            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
+            const buildings = JSON.parse(localStorage.getItem('housing_buildings')) || [];
+
+            if (bookings.length === 0) {
+                alert("No booking data available to export.");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            
+            // Group bookings by building name
+            buildings.forEach(b => {
+                const buildingBookings = bookings.filter(item => item.buildingNumber === b.name);
+                
+                csvContent += `"=== BUILDING: ${b.name} (Hours: ${b.startTime} - ${b.endTime}) ==="\r\n`;
+                csvContent += `"Branch of Service","Last Name","First Name","Email","Date","Time","Purpose of Visit","Confirmation Code"\r\n`;
+
+                if (buildingBookings.length === 0) {
+                    csvContent += `"No bookings recorded for this building"\r\n`;
+                } else {
+                    buildingBookings.forEach(row => {
+                        csvContent += [
+                            `"${row.branchOfService || ''}"`,
+                            `"${row.lastName || ''}"`,
+                            `"${row.firstName || ''}"`,
+                            `"${row.email || ''}"`,
+                            `"${row.date || ''}"`,
+                            `"${row.time || ''}"`,
+                            `"${row.purposeOfVisit || ''}"`,
+                            `"${row.confirmationCode || ''}"`
+                        ].join(",") + "\r\n";
+                    });
+                }
+                csvContent += "\r\n\r\n"; // Separation space between buildings
+            });
+
+            // Also check for any unassigned/other building bookings
+            const assignedBuildingNames = buildings.map(b => b.name);
+            const otherBookings = bookings.filter(item => !assignedBuildingNames.includes(item.buildingNumber));
+            if (otherBookings.length > 0) {
+                csvContent += `"=== BUILDING: Other / Unassigned ==="\r\n`;
+                csvContent += `"Branch of Service","Last Name","First Name","Email","Date","Time","Purpose of Visit","Confirmation Code"\r\n`;
+                otherBookings.forEach(row => {
+                    csvContent += [
+                        `"${row.branchOfService || ''}"`,
+                        `"${row.lastName || ''}"`,
+                        `"${row.firstName || ''}"`,
+                        `"${row.email || ''}"`,
+                        `"${row.date || ''}"`,
+                        `"${row.time || ''}"`,
+                        `"${row.purposeOfVisit || ''}"`,
+                        `"${row.confirmationCode || ''}"`
+                    ].join(",") + "\r\n";
+                });
+            }
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "housing_bookings_by_building.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- OTHER MANAGEMENT FUNCTIONS ---
         function renderPurposeList() {
             const container = document.getElementById('purposeListContainer');
             container.innerHTML = '';
@@ -374,7 +582,7 @@
         function populateExportUserDropdown() {
             const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
             const select = document.getElementById('exportUserSelect');
-            select.innerHTML = '<option value="">-- Select a User --</option>';
+            select.innerHTML = '<option value="">-- Filter by User --</option>';
             
             const uniqueUsers = {};
             bookings.forEach(b => {
@@ -386,44 +594,6 @@
             for (const [email, label] of Object.entries(uniqueUsers)) {
                 select.innerHTML += `<option value="${email}">${label}</option>`;
             }
-        }
-
-        function downloadCSV(dataArray, filename) {
-            if (dataArray.length === 0) {
-                alert("No booking data available to export.");
-                return;
-            }
-
-            const headers = ["Branch of Service", "Last name", "First name", "Email", "Building number", "Date", "Time", "Purpose of Visit"];
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += headers.join(",") + "\r\n";
-
-            dataArray.forEach(row => {
-                const rowData = [
-                    `"${row.branchOfService || ''}"`,
-                    `"${row.lastName || ''}"`,
-                    `"${row.firstName || ''}"`,
-                    `"${row.email || ''}"`,
-                    `"${row.buildingNumber || ''}"`,
-                    `"${row.date || ''}"`,
-                    `"${row.time || ''}"`,
-                    `"${row.purposeOfVisit || ''}"`
-                ];
-                csvContent += rowData.join(",") + "\r\n";
-            });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", filename);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function exportAllBookings() {
-            const bookings = JSON.parse(localStorage.getItem('housing_bookings_list')) || [];
-            downloadCSV(bookings, "all_housing_bookings.csv");
         }
 
         function exportSelectedUserBookings() {
@@ -439,7 +609,33 @@
                 alert("No bookings found for the selected user.");
                 return;
             }
-            downloadCSV(userBookings, `bookings_${selectedEmail.replace(/[@.]/g, '_')}.csv`);
+
+            const headers = ["Branch of Service", "Last name", "First name", "Email", "Building number", "Date", "Time", "Purpose of Visit", "Confirmation Code"];
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += headers.join(",") + "\r\n";
+
+            userBookings.forEach(row => {
+                const rowData = [
+                    `"${row.branchOfService || ''}"`,
+                    `"${row.lastName || ''}"`,
+                    `"${row.firstName || ''}"`,
+                    `"${row.email || ''}"`,
+                    `"${row.buildingNumber || ''}"`,
+                    `"${row.date || ''}"`,
+                    `"${row.time || ''}"`,
+                    `"${row.purposeOfVisit || ''}"`,
+                    `"${row.confirmationCode || ''}"`
+                ];
+                csvContent += rowData.join(",") + "\r\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `bookings_${selectedEmail.replace(/[@.]/g, '_')}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>
