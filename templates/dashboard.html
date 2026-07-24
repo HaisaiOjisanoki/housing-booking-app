@@ -34,7 +34,7 @@
                 <button class="nav-link btn-sm" id="buildings-tab" data-bs-toggle="pill" data-bs-target="#buildingsSection" type="button"><i class="bi bi-buildings me-1"></i>Assigned Buildings</button>
             </li>
             <li class="nav-item ms-2" role="presentation">
-                <button class="nav-link btn-sm" id="availability-tab" data-bs-toggle="pill" data-bs-target="#availabilitySection" type="button"><i class="bi bi-clock-history me-1"></i>Time Availability</button>
+                <button class="nav-link btn-sm" id="availability-tab" data-bs-toggle="pill" data-bs-target="#availabilitySection" type="button"><i class="bi bi-clock-history me-1"></i>Time Availability & Lunch</button>
             </li>
             <li class="nav-item ms-2" role="presentation">
                 <button class="nav-link btn-sm" id="purposes-tab" data-bs-toggle="pill" data-bs-target="#purposesSection" type="button"><i class="bi bi-list-check me-1"></i>Purpose of Visit</button>
@@ -57,7 +57,10 @@
                         <div class="card shadow-sm border-0 h-100">
                             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0 fw-bold"><i class="bi bi-calendar-event me-2 text-primary"></i>Appointment Calendar View</h5>
-                                <button class="btn btn-sm btn-outline-primary" onclick="loadBookingsData()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+                                <div>
+                                    <button class="btn btn-sm btn-success me-2" onclick="openNewBookingModal()"><i class="bi bi-plus-circle me-1"></i>New Booking</button>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="loadBookingsData()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <div id="calendar" style="min-height: 600px;"></div>
@@ -99,10 +102,10 @@
                     <div class="col-lg-12">
                         <div class="card shadow-sm border-0">
                             <div class="card-header bg-white py-3">
-                                <h5 class="mb-0 fw-bold"><i class="bi bi-buildings me-2 text-primary"></i>Buildings Assigned By Admin / Super Admin</h5>
+                                <h5 class="mb-0 fw-bold"><i class="bi bi-buildings me-2 text-primary"></i>Your Assigned Buildings</h5>
                             </div>
                             <div class="card-body">
-                                <p class="text-muted small">Facilities and blocks currently assigned under your profile scope.</p>
+                                <p class="text-muted small">Facilities and blocks explicitly assigned to your user account.</p>
                                 <div class="table-responsive">
                                     <table class="table table-striped align-middle">
                                         <thead class="table-light">
@@ -113,9 +116,7 @@
                                                 <th>Status</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="assignedBuildingsTable">
-                                            <!-- Dynamically Injected -->
-                                        </tbody>
+                                        <tbody id="assignedBuildingsTable"></tbody>
                                     </table>
                                 </div>
                             </div>
@@ -124,33 +125,58 @@
                 </div>
             </div>
 
-            <!-- TAB 3: TIME AVAILABILITY -->
+            <!-- TAB 3: TIME AVAILABILITY & LUNCH BLOCKING -->
             <div class="tab-pane fade" id="availabilitySection" role="tabpanel">
                 <div class="row justify-content-center">
-                    <div class="col-lg-6">
+                    <div class="col-lg-7">
                         <div class="card shadow-sm border-0">
                             <div class="card-header bg-white py-3">
-                                <h5 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2 text-primary"></i>Modify Time Availability</h5>
+                                <h5 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2 text-primary"></i>Modify Time Availability & Lunch Restrictions</h5>
                             </div>
                             <div class="card-body">
+                                <p class="text-muted small">Updating these hours and lunch blocks will immediately reflect on the public booking form, preventing public reservations during your lunch window.</p>
                                 <form onsubmit="saveAvailability(event)">
-                                    <div class="mb-3">
-                                        <label class="form-label small text-muted">Daily Operating Start Time</label>
-                                        <input type="time" id="availStartTime" class="form-control" required>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label small text-muted">Operating Start Time</label>
+                                            <input type="time" id="availStartTime" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label small text-muted">Operating End Time</label>
+                                            <input type="time" id="availEndTime" class="form-control" required>
+                                        </div>
                                     </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small text-muted">Daily Operating End Time</label>
-                                        <input type="time" id="availEndTime" class="form-control" required>
+                                    <div class="row border-top pt-3 mt-2">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label small text-danger fw-bold">Lunch Block Start</label>
+                                            <input type="time" id="lunchStartTime" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label small text-danger fw-bold">Lunch Block End</label>
+                                            <input type="time" id="lunchEndTime" class="form-control" required>
+                                        </div>
                                     </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small text-muted">Lunch Break / Block Start</label>
-                                        <input type="time" id="lunchStartTime" class="form-control" required>
+
+                                    <!-- Blocked Time Categories (Meeting, Escorting, VIP) -->
+                                    <div class="border-top pt-3 mt-2 mb-3">
+                                        <label class="form-label small fw-bold text-dark mb-2"><i class="bi bi-shield-exclamation me-1"></i>Blocked Time Categories / Reason Tags:</label>
+                                        <div class="d-flex gap-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input block-category" type="checkbox" value="Meeting" id="checkMeeting">
+                                                <label class="form-check-label small" for="checkMeeting">Meeting</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input block-category" type="checkbox" value="Escorting" id="checkEscorting">
+                                                <label class="form-check-label small" for="checkEscorting">Escorting</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input block-category" type="checkbox" value="VIP" id="checkVIP">
+                                                <label class="form-check-label small" for="checkVIP">VIP</label>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small text-muted">Lunch Break / Block End</label>
-                                        <input type="time" id="lunchEndTime" class="form-control" required>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary w-100">Update Availability Rules</button>
+
+                                    <button type="submit" class="btn btn-primary w-100">Save Availability & Sync to Public Form</button>
                                 </form>
                             </div>
                         </div>
@@ -168,12 +194,10 @@
                             </div>
                             <div class="card-body">
                                 <div class="input-group mb-3">
-                                    <input type="text" id="newPurposeInput" class="form-control" placeholder="Enter new purpose (e.g. Maintenance Inspection)...">
+                                    <input type="text" id="newPurposeInput" class="form-control" placeholder="Enter new purpose...">
                                     <button class="btn btn-success" type="button" onclick="addPurpose()">Add Purpose</button>
                                 </div>
-                                <ul class="list-group" id="purposeListGroup">
-                                    <!-- Dynamically Injected -->
-                                </ul>
+                                <ul class="list-group" id="purposeListGroup"></ul>
                             </div>
                         </div>
                     </div>
@@ -183,12 +207,12 @@
         </div>
     </div>
 
-    <!-- Booking Details / Edit Modal -->
+    <!-- Booking Add / Edit Modal -->
     <div class="modal fade" id="bookingModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold" id="modalTitle">Booking Information</h5>
+                    <h5 class="modal-title fw-bold" id="modalTitle">Manage Booking</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -196,15 +220,15 @@
                         <input type="hidden" id="editBookingId">
                         <div class="mb-3">
                             <label class="form-label text-muted small">Visitor / Guest Name</label>
-                            <input type="text" id="modalGuestName" class="form-control" readonly>
+                            <input type="text" id="modalGuestName" class="form-control" required placeholder="e.g. Staff Sgt. Miller">
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-muted small">Building / Facility</label>
-                            <input type="text" id="modalBuilding" class="form-control" readonly>
+                            <input type="text" id="modalBuilding" class="form-control" required placeholder="e.g. Building 402 - Room 101">
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-muted small">Appointment Date & Time</label>
-                            <input type="text" id="modalDateTime" class="form-control" readonly>
+                            <input type="datetime-local" id="modalDateTime" class="form-control" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-muted small">Current Status</label>
@@ -214,12 +238,17 @@
                                 <option value="Cancelled">Cancelled</option>
                             </select>
                         </div>
+                        <!-- Staff-Only Internal Notes Section -->
+                        <div class="mb-3" id="staffNotesContainer">
+                            <label class="form-label text-danger small fw-bold"><i class="bi bi-shield-lock me-1"></i>Internal Staff Notes (Staff Only)</label>
+                            <textarea id="modalInternalNote" class="form-control" rows="3" placeholder="Enter confidential notes visible only to staff..."></textarea>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteCurrentBooking()">Delete Booking</button>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="saveBookingChanges()">Save Changes</button>
+                    <button type="button" id="deleteBookingBtn" class="btn btn-danger btn-sm d-none" onclick="deleteCurrentBooking()">Delete Booking</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="saveBookingChanges()">Save Booking</button>
                 </div>
             </div>
         </div>
@@ -245,25 +274,33 @@
             currentUser = JSON.parse(storedUser);
             document.getElementById('userBadge').textContent = `Role: ${currentUser.role} (${currentUser.username})`;
 
-            // Initialize default local storage data structures if not present
+            const isStaff = currentUser.role === 'Super Admin' || currentUser.role === 'Admin';
+            const staffNotesContainer = document.getElementById('staffNotesContainer');
+            if (!isStaff) {
+                staffNotesContainer.classList.add('d-none');
+            } else {
+                staffNotesContainer.classList.remove('d-none');
+            }
+
             if (!localStorage.getItem('housing_bookings')) {
                 const sampleBookings = [
-                    { id: 101, name: "Staff Sgt. Miller", building: "Building 402 - Room 101", date: "2026-07-26T10:00:00", status: "Approved" },
-                    { id: 102, name: "Capt. Davis", building: "Building 405 - Room 204", date: "2026-07-28T14:30:00", status: "Pending" }
+                    { id: 101, name: "Staff Sgt. Miller", building: "Building 402 - Room 101", date: "2026-07-26T10:00", status: "Approved", internalNote: "Verified PCS orders." },
+                    { id: 102, name: "Capt. Davis", building: "Building 405 - Room 204", date: "2026-07-28T14:30", status: "Pending", internalNote: "Pending clearance confirmation." }
                 ];
                 localStorage.setItem('housing_bookings', JSON.stringify(sampleBookings));
             }
 
             if (!localStorage.getItem('housing_assigned_buildings')) {
                 const sampleBuildings = [
-                    { name: "Building 402 (Unaccompanied Enlisted)", assignedBy: "Super Admin", rooms: 48, status: "Active" },
-                    { name: "Building 405 (NCO Quarters)", assignedBy: "Admin", rooms: 32, status: "Active" }
+                    { name: "Building 402 (Unaccompanied Enlisted)", assignedTo: "user", assignedBy: "Super Admin", rooms: 48, status: "Active" },
+                    { name: "Building 405 (NCO Quarters)", assignedTo: "admin", assignedBy: "Super Admin", rooms: 32, status: "Active" },
+                    { name: "Building 410 (Transient Quarters)", assignedTo: "superadmin", assignedBy: "Super Admin", rooms: 20, status: "Active" }
                 ];
                 localStorage.setItem('housing_assigned_buildings', JSON.stringify(sampleBuildings));
             }
 
             if (!localStorage.getItem('housing_availability')) {
-                const defaultAvailability = { start: "08:00", end: "17:00", lunchStart: "12:00", lunchEnd: "13:00" };
+                const defaultAvailability = { start: "08:00", end: "17:00", lunchStart: "12:00", lunchEnd: "13:00", categories: ["Meeting"] };
                 localStorage.setItem('housing_availability', JSON.stringify(defaultAvailability));
             }
 
@@ -288,6 +325,10 @@
                     left: 'prev,next today',
                     center: 'title',
                     right: 'dayGridMonth,timeGridWeek,listWeek'
+                },
+                selectable: true,
+                dateClick: function(info) {
+                    openNewBookingModal(info.dateStr + 'T09:00');
                 },
                 events: fetchCalendarEvents,
                 eventClick: function(info) {
@@ -331,7 +372,7 @@
                         <span class="text-muted small">${b.building}</span><br>
                         <span class="badge ${badgeClass} mt-1">${b.status}</span>
                     </td>
-                    <td class="small">${new Date(b.date).toLocaleDateString()}</td>
+                    <td class="small">${new Date(b.date).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'})}</td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-primary" onclick="openBookingModal('${b.id}')"><i class="bi bi-pencil-square"></i></button>
                     </td>
@@ -346,29 +387,84 @@
             renderBookingsTable(filtered);
         }
 
+        function openNewBookingModal(defaultDateTime = '') {
+            document.getElementById('editBookingId').value = '';
+            document.getElementById('modalTitle').textContent = 'Create New Booking';
+            document.getElementById('modalGuestName').value = currentUser.role === 'User' ? currentUser.username : '';
+            document.getElementById('modalBuilding').value = '';
+            document.getElementById('modalDateTime').value = defaultDateTime || new Date().toISOString().slice(0, 16);
+            document.getElementById('modalStatus').value = 'Pending';
+            document.getElementById('modalInternalNote').value = '';
+            document.getElementById('deleteBookingBtn').classList.add('d-none');
+            new bootstrap.Modal(document.getElementById('bookingModal')).show();
+        }
+
         function openBookingModal(id) {
             const booking = allBookings.find(b => b.id.toString() === id.toString());
             if (!booking) return;
             document.getElementById('editBookingId').value = booking.id;
+            document.getElementById('modalTitle').textContent = 'Edit Booking # ' + booking.id;
             document.getElementById('modalGuestName').value = booking.name;
             document.getElementById('modalBuilding').value = booking.building;
-            document.getElementById('modalDateTime').value = new Date(booking.date).toLocaleString();
+            document.getElementById('modalDateTime').value = booking.date;
             document.getElementById('modalStatus').value = booking.status;
+            document.getElementById('modalInternalNote').value = booking.internalNote || '';
+            document.getElementById('deleteBookingBtn').classList.remove('d-none');
             new bootstrap.Modal(document.getElementById('bookingModal')).show();
         }
 
         function saveBookingChanges() {
             const id = document.getElementById('editBookingId').value;
-            const newStatus = document.getElementById('modalStatus').value;
+            const name = document.getElementById('modalGuestName').value.trim();
+            const building = document.getElementById('modalBuilding').value.trim();
+            const date = document.getElementById('modalDateTime').value;
+            const status = document.getElementById('modalStatus').value;
+            const internalNote = document.getElementById('modalInternalNote').value.trim();
+
+            if (!name || !building || !date) {
+                alert("Please fill in all required booking fields.");
+                return;
+            }
+
+            // Check if booking time falls within lunch block
+            const avail = JSON.parse(localStorage.getItem('housing_availability'));
+            if (avail && avail.lunchStart && avail.lunchEnd) {
+                const bookingTimeStr = date.split('T')[1];
+                if (bookingTimeStr >= avail.lunchStart && bookingTimeStr <= avail.lunchEnd) {
+                    alert("Selected appointment time falls within the designated lunch block. Bookings during lunch are restricted.");
+                    return;
+                }
+            }
+
             let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
-            bookings = bookings.map(b => {
-                if (b.id.toString() === id.toString()) b.status = newStatus;
-                return b;
-            });
+
+            if (id) {
+                bookings = bookings.map(b => {
+                    if (b.id.toString() === id.toString()) {
+                        b.name = name;
+                        b.building = building;
+                        b.date = date;
+                        b.status = status;
+                        b.internalNote = internalNote;
+                    }
+                    return b;
+                });
+            } else {
+                const newBooking = {
+                    id: Date.now(),
+                    name: name,
+                    building: building,
+                    date: date,
+                    status: status,
+                    internalNote: internalNote
+                };
+                bookings.push(newBooking);
+            }
+
             localStorage.setItem('housing_bookings', JSON.stringify(bookings));
             bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
             loadBookingsData();
-            showNotification("Booking status updated successfully.", "success");
+            showNotification("Booking saved successfully.", "success");
         }
 
         function deleteCurrentBooking() {
@@ -382,16 +478,23 @@
             showNotification("Booking deleted successfully.", "danger");
         }
 
-        // --- ASSIGNED BUILDINGS LOGIC ---
+        // --- ASSIGNED BUILDINGS LOGIC (Scoped per user) ---
         function loadAssignedBuildings() {
             const buildings = JSON.parse(localStorage.getItem('housing_assigned_buildings')) || [];
             const tbody = document.getElementById('assignedBuildingsTable');
             tbody.innerHTML = '';
-            if (buildings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No buildings currently assigned.</td></tr>`;
+
+            // Filter buildings assigned to current user, unless Super Admin
+            const filteredBuildings = (currentUser.role === 'Super Admin') 
+                ? buildings 
+                : buildings.filter(b => b.assignedTo && b.assignedTo.toLowerCase() === currentUser.username.toLowerCase());
+
+            if (filteredBuildings.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No buildings currently assigned to your profile.</td></tr>`;
                 return;
             }
-            buildings.forEach(b => {
+
+            filteredBuildings.forEach(b => {
                 tbody.innerHTML += `
                     <tr>
                         <td class="fw-bold">${b.name}</td>
@@ -403,27 +506,40 @@
             });
         }
 
-        // --- TIME AVAILABILITY LOGIC ---
+        // --- TIME AVAILABILITY & LUNCH LOGIC ---
         function loadAvailability() {
             const avail = JSON.parse(localStorage.getItem('housing_availability'));
             if (avail) {
-                document.getElementById('availStartTime').value = avail.start;
-                document.getElementById('availEndTime').value = avail.end;
-                document.getElementById('lunchStartTime').value = avail.lunchStart;
-                document.getElementById('lunchEndTime').value = avail.lunchEnd;
+                document.getElementById('availStartTime').value = avail.start || "08:00";
+                document.getElementById('availEndTime').value = avail.end || "17:00";
+                document.getElementById('lunchStartTime').value = avail.lunchStart || "12:00";
+                document.getElementById('lunchEndTime').value = avail.lunchEnd || "13:00";
+
+                if (avail.categories) {
+                    document.querySelectorAll('.block-category').forEach(cb => {
+                        cb.checked = avail.categories.includes(cb.value);
+                    });
+                }
             }
         }
 
         function saveAvailability(event) {
             event.preventDefault();
+            const selectedCategories = [];
+            document.querySelectorAll('.block-category:checked').forEach(cb => {
+                selectedCategories.push(cb.value);
+            });
+
             const avail = {
                 start: document.getElementById('availStartTime').value,
                 end: document.getElementById('availEndTime').value,
                 lunchStart: document.getElementById('lunchStartTime').value,
-                lunchEnd: document.getElementById('lunchEndTime').value
+                lunchEnd: document.getElementById('lunchEndTime').value,
+                categories: selectedCategories
             };
+
             localStorage.setItem('housing_availability', JSON.stringify(avail));
-            showNotification("Time availability settings updated successfully.", "success");
+            showNotification("Time availability and lunch block settings saved. Reflected on public booking form.", "success");
         }
 
         // --- PURPOSE OF VISIT LOGIC ---
