@@ -33,25 +33,30 @@
         <div class="row mb-4 align-items-center">
             <div class="col">
                 <h2 class="fw-bold text-dark mb-1"><i class="bi bi-speedometer2 me-2"></i>Management Control Center</h2>
-                <p class="text-muted small mb-0">Manage appointments, calendar schedules, camp options, and role-based assignments.</p>
+                <p class="text-muted small mb-0">Manage appointments, calendar schedules, camp options, and user access credentials.</p>
             </div>
         </div>
 
-        <!-- Navigation Tabs -->
+        <!-- Navigation Tabs (Calendar set as default active tab) -->
         <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active fw-bold" id="appointments-tab" data-bs-toggle="tab" data-bs-target="#appointmentsPane" type="button" role="tab">
+                <button class="nav-link fw-bold" id="appointments-tab" data-bs-toggle="tab" data-bs-target="#appointmentsPane" type="button" role="tab">
                     <i class="bi bi-list-task me-2"></i>Appointments List
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link fw-bold" id="calendar-tab" data-bs-toggle="tab" data-bs-target="#calendarPane" type="button" role="tab" onclick="renderCalendarView()">
+                <button class="nav-link active fw-bold" id="calendar-tab" data-bs-toggle="tab" data-bs-target="#calendarPane" type="button" role="tab" onclick="renderCalendarView()">
                     <i class="bi bi-calendar-week me-2"></i>Calendar View
                 </button>
             </li>
             <li class="nav-item" role="presentation" id="campsNavTab">
                 <button class="nav-link fw-bold" id="camps-tab" data-bs-toggle="tab" data-bs-target="#campsPane" type="button" role="tab">
-                    <i class="bi bi-geo-alt-fill me-2"></i>Camps & Buildings (Super Admin)
+                    <i class="bi bi-geo-alt-fill me-2"></i>Camps & Buildings
+                </button>
+            </li>
+            <li class="nav-item" role="presentation" id="usersNavTab">
+                <button class="nav-link fw-bold" id="users-tab" data-bs-toggle="tab" data-bs-target="#usersPane" type="button" role="tab">
+                    <i class="bi bi-people-fill me-2"></i>User & Password Management
                 </button>
             </li>
             <li class="nav-item" role="presentation" id="settingsNavTab">
@@ -65,7 +70,7 @@
         <div class="tab-content" id="dashboardTabContent">
             
             <!-- TAB 1: APPOINTMENTS LIST VIEW -->
-            <div class="tab-pane fade show active" id="appointmentsPane" role="tabpanel">
+            <div class="tab-pane fade" id="appointmentsPane" role="tabpanel">
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center py-3">
                         <span><i class="bi bi-calendar-check me-2"></i>Appointment Requests (Role Filtered)</span>
@@ -95,8 +100,8 @@
                 </div>
             </div>
 
-            <!-- TAB 2: CALENDAR VIEW -->
-            <div class="tab-pane fade" id="calendarPane" role="tabpanel">
+            <!-- TAB 2: CALENDAR VIEW (Default Active) -->
+            <div class="tab-pane fade show active" id="calendarPane" role="tabpanel">
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center py-3">
                         <span><i class="bi bi-calendar3 me-2"></i>Interactive Booking Calendar</span>
@@ -107,9 +112,7 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <div id="calendarGridContainer" class="table-responsive">
-                            <!-- Populated dynamically via JS -->
-                        </div>
+                        <div id="calendarGridContainer" class="table-responsive"></div>
                     </div>
                 </div>
             </div>
@@ -118,31 +121,25 @@
             <div class="tab-pane fade" id="campsPane" role="tabpanel">
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-header bg-dark text-white fw-bold py-3">
-                        <i class="bi bi-geo-alt-fill me-2"></i>Super Admin: Camp & Building Assignment Management (Auto-Syncs to Public Page)
+                        <i class="bi bi-geo-alt-fill me-2"></i>Super Admin: Camp & Building Assignment Management
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <!-- Left Column: Manage Camp Options -->
                             <div class="col-md-5 border-end pe-4">
                                 <h6 class="fw-bold text-primary mb-3">1. Manage Camp Options</h6>
                                 <div class="input-group input-group-sm mb-3">
-                                    <input type="text" id="superNewCampInput" class="form-control" placeholder="Enter Camp Name (e.g. Camp Hansen)">
+                                    <input type="text" id="superNewCampInput" class="form-control" placeholder="Enter Camp Name">
                                     <button class="btn btn-outline-primary" type="button" onclick="superAddCamp()">Add Camp</button>
                                 </div>
                                 <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
                                     <table class="table table-sm table-striped align-middle mb-0">
                                         <thead class="table-light">
-                                            <tr>
-                                                <th>Camp Name</th>
-                                                <th class="text-end">Action</th>
-                                            </tr>
+                                            <tr><th>Camp Name</th><th class="text-end">Action</th></tr>
                                         </thead>
                                         <tbody id="superCampsTableBody"></tbody>
                                     </table>
                                 </div>
                             </div>
-
-                            <!-- Right Column: Assign Building Numbers by Camp -->
                             <div class="col-md-7 ps-4">
                                 <h6 class="fw-bold text-primary mb-3">2. Assign Building Numbers by Camp</h6>
                                 <div class="mb-3">
@@ -158,10 +155,7 @@
                                 <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
                                     <table class="table table-sm table-striped align-middle mb-0">
                                         <thead class="table-light">
-                                            <tr>
-                                                <th>Assigned Building Number</th>
-                                                <th class="text-end">Action</th>
-                                            </tr>
+                                            <tr><th>Assigned Building Number</th><th class="text-end">Action</th></tr>
                                         </thead>
                                         <tbody id="superCampBuildingsTableBody">
                                             <tr><td colspan="2" class="text-center text-muted small">Select a camp to view assigned buildings</td></tr>
@@ -174,10 +168,71 @@
                 </div>
             </div>
 
-            <!-- TAB 4: FACILITY SCHEDULE & PURPOSES -->
+            <!-- TAB 4: USER & PASSWORD MANAGEMENT -->
+            <div class="tab-pane fade" id="usersPane" role="tabpanel">
+                <div class="row">
+                    <!-- Create User Form -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-header bg-dark text-white fw-bold py-3">
+                                <i class="bi bi-person-plus-fill me-2"></i>Create New User Account
+                            </div>
+                            <div class="card-body">
+                                <form id="createUserForm" onsubmit="createNewUserAccount(event)">
+                                    <div class="mb-3">
+                                        <label class="form-label small text-muted">Username *</label>
+                                        <input type="text" id="newUsername" class="form-control form-control-sm" required placeholder="e.g. admin_schwab">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small text-muted">Password *</label>
+                                        <input type="password" id="newPassword" class="form-control form-control-sm" required placeholder="Temporary Password">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small text-muted">Account Role *</label>
+                                        <select id="newUserRole" class="form-select form-select-sm" required>
+                                            <option value="User">User (Standard)</option>
+                                            <option value="Admin">Admin (Camp Staff)</option>
+                                            <option value="Super Admin">Super Admin</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-person-check-fill me-1"></i>Create Account</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Accounts Table -->
+                    <div class="col-md-8 mb-4">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-header bg-dark text-white fw-bold py-3 d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-people-fill me-2"></i>Registered User Accounts & Credentials</span>
+                                <button class="btn btn-light btn-sm" onclick="loadUsersManagement()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Username</th>
+                                                <th>Role</th>
+                                                <th>Password</th>
+                                                <th class="text-end">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="usersTableBody">
+                                            <tr><td colspan="4" class="text-center text-muted py-3">No user accounts found.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: FACILITY SCHEDULE & PURPOSES -->
             <div class="tab-pane fade" id="settingsPane" role="tabpanel">
                 <div class="row">
-                    <!-- Operating Hours & Restrictions -->
                     <div class="col-md-6 mb-4">
                         <div class="card shadow-sm border-0 h-100">
                             <div class="card-header bg-dark text-white fw-bold py-3">
@@ -211,7 +266,6 @@
                         </div>
                     </div>
 
-                    <!-- Visit Purposes Management -->
                     <div class="col-md-6 mb-4">
                         <div class="card shadow-sm border-0 h-100">
                             <div class="card-header bg-dark text-white fw-bold py-3">
@@ -225,10 +279,7 @@
                                 <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
                                     <table class="table table-sm table-striped align-middle mb-0">
                                         <thead class="table-light">
-                                            <tr>
-                                                <th>Purpose Description</th>
-                                                <th class="text-end">Action</th>
-                                            </tr>
+                                            <tr><th>Purpose Description</th><th class="text-end">Action</th></tr>
                                         </thead>
                                         <tbody id="purposesTableBody"></tbody>
                                     </table>
@@ -282,8 +333,10 @@
             const roleBadge = document.getElementById('userRoleBadge');
             roleBadge.textContent = `Role: ${currentUser.role} (${currentUser.username})`;
 
+            // Role-based navigation tab controls
             if (currentUser.role === 'User') {
                 document.getElementById('campsNavTab').style.display = 'none';
+                document.getElementById('usersNavTab').style.display = 'none';
                 document.getElementById('settingsNavTab').style.display = 'none';
             } else if (currentUser.role === 'Admin') {
                 document.getElementById('campsNavTab').style.display = 'none';
@@ -291,6 +344,7 @@
 
             loadBookings();
             initSuperAdminCamps();
+            loadUsersManagement();
             loadAvailabilitySettings();
             loadPurposes();
             renderCalendarView();
@@ -299,6 +353,7 @@
             window.addEventListener('storage', function(e) {
                 if (e.key === 'housing_bookings') loadBookings();
                 if (e.key === 'housing_camps' || e.key === 'housing_camp_buildings') initSuperAdminCamps();
+                if (e.key === 'housing_users') loadUsersManagement();
             });
         }
 
@@ -399,6 +454,98 @@
             modal.hide();
 
             showDashAlert("Staff notes successfully saved.", "success");
+        }
+
+        function loadUsersManagement() {
+            let users = JSON.parse(localStorage.getItem('housing_users'));
+            if (!users) {
+                users = [
+                    { username: "superadmin", password: "password123", role: "Super Admin", assignedCamps: [] },
+                    { username: "admin1", password: "password123", role: "Admin", assignedCamps: ["Camp Hansen"] },
+                    { username: "john", password: "password123", role: "User", assignedCamps: [] }
+                ];
+                localStorage.setItem('housing_users', JSON.stringify(users));
+            }
+
+            const tbody = document.getElementById('usersTableBody');
+            if (!tbody) return;
+
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No user accounts found.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            users.forEach((u, index) => {
+                let badgeClass = 'bg-secondary';
+                if (u.role === 'Super Admin') badgeClass = 'bg-danger';
+                if (u.role === 'Admin') badgeClass = 'bg-primary';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${u.username}</strong></td>
+                        <td><span class="badge ${badgeClass}">${u.role}</span></td>
+                        <td><code>${u.password}</code></td>
+                        <td class="text-end">
+                            <button class="btn btn-outline-warning btn-sm py-0 px-1 me-1" title="Reset Password" onclick="resetUserPassword('${u.username}')"><i class="bi bi-key-fill"></i></button>
+                            <button class="btn btn-outline-danger btn-sm py-0 px-1" title="Delete User" onclick="deleteUserAccount('${u.username}')"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function createNewUserAccount(event) {
+            event.preventDefault();
+            const username = document.getElementById('newUsername').value.trim().toLowerCase();
+            const password = document.getElementById('newPassword').value.trim();
+            const role = document.getElementById('newUserRole').value;
+
+            if (!username || !password) return;
+
+            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
+            if (users.some(u => u.username === username)) {
+                showDashAlert("Username already exists. Please choose a different username.", "danger");
+                return;
+            }
+
+            users.push({ username, password, role, assignedCamps: [] });
+            localStorage.setItem('housing_users', JSON.stringify(users));
+
+            document.getElementById('createUserForm').reset();
+            loadUsersManagement();
+            showDashAlert(`User account '${username}' created successfully.`, "success");
+        }
+
+        function resetUserPassword(username) {
+            const newPassword = prompt(`Enter new password for user '${username}':`);
+            if (!newPassword) return;
+
+            let users = JSON.parse(localStorage.getItem('housing_users')) || [];
+            users = users.map(u => {
+                if (u.username === username) {
+                    u.password = newPassword.trim();
+                }
+                return u;
+            });
+            localStorage.setItem('housing_users', JSON.stringify(users));
+            loadUsersManagement();
+            showDashAlert(`Password for '${username}' has been successfully reset.`, "success");
+        }
+
+        function deleteUserAccount(username) {
+            if (username === 'superadmin') {
+                showDashAlert("Cannot delete the primary Super Admin account.", "danger");
+                return;
+            }
+
+            if (confirm(`Are you sure you want to delete user account '${username}'?`)) {
+                let users = JSON.parse(localStorage.getItem('housing_users')) || [];
+                users = users.filter(u => u.username !== username);
+                localStorage.setItem('housing_users', JSON.stringify(users));
+                loadUsersManagement();
+                showDashAlert(`User account '${username}' removed successfully.`, "success");
+            }
         }
 
         function changeCalendarMonth(direction) {
@@ -518,7 +665,7 @@
             localStorage.setItem('housing_camps', JSON.stringify(camps));
             input.value = '';
             initSuperAdminCamps();
-            showDashAlert("Camp successfully added and synced to public page.", "success");
+            showDashAlert("Camp successfully added.", "success");
         }
 
         function superDeleteCamp(index) {
@@ -599,7 +746,7 @@
             }
 
             if (campBuildingsMap[selectedCamp].includes(bldgNum)) {
-                showDashAlert("This building number is already assigned to this camp.", "danger");
+                showDashAlert("This building number is already assigned.", "danger");
                 return;
             }
 
@@ -607,7 +754,7 @@
             localStorage.setItem('housing_camp_buildings', JSON.stringify(campBuildingsMap));
             input.value = '';
             renderSuperCampBuildingsList();
-            showDashAlert("Building successfully assigned and synced to public page.", "success");
+            showDashAlert("Building successfully assigned.", "success");
         }
 
         function superRemoveBuildingFromCamp(campName, index) {
