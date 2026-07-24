@@ -65,11 +65,11 @@
                                     <label class="form-label small fw-bold text-muted">Branch of Service *</label>
                                     <select id="branch" class="form-select" required>
                                         <option value="">-- Select Branch --</option>
-                                        <option value="USMC">USMC</option>
-                                        <option value="USN">USN</option>
-                                        <option value="USA">USA</option>
-                                        <option value="USAF">USAF</option>
-                                        <option value="USCG">USCG</option>
+                                        <option value="Army">Army</option>
+                                        <option value="Marine Corps">Marine Corps</option>
+                                        <option value="Navy">Navy</option>
+                                        <option value="Air Force">Air Force</option>
+                                        <option value="Coast Guard">Coast Guard</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
@@ -181,7 +181,7 @@
                 return;
             }
 
-            // Optional lunch restriction check (11:30 - 13:00)
+            // Lunch restriction check (11:30 - 13:00)
             if (timeVal >= '11:30' && timeVal <= '13:00') {
                 warningEl.classList.remove('d-none');
                 submitBtn.disabled = true;
