@@ -15,7 +15,7 @@
     <nav class="navbar navbar-dark bg-dark shadow-sm">
         <div class="container">
             <a class="navbar-brand fw-bold" href="#"><i class="bi bi-building-fill-check me-2"></i>Housing Portal Appointment Booking</a>
-            <a href="/" class="btn btn-outline-light btn-sm"><i class="bi bi-speedometer2 me-1"></i>Staff Dashboard</a>
+            <a href="dashboard.html" class="btn btn-outline-light btn-sm"><i class="bi bi-speedometer2 me-1"></i>Staff Dashboard</a>
         </div>
     </nav>
 
@@ -192,7 +192,7 @@
             });
         }
 
-        function loadPurposesDropdown() {
+    function loadPurposesDropdown() {
             let purposes = JSON.parse(localStorage.getItem('housing_purposes')) || ["Check-in / In-processing", "Out-processing Inspection", "Maintenance Request", "Room Change Inquiry"];
             let select = document.getElementById('purposeSelect');
             if (!select) return;
@@ -246,7 +246,6 @@
             localStorage.setItem('housing_bookings', JSON.stringify(bookings));
 
             document.getElementById('publicBookingForm').reset();
-            // Reset date back to today after clearing
             const todayStr = new Date().toISOString().split('T')[0];
             document.getElementById('bookDate').value = todayStr;
             updateBuildingsDropdown();
