@@ -196,5 +196,43 @@ def api_book():
     save_state(app_state)
     return jsonify({'status': 'success', 'confirmationCode': data.get('confirmationCode')})
 
+@app.route('/api/bookings/status', methods=['POST'])
+def api_update_booking_status():
+    user = session.get('user')
+    if not user or user.get('role') not in ['superadmin', 'camp_admin', 'staff']:
+        return jsonify({'error': 'Unauthorized'}), 401
+        
+    data = request.get_json(silent=True)
+    if not data or not isinstance(data, dict):
+        return jsonify({'error': 'Invalid data'}), 400
+        
+    confirmation_code = data.get('confirmationCode') or data.get('confirmation_code')
+    new_status = data.get('status')
+    
+    if not confirmation_code or not new_status:
+        return jsonify({'error': 'Missing confirmationCode or status'}), 400
+        
+    global app_state
+    updated = False
+    for booking in app_state.get('bookings', []):
+        if booking.get('confirmationCode') == confirmation_code or booking.get('confirmation_code') == confirmation_code:
+            # Enforce role boundaries for camp_admin and staff (UH Building Managers)
+            if user['role'] == 'camp_admin':
+                if booking.get('camp') != user.get('camp'):
+                    return jsonify({'error': 'Forbidden for this camp'}), 403
+            elif user['role'] == 'staff':
+                if booking.get('camp') != user.get('camp') or (user.get('buildings') and booking.get('building') not in user.get('buildings')):
+                    return jsonify({'error': 'Forbidden for this building'}), 403
+                    
+            booking['status'] = new_status
+            updated = True
+            break
+            
+    if updated:
+        save_state(app_state)
+        return jsonify({'status': 'success'})
+        
+    return jsonify({'error': 'Booking not found'}), 404
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
