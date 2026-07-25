@@ -57,11 +57,6 @@ def load_state():
             with open(DATA_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 if isinstance(data, dict):
-                    # Ensure loaded bookings do not contain status fields
-                    if 'bookings' in data and isinstance(data['bookings'], list):
-                        for b in data['bookings']:
-                            if isinstance(b, dict):
-                                b.pop('status', None)
                     return data
         except Exception as e:
             print(f"Warning: Error loading state file: {e}")
@@ -69,11 +64,6 @@ def load_state():
 
 def save_state(state):
     try:
-        # Ensure saved bookings do not contain status fields
-        if 'bookings' in state and isinstance(state['bookings'], list):
-            for b in state['bookings']:
-                if isinstance(b, dict):
-                    b.pop('status', None)
         with open(DATA_FILE, 'w', encoding='utf-8') as f:
             json.dump(state, f, indent=4)
     except Exception as e:
@@ -150,12 +140,6 @@ def api_state():
         if not new_state or not isinstance(new_state, dict):
             return jsonify({'error': 'Invalid JSON payload provided'}), 400
         
-        # Strip any status fields from incoming bookings
-        if 'bookings' in new_state and isinstance(new_state['bookings'], list):
-            for b in new_state['bookings']:
-                if isinstance(b, dict):
-                    b.pop('status', None)
-
         # Secure boundary checks for Camp Admins
         if user['role'] == 'camp_admin':
             camp = user['camp']
@@ -204,9 +188,6 @@ def api_book():
     data = request.get_json(silent=True)
     if not data or not isinstance(data, dict):
         return jsonify({'error': 'Invalid data'}), 400
-    
-    # Ensure no status field is accepted or stored on booking
-    data.pop('status', None)
     
     if 'bookings' not in app_state:
         app_state['bookings'] = []
