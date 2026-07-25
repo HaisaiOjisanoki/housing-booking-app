@@ -12,7 +12,6 @@
     </nav>
 
     <div class="container">
-        <!-- View Toggle Tabs -->
         <ul class="nav nav-tabs mb-4" id="staffTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="staff-appts-tab" data-bs-toggle="tab" data-bs-target="#staff-appointments-view" type="button">Appointment View</button>
@@ -23,7 +22,6 @@
         </ul>
 
         <div class="tab-content">
-            <!-- Appointment Table View -->
             <div class="tab-pane fade show active" id="staff-appointments-view">
                 <h3>Managed Appointments</h3>
                 <div class="table-responsive bg-white p-3 rounded shadow-sm">
@@ -39,19 +37,14 @@
                                 <th>Status</th>
                             </tr>
                         </thead>
-                        <tbody id="staff-appointments-tbody">
-                            <!-- Populated dynamically based on user role boundaries -->
-                        </tbody>
+                        <tbody id="staff-appointments-tbody"></tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Calendar View -->
             <div class="tab-pane fade" id="staff-calendar-view">
                 <h3>Managed Calendar Schedule</h3>
-                <div class="bg-white p-4 rounded shadow-sm" id="staff-calendar-list">
-                    <!-- Populated dynamically -->
-                </div>
+                <div class="bg-white p-4 rounded shadow-sm" id="staff-calendar-list"></div>
             </div>
         </div>
     </div>
@@ -75,7 +68,6 @@
                 calendarList.innerHTML = '';
 
                 bookings.forEach(b => {
-                    // Enforce view boundaries on frontend to match backend security checks
                     if (currentUser.role === 'camp_admin' && b.camp !== currentUser.camp) return;
                     if (currentUser.role === 'staff') {
                         if (b.camp !== currentUser.camp) return;

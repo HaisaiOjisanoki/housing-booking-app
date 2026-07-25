@@ -12,7 +12,6 @@
     </nav>
 
     <div class="container">
-        <!-- View Toggle Buttons -->
         <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="appointments-tab" data-bs-toggle="tab" data-bs-target="#appointments-view" type="button">Appointment View</button>
@@ -23,7 +22,6 @@
         </ul>
 
         <div class="tab-content" id="dashboardContent">
-            <!-- Appointment Table View -->
             <div class="tab-pane fade show active" id="appointments-view">
                 <h3>All Appointments</h3>
                 <div class="table-responsive bg-white p-3 rounded shadow-sm">
@@ -39,18 +37,14 @@
                                 <th>Status</th>
                             </tr>
                         </thead>
-                        <tbody id="superadmin-appointments-tbody">
-                            <!-- Populated dynamically -->
-                        </tbody>
+                        <tbody id="superadmin-appointments-tbody"></tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Calendar View -->
             <div class="tab-pane fade" id="calendar-view">
                 <h3>Calendar Schedule</h3>
                 <div id="calendar-container" class="bg-white p-4 rounded shadow-sm">
-                    <!-- Calendar Grid or Event List populated via JS -->
                     <div id="calendar-events-list"></div>
                 </div>
             </div>
@@ -72,8 +66,6 @@
 
                 bookings.forEach(b => {
                     const code = b.confirmationCode || b.confirmation_code;
-                    
-                    // Build status dropdown helper function
                     const statusDropdown = `
                         <select class="form-select form-select-sm status-update-select" data-code="${code}">
                             <option value="Pending" ${b.status === 'Pending' ? 'selected' : ''}>Pending</option>
@@ -83,7 +75,6 @@
                         </select>
                     `;
 
-                    // Populate Table View Row
                     tbody.innerHTML += `
                         <tr>
                             <td><code>${code}</code></td>
@@ -96,7 +87,6 @@
                         </tr>
                     `;
 
-                    // Populate Calendar View item representation
                     calendarList.innerHTML += `
                         <div class="border-bottom py-2 d-flex justify-content-between align-items-center">
                             <div>
@@ -112,7 +102,6 @@
             }
         }
 
-        // Global Event Listener for status updates from either view
         document.addEventListener('change', async function(e) {
             if (e.target && e.target.classList.contains('status-update-select')) {
                 const confirmationCode = e.target.getAttribute('data-code');
@@ -129,7 +118,6 @@
                     alert('Error updating status: ' + (data.error || 'Unauthorized'));
                     loadDashboardData();
                 } else {
-                    // Sync selections if multiple views display the same record
                     document.querySelectorAll(`[data-code="${confirmationCode}"]`).forEach(el => {
                         el.value = newStatus;
                     });

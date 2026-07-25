@@ -210,7 +210,7 @@ def api_update_booking_status():
     global app_state
     updated = False
     for booking in app_state.get('bookings', []):
-        if booking.get('confirmationCode'] == confirmation_code or booking.get('confirmation_code') == confirmation_code:
+        if booking.get('confirmationCode') == confirmation_code or booking.get('confirmation_code') == confirmation_code:
             if user['role'] == 'camp_admin':
                 if booking.get('camp') != user.get('camp'):
                     return jsonify({'error': 'Forbidden for this camp'}), 403
@@ -229,4 +229,5 @@ def api_update_booking_status():
     return jsonify({'error': 'Booking not found'}), 404
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
