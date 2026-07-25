@@ -91,7 +91,7 @@
 
         <div class="row mb-4 align-items-center">
             <div class="col-md-6">
-                <h4 class="fw-bold mb-0"><i class="bi bi-calendar-check me-2"></i>Appointments Management & Confirmation</h4>
+                <h4 class="fw-bold mb-0"><i class="bi bi-calendar-check me-2"></i>Appointments Management</h4>
             </div>
             <div class="col-md-6 text-md-end mt-3 mt-md-0">
                 <div class="btn-group shadow-sm" role="group">
@@ -113,7 +113,6 @@
                                 <th>Bldg / Camp</th>
                                 <th>Date & Time</th>
                                 <th>Purpose</th>
-                                <th>Status</th>
                                 <th class="text-end">Actions / Notes</th>
                             </tr>
                         </thead>
@@ -166,8 +165,7 @@
                 </div>
                 <div class="modal-footer justify-content-between">
                     <div>
-                        <button type="button" class="btn btn-outline-danger btn-sm fw-bold me-1" onclick="deleteBookingFromModal()"><i class="bi bi-trash me-1"></i> Delete</button>
-                        <button type="button" class="btn btn-outline-warning text-dark btn-sm fw-bold" onclick="cancelBookingFromModal()"><i class="bi bi-x-circle me-1"></i> Cancel</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm fw-bold" onclick="deleteBookingFromModal()"><i class="bi bi-trash me-1"></i> Delete</button>
                     </div>
                     <div>
                         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
@@ -265,8 +263,7 @@
                 const bookingsOnDay = (appState.bookings || []).filter(b => b.camp === staffCamp && effectiveBldgs.includes(String(b.building)) && b.date === dateStr);
                 bookingsOnDay.forEach(b => {
                     const globalIdx = (appState.bookings || []).findIndex(item => item.confirmationCode === b.confirmationCode);
-                    const badgeColor = b.status === 'Confirmed' ? 'bg-success' : b.status === 'Cancelled' ? 'bg-danger text-decoration-line-through' : b.status === 'Rescheduled' ? 'bg-info text-dark' : 'bg-primary';
-                    cellHtml += `<span class="booking-badge ${badgeColor}" onclick="openBookingActionModal(${globalIdx})" title="${b.time} - ${b.firstName} ${b.lastName} (Bldg ${b.building})">${b.time} Bldg ${b.building} (${b.firstName})</span>`;
+                    cellHtml += `<span class="booking-badge bg-primary text-white" onclick="openBookingActionModal(${globalIdx})" title="${b.time} - ${b.firstName} ${b.lastName} (Bldg ${b.building})">${b.time} Bldg ${b.building} (${b.firstName})</span>`;
                 });
 
                 cellHtml += `</div>`;
@@ -415,7 +412,7 @@
             tbody.innerHTML = '';
 
             if (!appState.bookings || appState.bookings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">No appointments found in the system.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No appointments found in the system.</td></tr>`;
                 return;
             }
 
@@ -423,13 +420,12 @@
             const filtered = appState.bookings.filter(b => b.camp === staffCamp && effectiveBldgs.includes(String(b.building)));
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">No appointments found for ${staffCamp} in buildings: ${effectiveBldgs.join(', ')}.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No appointments found for ${staffCamp} in buildings: ${effectiveBldgs.join(', ')}.</td></tr>`;
                 return;
             }
 
             filtered.forEach(b => {
                 const globalIdx = appState.bookings.findIndex(item => item.confirmationCode === b.confirmationCode);
-                const statusClass = b.status === 'Cancelled' ? 'bg-danger' : b.status === 'Confirmed' ? 'bg-success' : b.status === 'Completed' ? 'bg-primary' : b.status === 'Rescheduled' ? 'bg-info text-dark' : 'bg-warning text-dark';
                 tbody.innerHTML += `
                     <tr>
                         <td><span class="fw-bold text-primary">${b.confirmationCode}</span></td>
@@ -438,15 +434,8 @@
                         <td>Bldg ${b.building}</td>
                         <td>${b.date} @ ${b.time}</td>
                         <td>${b.purpose}</td>
-                        <td><span class="badge ${statusClass}">${b.status || 'Pending'}</span></td>
                         <td class="text-end">
                             <div class="d-flex flex-column gap-2">
-                                <select class="form-select form-select-sm" onchange="updateStatus('${b.confirmationCode}', this.value)">
-                                    <option value="Pending" ${b.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                                    <option value="Confirmed" ${b.status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
-                                    <option value="Completed" ${b.status === 'Completed' ? 'selected' : ''}>Completed</option>
-                                    <option value="Cancelled" ${b.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
-                                </select>
                                 <input type="text" class="form-control form-control-sm" placeholder="Add manager notes..." value="${b.staffNotes || ''}" onchange="updateNotes('${b.confirmationCode}', this.value)">
                                 <button class="btn btn-outline-primary btn-sm fw-bold" onclick="openBookingActionModal(${globalIdx})"><i class="bi bi-gear me-1"></i> Full Details</button>
                             </div>
@@ -454,14 +443,6 @@
                     </tr>
                 `;
             });
-        }
-
-        async function updateStatus(code, newStatus) {
-            const target = appState.bookings.find(b => b.confirmationCode === code);
-            if (target) {
-                target.status = newStatus;
-                await saveState();
-            }
         }
 
         async function updateNotes(code, notes) {
@@ -482,7 +463,6 @@
             document.getElementById('modalBookingDetails').innerHTML = `
                 <div class="row">
                     <div class="col-6 mb-1"><strong>Confirmation Code:</strong> <span class="text-primary">${b.confirmationCode}</span></div>
-                    <div class="col-6 mb-1"><strong>Status:</strong> <span class="badge ${b.status === 'Cancelled' ? 'bg-danger' : 'bg-success'}">${b.status}</span></div>
                     <div class="col-12 mb-1"><strong>Guest:</strong> ${b.firstName} ${b.lastName} (${b.branch})</div>
                     <div class="col-12 mb-1"><strong>Email:</strong> ${b.email || 'N/A'}</div>
                     <div class="col-12 mb-1"><strong>Location:</strong> ${b.camp} - Bldg ${b.building}</div>
@@ -493,15 +473,6 @@
             modal.show();
         }
 
-        async function cancelBookingFromModal() {
-            if (activeBookingIndex === null) return;
-            appState.bookings[activeBookingIndex].status = 'Cancelled';
-            await saveState();
-            bootstrap.Modal.getInstance(document.getElementById('bookingActionModal')).hide();
-            renderStaffAppointments();
-            renderCalendar();
-        }
-
         async function rescheduleBookingFromModal() {
             if (activeBookingIndex === null) return;
             const newDate = document.getElementById('rescheduleDate').value;
@@ -510,7 +481,6 @@
             
             appState.bookings[activeBookingIndex].date = newDate;
             appState.bookings[activeBookingIndex].time = newTime;
-            appState.bookings[activeBookingIndex].status = 'Rescheduled';
             await saveState();
             bootstrap.Modal.getInstance(document.getElementById('bookingActionModal')).hide();
             renderStaffAppointments();
