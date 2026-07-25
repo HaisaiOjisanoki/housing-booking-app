@@ -223,7 +223,10 @@
                                 <h2 class="fw-bold mb-1"><i class="bi bi-people me-2"></i>Staff & Admin Accounts</h2>
                                 <p class="text-muted small mb-0">Manage system administrators, camp administrators, and UH building managers.</p>
                             </div>
-                            <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addStaffModal"><i class="bi bi-person-plus me-1"></i> Add Staff Account</button>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-warning text-dark btn-sm fw-bold" onclick="resetAllStaffPasswords()"><i class="bi bi-key me-1"></i> Reset All Passwords</button>
+                                <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addStaffModal"><i class="bi bi-person-plus me-1"></i> Add Staff Account</button>
+                            </div>
                         </div>
                         <div class="card shadow-sm">
                             <div class="card-body p-4">
@@ -626,7 +629,7 @@
             populateExportFilters();
         }
 
-        // --- STAFF ACCOUNTS MANAGEMENT ---
+        // --- STAFF ACCOUNTS MANAGEMENT & PASSWORD RESETS ---
         function renderStaffAccounts() {
             const tbody = document.getElementById('staffAccountsTableBody');
             const staffUsers = appState.staff_users || [];
@@ -644,6 +647,7 @@
                         <td>${u.camp || 'System-wide'}</td>
                         <td><span class="text-muted small">${bldgs}</span></td>
                         <td class="text-end">
+                            <button class="btn btn-outline-warning text-dark btn-sm fw-bold me-1" onclick="promptResetStaffPassword('${u.username}')"><i class="bi bi-key me-1"></i> Reset Pwd</button>
                             <button class="btn btn-outline-danger btn-sm fw-bold" onclick="deleteStaffAccount('${u.username}')"><i class="bi bi-trash me-1"></i> Remove</button>
                         </td>
                     </tr>
@@ -657,6 +661,34 @@
                 campSelect.innerHTML += `<option value="${c}">${c}</option>`;
             });
             updateStaffBuildingCheckboxes();
+        }
+
+        async function promptResetStaffPassword(username) {
+            const newPassword = prompt(`Enter new password for staff account "${username}":`, "password123");
+            if (!newPassword) return;
+
+            const user = (appState.staff_users || []).find(u => u.username === username);
+            if (user) {
+                user.password = newPassword;
+                await saveStateToServer();
+                alert(`Password for "${username}" has been successfully reset.`);
+                renderStaffAccounts();
+            }
+        }
+
+        async function resetAllStaffPasswords() {
+            const defaultPassword = prompt("Enter the new default password for ALL staff and admin accounts:", "password123");
+            if (!defaultPassword) return;
+
+            if (!confirm(`Are you sure you want to reset passwords for ALL staff accounts to "${defaultPassword}"?`)) return;
+
+            (appState.staff_users || []).forEach(u => {
+                u.password = defaultPassword;
+            });
+
+            await saveStateToServer();
+            alert("All staff and admin passwords have been successfully reset.");
+            renderStaffAccounts();
         }
 
         function toggleStaffBuildingSelection() {
