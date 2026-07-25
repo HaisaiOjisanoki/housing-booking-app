@@ -140,12 +140,14 @@ def api_state():
         if not new_state or not isinstance(new_state, dict):
             return jsonify({'error': 'Invalid JSON payload provided'}), 400
         
-        # Secure boundary checks for Camp Admins
+        if user['role'] == 'superadmin':
+            app_state = new_state
+            save_state(app_state)
+            return jsonify({'status': 'success'})
+
         if user['role'] == 'camp_admin':
             camp = user['camp']
             new_state['camps'] = app_state['camps']
-            
-            # Protect other camps' buildings
             if 'camp_buildings' in new_state:
                 for c in app_state['camp_buildings']:
                     if c != camp:
@@ -153,17 +155,15 @@ def api_state():
             else:
                 new_state['camp_buildings'] = app_state['camp_buildings']
             
-            # Protect superadmins and staff from other camps
             if 'staff_users' in new_state:
                 filtered_staff = []
                 for existing_su in app_state['staff_users']:
                     if existing_su['role'] == 'superadmin' or existing_su['camp'] != camp:
                         filtered_staff.append(existing_su)
-                
                 for submitted_su in new_state['staff_users']:
                     if submitted_su.get('camp') == camp and submitted_su.get('role') == 'staff':
                         filtered_staff.append(submitted_su)
-                    elif submitted_su.get('username') == user['username']: # Keep current camp admin
+                    elif submitted_su.get('username') == user['username']:
                         filtered_staff.append(submitted_su)
                 new_state['staff_users'] = filtered_staff
             else:
@@ -171,11 +171,6 @@ def api_state():
                 
             if 'bookings' not in new_state:
                 new_state['bookings'] = app_state['bookings']
-
-        elif user['role'] == 'staff':
-            new_state['camps'] = app_state['camps']
-            new_state['camp_buildings'] = app_state['camp_buildings']
-            new_state['staff_users'] = app_state['staff_users']
         
         app_state = new_state
         save_state(app_state)
@@ -195,6 +190,36 @@ def api_book():
     app_state['bookings'].append(data)
     save_state(app_state)
     return jsonify({'status': 'success', 'confirmationCode': data.get('confirmationCode')})
+
+@app.route('/api/update_booking_status', methods=['POST'])
+def api_update_booking_status():
+    user = session.get('user')
+    if not user:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.get_json(silent=True)
+    if not data or 'confirmationCode' not in data or 'status' not in data:
+        return jsonify({'error': 'Invalid payload'}), 400
+        
+    code = data['confirmationCode']
+    new_status = data['status']
+    
+    found = False
+    for booking in app_state.get('bookings', []):
+        if booking.get('confirmationCode') == code:
+            if user['role'] == 'camp_admin' and booking.get('camp') != user['camp']:
+                return jsonify({'error': 'Unauthorized for this camp'}), 403
+            if user['role'] == 'staff' and booking.get('building') not in user.get('buildings', []):
+                return jsonify({'error': 'Unauthorized for this building'}), 403
+            
+            booking['status'] = new_status
+            found = True
+            break
+            
+    if found:
+        save_state(app_state)
+        return jsonify({'status': 'success'})
+    return jsonify({'error': 'Booking not found'}), 404
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
