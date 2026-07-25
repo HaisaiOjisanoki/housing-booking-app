@@ -200,6 +200,22 @@
                 <div class="modal-body">
                     <input type="hidden" id="modalBookingIndex">
                     <div id="modalBookingDetails" class="mb-3 p-3 bg-light rounded small border"></div>
+                    
+                    <!-- Status Update Field -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-primary"><i class="bi bi-tag me-1"></i> Change Status</label>
+                        <div class="input-group input-group-sm">
+                            <select id="modalBookingStatus" class="form-select">
+                                <option value="Confirmed">Confirmed</option>
+                                <option value="Checked-In">Checked-In</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Cancelled">Cancelled</option>
+                                <option value="Rescheduled">Rescheduled</option>
+                            </select>
+                            <button class="btn btn-outline-primary fw-bold" type="button" onclick="updateBookingStatusFromModal()">Update Status</button>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label fw-bold small text-primary"><i class="bi bi-clock-history me-1"></i> Reschedule Appointment</label>
                         <div class="row g-2">
@@ -363,7 +379,12 @@
             
             accessibleBookings.forEach(b => {
                 const globalIdx = allBookings.findIndex(item => item.confirmationCode === b.confirmationCode);
-                const badge = b.status === 'Cancelled' ? 'bg-danger' : b.status === 'Rescheduled' ? 'bg-info text-dark' : 'bg-success';
+                let badge = 'bg-success';
+                if (b.status === 'Cancelled') badge = 'bg-danger';
+                else if (b.status === 'Rescheduled') badge = 'bg-info text-dark';
+                else if (b.status === 'Checked-In') badge = 'bg-warning text-dark';
+                else if (b.status === 'Completed') badge = 'bg-secondary';
+
                 tbody.innerHTML += `
                     <tr>
                         <td><span class="fw-bold text-primary">${b.confirmationCode}</span></td>
@@ -372,7 +393,7 @@
                         <td>${b.camp} - Bldg ${b.building}</td>
                         <td>${b.date} @ ${b.time}</td>
                         <td>${b.purpose}</td>
-                        <td><span class="badge ${badge}">${b.status}</span></td>
+                        <td><span class="badge ${badge}">${b.status || 'Confirmed'}</span></td>
                         <td class="text-end">
                             <button class="btn btn-outline-primary btn-sm fw-bold" onclick="openBookingActionModal(${globalIdx})"><i class="bi bi-gear me-1"></i> Manage</button>
                         </td>
@@ -417,6 +438,9 @@
                     let badgeColor = 'bg-success';
                     if (b.status === 'Cancelled') badgeColor = 'bg-secondary text-decoration-line-through';
                     else if (b.status === 'Rescheduled') badgeColor = 'bg-info text-dark';
+                    else if (b.status === 'Checked-In') badgeColor = 'bg-warning text-dark';
+                    else if (b.status === 'Completed') badgeColor = 'bg-dark';
+
                     cellHtml += `<span class="booking-badge ${badgeColor}" onclick="openBookingActionModal(${globalIdx})" title="${b.time} - ${b.firstName} ${b.lastName}">${b.time} ${b.firstName} (Bldg ${b.building})</span>`;
                 });
                 cellHtml += `</div>`;
@@ -499,7 +523,6 @@
             const camp = currentUser.camp;
             appState.camp_buildings[camp] = appState.camp_buildings[camp].filter(b => b !== bldgNum);
             
-            // Remove building from manager assignments as well
             appState.staff_users.forEach(u => {
                 if (u.camp === camp && u.buildings) {
                     u.buildings = u.buildings.filter(b => b !== bldgNum);
@@ -591,11 +614,12 @@
             document.getElementById('modalBookingIndex').value = index;
             document.getElementById('rescheduleDate').value = b.date || '';
             document.getElementById('rescheduleTime').value = b.time || '';
+            document.getElementById('modalBookingStatus').value = b.status || 'Confirmed';
 
             document.getElementById('modalBookingDetails').innerHTML = `
                 <div class="row">
                     <div class="col-6 mb-1"><strong>Code:</strong> <span class="text-primary">${b.confirmationCode}</span></div>
-                    <div class="col-6 mb-1"><strong>Status:</strong> <span class="badge ${b.status === 'Cancelled' ? 'bg-danger' : 'bg-success'}">${b.status}</span></div>
+                    <div class="col-6 mb-1"><strong>Status:</strong> <span class="badge bg-secondary">${b.status || 'Confirmed'}</span></div>
                     <div class="col-12 mb-1"><strong>Guest:</strong> ${b.firstName} ${b.lastName} (${b.branch})</div>
                     <div class="col-12 mb-1"><strong>Location:</strong> ${b.camp} - Bldg ${b.building}</div>
                     <div class="col-12 mb-0"><strong>Purpose:</strong> ${b.purpose}</div>
@@ -603,6 +627,15 @@
             `;
             const modal = new bootstrap.Modal(document.getElementById('bookingActionModal'));
             modal.show();
+        }
+
+        async function updateBookingStatusFromModal() {
+            if (activeBookingIndex === null) return;
+            const newStatus = document.getElementById('modalBookingStatus').value;
+            appState.bookings[activeBookingIndex].status = newStatus;
+            await saveStateToServer();
+            bootstrap.Modal.getInstance(document.getElementById('bookingActionModal')).hide();
+            refreshAllViews();
         }
 
         async function cancelBookingFromModal() {
