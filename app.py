@@ -9,19 +9,38 @@ app.secret_key = os.environ.get('SECRET_KEY', 'default-secure-secret-key')
 DATA_FILE = 'data.json'
 
 def load_data():
+    default_data = {
+        "appointments": [],
+        "camps": ["Camp Foster", "Camp Hansen", "Camp Kinser", "Camp Schwab", "McNair"],
+        "buildings": ["Building 1", "Building 2", "Building 3"],
+        "purposes": ["Check-in", "Check-out", "Inquiry", "Maintenance"],
+        "users": [
+            {"username": "admin", "password": "admin123", "role": "superadmin"}
+        ]
+    }
+    
     if not os.path.exists(DATA_FILE):
-        return {
-            "appointments": [],
-            "camps": [],
-            "buildings": [],
-            "purposes": [],
-            "users": []
-        }
+        save_data(default_data)
+        return default_data
+        
     try:
         with open(DATA_FILE, 'r') as f:
-            return json.load(f)
+            data = json.load(f)
+            # Ensure required keys exist
+            changed = False
+            for key, val in default_data.items():
+                if key not in data:
+                    data[key] = val
+                    changed = f
+            if not data.get("users"):
+                data["users"] = default_data["users"]
+                changed = True
+            if changed:
+                save_data(data)
+            return data
     except Exception:
-        return {"appointments": [], "camps": [], "buildings": [], "purposes": [], "users": []}
+        save_data(default_data)
+        return default_data
 
 def save_data(data):
     with open(DATA_FILE, 'w') as f:
