@@ -1,239 +1,87 @@
 import os
 import json
-import traceback
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = 'uh_management_dashboard_secret_key'
 
-DATA_FILE = 'app_state.json'
+DATA_FILE = 'data.json'
 
-default_state = {
-    "camps": ["Camp Foster", "Camp Hansen", "Camp Schwab", "MCAS Futenma"],
-    "camp_buildings": {
-        "Camp Foster": ["5679", "5680", "5700"],
-        "Camp Hansen": ["2301", "2302"],
-        "Camp Schwab": ["3101", "3102"],
-        "MCAS Futenma": ["101", "102"]
-    },
-    "purposes": [
-        "Check-in / In-processing",
-        "Out-processing Inspection",
-        "Room Maintenance Request",
-        "Pre-termination Inspection"
-    ],
-    "staff_users": [
-        {
-            "username": "superadmin",
-            "password": "password123",
-            "role": "superadmin",
-            "camp": "All",
-            "buildings": [],
-            "recovery_email": "admin@usmc.mil"
-        },
-        {
-            "username": "foster_admin",
-            "password": "password123",
-            "role": "camp_admin",
-            "camp": "Camp Foster",
-            "buildings": ["5679", "5680", "5700"],
-            "recovery_email": "foster.admin@usmc.mil"
-        },
-        {
-            "username": "bldg5679_mgr",
-            "password": "password123",
-            "role": "staff",
-            "camp": "Camp Foster",
-            "buildings": ["5679"],
-            "recovery_email": "mgr5679@usmc.mil"
-        }
-    ],
-    "bookings": []
-}
-
-def load_state():
+def load_data():
     if os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                if isinstance(data, dict):
-                    return data
-        except Exception as e:
-            print(f"Warning: Error loading state file: {e}")
-    return default_state
+        with open(DATA_FILE, 'r') as f:
+            return json.load(f)
+    return {
+        "bookings": [],
+        "staff_users": [
+            {
+                "username": "admin_hansen",
+                "password": "password123",
+                "recovery_email": "admin@okinawa.mil",
+                "role": "camp_admin",
+                "camp": "Camp Hansen",
+                "buildings": ["1001", "1002", "1003"],
+                "must_change_password": False
+            }
+        ],
+        "camp_buildings": {
+            "Camp Hansen": ["1001", "1002", "1003"],
+            "Camp Schwab": ["2001", "2002"],
+            "Camp Courtney": ["3001", "3002"]
+        }
+    }
 
-def save_state(state):
-    try:
-        with open(DATA_FILE, 'w', encoding='utf-8') as f:
-            json.dump(state, f, indent=4)
-    except Exception as e:
-        print(f"Critical Error saving state file: {e}")
-
-app_state = load_state()
-
-@app.errorhandler(500)
-def internal_error(e):
-    tb = traceback.format_exc()
-    print("\n--- CRITICAL 500 ERROR TRACEBACK ---\n", tb)
-    return jsonify({
-        'error': 'Internal Server Error',
-        'message': str(e),
-        'traceback': tb
-    }), 500
+def save_data(data):
+    with open(DATA_FILE, 'w') as f:
+        json.dump(data, f, indent=4)
 
 @app.route('/')
 def index():
-    return render_template('index.html', state=app_state)
+    return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    error = None
+    data = load_data()
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
+        username = request.form.get('username')
+        password = request.form.get('password')
         
-        for user in app_state.get('staff_users', []):
-            if user['username'] == username and user['password'] == password:
-                session['user'] = user
-                if user['role'] == 'superadmin':
-                    return redirect(url_for('superadmin_dashboard'))
-                else:
-                    return redirect(url_for('staff_dashboard'))
-        
-        return render_template('login.html', error="Invalid username or password.")
-    return render_template('login.html')
-
-@app.route('/logout')
-def logout():
-    session.pop('user', None)
-    return redirect(url_for('login'))
-
-@app.route('/superadmin')
-def superadmin_dashboard():
-    user = session.get('user')
-    if not user or user.get('role') != 'superadmin':
-        return redirect(url_for('login'))
-    return render_template('superadmin.html')
+        user = next((u for u in data.get('staff_users', []) if u['username'] == username and u['password'] == password), None)
+        if user:
+            session['username'] = user['username']
+            session['role'] = user['role']
+            session['camp'] = user['camp']
+            session['buildings'] = user['buildings']
+            return redirect(url_for('staff_dashboard'))
+        else:
+            error = 'Invalid username or password.'
+            
+    return render_template('login.html', error=error)
 
 @app.route('/staff')
 def staff_dashboard():
-    user = session.get('user')
-    if not user or user.get('role') not in ['camp_admin', 'staff']:
+    if 'username' not in session:
         return redirect(url_for('login'))
-    return render_template('staff.html')
-
-@app.route('/api/current_user')
-def api_current_user():
-    user = session.get('user')
-    if not user:
-        return jsonify({'error': 'Unauthorized'}), 401
-    return jsonify(user)
+    return render_template('staff_dashboard.html', 
+                           username=session['username'], 
+                           role=session.get('role'), 
+                           camp=session.get('camp'), 
+                           buildings=session.get('buildings', []))
 
 @app.route('/api/state', methods=['GET', 'POST'])
 def api_state():
-    user = session.get('user')
-    if not user:
-        return jsonify({'error': 'Unauthorized'}), 401
-        
-    global app_state
+    data = load_data()
     if request.method == 'POST':
-        new_state = request.get_json(silent=True)
-        if not new_state or not isinstance(new_state, dict):
-            return jsonify({'error': 'Invalid JSON payload provided'}), 400
-        
-        if user['role'] == 'camp_admin':
-            camp = user['camp']
-            new_state['camps'] = app_state['camps']
-            if 'camp_buildings' in new_state:
-                for c in app_state['camp_buildings']:
-                    if c != camp:
-                        new_state['camp_buildings'][c] = app_state['camp_buildings'][c]
-            else:
-                new_state['camp_buildings'] = app_state['camp_buildings']
-            
-            if 'staff_users' in new_state:
-                filtered_staff = []
-                for existing_su in app_state['staff_users']:
-                    if existing_su['role'] == 'superadmin' or existing_su['camp'] != camp:
-                        filtered_staff.append(existing_su)
-                for submitted_su in new_state['staff_users']:
-                    if submitted_su.get('camp') == camp and submitted_su.get('role') == 'staff':
-                        filtered_staff.append(submitted_su)
-                    elif submitted_su.get('username') == user['username']:
-                        filtered_staff.append(submitted_su)
-                new_state['staff_users'] = filtered_staff
-            else:
-                new_state['staff_users'] = app_state['staff_users']
-                
-            if 'bookings' not in new_state:
-                new_state['bookings'] = app_state['bookings']
+        new_state = request.json
+        save_data(new_state)
+        return jsonify({"status": "success"})
+    return jsonify(data)
 
-        elif user['role'] == 'staff':
-            new_state['camps'] = app_state['camps']
-            new_state['camp_buildings'] = app_state['camp_buildings']
-            new_state['staff_users'] = app_state['staff_users']
-        
-        app_state = new_state
-        save_state(app_state)
-        return jsonify({'status': 'success'})
-        
-    return jsonify(app_state)
-
-@app.route('/api/book', methods=['POST'])
-def api_book():
-    data = request.get_json(silent=True)
-    if not data or not isinstance(data, dict):
-        return jsonify({'error': 'Invalid data'}), 400
-    
-    if 'bookings' not in app_state:
-        app_state['bookings'] = []
-        
-    app_state['bookings'].append(data)
-    save_state(app_state)
-    return jsonify({'status': 'success', 'confirmationCode': data.get('confirmationCode')})
-
-@app.route('/api/bookings/status', methods=['POST'])
-def api_update_booking_status():
-    user = session.get('user')
-    if not user or user.get('role') not in ['superadmin', 'camp_admin', 'staff']:
-        return jsonify({'error': 'Unauthorized'}), 401
-        
-    data = request.get_json(silent=True)
-    if not data or not isinstance(data, dict):
-        return jsonify({'error': 'Invalid data'}), 400
-        
-    confirmation_code = data.get('confirmationCode') or data.get('confirmation_code')
-    new_status = data.get('status')
-    new_date = data.get('date')
-    new_time = data.get('time')
-    
-    if not confirmation_code or not new_status:
-        return jsonify({'error': 'Missing confirmationCode or status'}), 400
-        
-    global app_state
-    updated = False
-    for booking in app_state.get('bookings', []):
-        if booking.get('confirmationCode') == confirmation_code or booking.get('confirmation_code') == confirmation_code:
-            if user['role'] == 'camp_admin':
-                if booking.get('camp') != user.get('camp'):
-                    return jsonify({'error': 'Forbidden for this camp'}), 403
-            elif user['role'] == 'staff':
-                if booking.get('camp') != user.get('camp') or (user.get('buildings') and booking.get('building') not in user.get('buildings')):
-                    return jsonify({'error': 'Forbidden for this building'}), 403
-                    
-            booking['status'] = new_status
-            if new_date:
-                booking['date'] = new_date
-            if new_time:
-                booking['time'] = new_time
-            updated = True
-            break
-            
-    if updated:
-        save_state(app_state)
-        return jsonify({'status': 'success'})
-        
-    return jsonify({'error': 'Booking not found'}), 404
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(debug=True, port=5000)
