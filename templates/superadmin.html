@@ -12,18 +12,26 @@
     </nav>
 
     <div class="container">
+        <!-- Dashboard Navigation Tabs -->
         <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="appointments-tab" data-bs-toggle="tab" data-bs-target="#appointments-view" type="button">Appointment View</button>
+                <button class="nav-link active" id="appointments-tab" data-bs-toggle="tab" data-bs-target="#appointments-view" type="button">Appointments View</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="calendar-tab" data-bs-toggle="tab" data-bs-target="#calendar-view" type="button">Calendar View</button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff-view" type="button">Staff Account Management</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="buildings-tab" data-bs-toggle="tab" data-bs-target="#buildings-view" type="button">Camps & Buildings</button>
+            </li>
         </ul>
 
         <div class="tab-content" id="dashboardContent">
+            <!-- 1. Appointments View -->
             <div class="tab-pane fade show active" id="appointments-view">
-                <h3>All Appointments</h3>
+                <h3>All Appointments & Bookings</h3>
                 <div class="table-responsive bg-white p-3 rounded shadow-sm">
                     <table class="table table-striped align-middle">
                         <thead>
@@ -43,67 +51,191 @@
                 </div>
             </div>
 
+            <!-- 2. Calendar View -->
             <div class="tab-pane fade" id="calendar-view">
                 <h3>Calendar Schedule</h3>
-                <div id="calendar-container" class="bg-white p-4 rounded shadow-sm">
-                    <div id="calendar-events-list"></div>
+                <div class="bg-white p-4 rounded shadow-sm" id="calendar-events-list"></div>
+            </div>
+
+            <!-- 3. Staff Management View -->
+            <div class="tab-pane fade" id="staff-view">
+                <h3>Staff Users</h3>
+                <div class="bg-white p-4 rounded shadow-sm mb-4">
+                    <h5>Create New Staff User</h5>
+                    <form id="add-staff-form" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control" id="new-staff-username" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control" id="new-staff-password" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Role</label>
+                            <select class="form-select" id="new-staff-role">
+                                <option value="staff">Staff</option>
+                                <option value="camp_admin">Camp Admin</option>
+                                <option value="superadmin">Superadmin</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Camp</label>
+                            <input type="text" class="form-control" id="new-staff-camp" placeholder="Camp Foster">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">Add User</button>
+                        </div>
+                    </form>
                 </div>
+                <div class="table-responsive bg-white p-3 rounded shadow-sm">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Camp</th>
+                                <th>Buildings</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staff-users-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 4. Buildings Management View -->
+            <div class="tab-pane fade" id="buildings-view">
+                <h3>Camp & Building Configurations</h3>
+                <div class="bg-white p-4 rounded shadow-sm mb-4">
+                    <h5>Add Building to Camp</h5>
+                    <form id="add-building-form" class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Camp Name</label>
+                            <select class="form-select" id="building-camp-select"></select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Building Number</label>
+                            <input type="text" class="form-control" id="new-building-num" placeholder="e.g. 5701" required>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-success w-100">Add Building</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="bg-white p-4 rounded shadow-sm" id="camps-buildings-list"></div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        let globalState = {};
+
         async function loadDashboardData() {
             try {
                 const res = await fetch('/api/state');
-                const state = await res.json();
-                const bookings = state.bookings || [];
-
-                const tbody = document.getElementById('superadmin-appointments-tbody');
-                const calendarList = document.getElementById('calendar-events-list');
-                tbody.innerHTML = '';
-                calendarList.innerHTML = '';
-
-                bookings.forEach(b => {
-                    const code = b.confirmationCode || b.confirmation_code;
-                    const statusBadge = `<span class="badge bg-${b.status === 'Confirmed' ? 'success' : b.status === 'Cancelled' ? 'danger' : b.status === 'Rescheduled' ? 'warning text-dark' : 'secondary'}">${b.status || 'Pending'}</span>`;
-                    
-                    const actionButtons = `
-                        <div class="btn-group btn-group-sm" role="group">
-                            <button class="btn btn-outline-success" onclick="updateStatus('${code}', 'Confirmed')">Confirm</button>
-                            <button class="btn btn-outline-warning text-dark" onclick="rescheduleBooking('${code}', '${b.date}', '${b.time || ''}')">Reschedule</button>
-                            <button class="btn btn-outline-danger" onclick="updateStatus('${code}', 'Cancelled')">Cancel</button>
-                        </div>
-                    `;
-
-                    tbody.innerHTML += `
-                        <tr>
-                            <td><code>${code}</code></td>
-                            <td>${b.fullName || b.name || 'N/A'}</td>
-                            <td>${b.camp}</td>
-                            <td>${b.building}</td>
-                            <td>${b.date} ${b.time || ''}</td>
-                            <td>${b.purpose}</td>
-                            <td>${statusBadge}</td>
-                            <td>${actionButtons}</td>
-                        </tr>
-                    `;
-
-                    calendarList.innerHTML += `
-                        <div class="border-bottom py-2 d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>${b.date} at ${b.time || 'All Day'}</strong> - ${b.camp} Bldg ${b.building} (${b.purpose}) 
-                                <span class="text-muted">[User: ${b.fullName || b.name}]</span><br>
-                                Status: ${statusBadge}
-                            </div>
-                            <div>${actionButtons}</div>
-                        </div>
-                    `;
-                });
+                globalState = await res.json();
+                renderAppointments();
+                renderStaffUsers();
+                renderBuildingsManagement();
             } catch (err) {
                 console.error("Failed to load state:", err);
             }
+        }
+
+        function renderAppointments() {
+            const bookings = globalState.bookings || [];
+            const tbody = document.getElementById('superadmin-appointments-tbody');
+            const calendarList = document.getElementById('calendar-events-list');
+            tbody.innerHTML = '';
+            calendarList.innerHTML = '';
+
+            if (bookings.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">No appointments found.</td></tr>`;
+                calendarList.innerHTML = `<p class="text-muted">No scheduled events.</p>`;
+                return;
+            }
+
+            bookings.forEach(b => {
+                const code = b.confirmationCode || b.confirmation_code;
+                const statusBadge = `<span class="badge bg-${b.status === 'Confirmed' ? 'success' : b.status === 'Cancelled' ? 'danger' : b.status === 'Rescheduled' ? 'warning text-dark' : 'secondary'}">${b.status || 'Pending'}</span>`;
+                
+                const actionButtons = `
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-outline-success" onclick="updateStatus('${code}', 'Confirmed')">Confirm</button>
+                        <button class="btn btn-outline-warning text-dark" onclick="rescheduleBooking('${code}', '${b.date}', '${b.time || ''}')">Reschedule</button>
+                        <button class="btn btn-outline-danger" onclick="updateStatus('${code}', 'Cancelled')">Cancel</button>
+                    </div>
+                `;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><code>${code}</code></td>
+                        <td>${b.fullName || b.name || 'N/A'}</td>
+                        <td>${b.camp}</td>
+                        <td>${b.building}</td>
+                        <td>${b.date} ${b.time || ''}</td>
+                        <td>${b.purpose}</td>
+                        <td>${statusBadge}</td>
+                        <td>${actionButtons}</td>
+                    </tr>
+                `;
+
+                calendarList.innerHTML += `
+                    <div class="border-bottom py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${b.date} at ${b.time || 'All Day'}</strong> - ${b.camp} Bldg ${b.building} (${b.purpose}) 
+                            <span class="text-muted">[User: ${b.fullName || b.name}]</span><br>
+                            Status: ${statusBadge}
+                        </div>
+                        <div>${actionButtons}</div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderStaffUsers() {
+            const staffUsers = globalState.staff_users || [];
+            const tbody = document.getElementById('staff-users-tbody');
+            tbody.innerHTML = '';
+
+            staffUsers.forEach((u, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${u.username}</td>
+                        <td><span class="badge bg-secondary">${u.role}</span></td>
+                        <td>${u.camp}</td>
+                        <td>${(u.buildings || []).join(', ') || 'All'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteStaffUser(${index})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderBuildingsManagement() {
+            const camps = globalState.camps || [];
+            const campBuildings = globalState.camp_buildings || {};
+            const campSelect = document.getElementById('building-camp-select');
+            const container = document.getElementById('camps-buildings-list');
+
+            campSelect.innerHTML = '';
+            container.innerHTML = '';
+
+            camps.forEach(camp => {
+                campSelect.innerHTML += `<option value="${camp}">${camp}</option>`;
+                const bldgs = campBuildings[camp] || [];
+                
+                let bldgBadges = bldgs.map(b => `<span class="badge bg-info text-dark me-1 mb-1">${b}</span>`).join('');
+                container.innerHTML += `
+                    <div class="mb-3 border-bottom pb-2">
+                        <h5>${camp}</h5>
+                        <div>Buildings: ${bldgBadges || '<span class="text-muted">None assigned</span>'}</div>
+                    </div>
+                `;
+            });
         }
 
         async function updateStatus(confirmationCode, newStatus, extraData = {}) {
@@ -131,6 +263,56 @@
             if (newTime === null) return;
 
             updateStatus(confirmationCode, 'Rescheduled', { date: newDate, time: newTime });
+        }
+
+        // Add Staff User Form Handler
+        document.getElementById('add-staff-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const newUser = {
+                username: document.getElementById('new-staff-username').value.trim(),
+                password: document.getElementById('new-staff-password').value.trim(),
+                role: document.getElementById('new-staff-role').value,
+                camp: document.getElementById('new-staff-camp').value.trim() || 'All',
+                buildings: []
+            };
+
+            globalState.staff_users.push(newUser);
+            await saveGlobalState();
+            this.reset();
+            loadDashboardData();
+        });
+
+        async function deleteStaffUser(index) {
+            if (confirm("Are you sure you want to delete this staff account?")) {
+                globalState.staff_users.splice(index, 1);
+                await saveGlobalState();
+                loadDashboardData();
+            }
+        }
+
+        // Add Building Form Handler
+        document.getElementById('add-building-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const camp = document.getElementById('building-camp-select').value;
+            const bldg = document.getElementById('new-building-num').value.trim();
+
+            if (!globalState.camp_buildings[camp]) {
+                globalState.camp_buildings[camp] = [];
+            }
+            if (!globalState.camp_buildings[camp].includes(bldg)) {
+                globalState.camp_buildings[camp].push(bldg);
+                await saveGlobalState();
+            }
+            this.reset();
+            loadDashboardData();
+        });
+
+        async function saveGlobalState() {
+            await fetch('/api/state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(globalState)
+            });
         }
 
         loadDashboardData();
