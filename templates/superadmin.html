@@ -78,7 +78,7 @@
             <div class="col-md-9 col-lg-10 p-4">
                 <div class="tab-content">
                     
-                    <!-- 1. OVERVIEW SECTION (Today's Breakdown) -->
+                    <!-- 1. OVERVIEW SECTION -->
                     <div class="tab-pane fade show active" id="overviewSection" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <div>
@@ -331,7 +331,7 @@
                         <label class="form-label small fw-bold">Assigned Camp</label>
                         <select id="newStaffCamp" class="form-select form-select-sm" onchange="updateStaffBuildingCheckboxes()"></select>
                     </div>
-                    <div class="mb-3" id="staffBuildingsContainer" style="display: none;">
+                    <div class="mb-3" id="staffBuildingsContainer">
                         <label class="form-label small fw-bold">Assigned Buildings (Select Multiple)</label>
                         <div id="newStaffBuildingCheckboxes" class="border p-2 rounded bg-light" style="max-height: 120px; overflow-y: auto;"></div>
                     </div>
@@ -369,7 +369,7 @@
                         <label class="form-label small fw-bold">Assigned Camp</label>
                         <select id="editStaffCamp" class="form-select form-select-sm" onchange="updateEditStaffBuildingCheckboxes()"></select>
                     </div>
-                    <div class="mb-3" id="editStaffBuildingsContainer" style="display: none;">
+                    <div class="mb-3" id="editStaffBuildingsContainer">
                         <label class="form-label small fw-bold">Assigned Buildings (Select Multiple)</label>
                         <div id="editStaffBuildingCheckboxes" class="border p-2 rounded bg-light" style="max-height: 140px; overflow-y: auto;"></div>
                     </div>
@@ -676,7 +676,7 @@
             staffUsers.forEach(u => {
                 const roleBadge = u.role === 'camp_admin' ? 'bg-primary' : 'bg-secondary';
                 const roleLabel = u.role === 'camp_admin' ? 'Camp Admin' : 'UH Building Manager';
-                const bldgs = (u.buildings || []).join(', ') || (u.role === 'camp_admin' ? 'All Camp Buildings' : 'None');
+                const bldgs = (u.buildings || []).join(', ') || 'None assigned';
 
                 tbody.innerHTML += `
                     <tr>
@@ -685,7 +685,7 @@
                         <td>${u.camp || 'System-wide'}</td>
                         <td><span class="text-muted small">${bldgs}</span></td>
                         <td class="text-end">
-                            <button class="btn btn-outline-primary btn-sm fw-bold me-1" onclick="openEditStaffModal('${u.username}')" title="Edit account & assign multiple buildings"><i class="bi bi-pencil me-1"></i> Edit</button>
+                            <button class="btn btn-outline-primary btn-sm fw-bold me-1" onclick="openEditStaffModal('${u.username}')" title="Edit account & assign buildings"><i class="bi bi-pencil me-1"></i> Edit</button>
                             <button class="btn btn-outline-warning text-dark btn-sm fw-bold me-1" onclick="promptResetStaffPassword('${u.username}')" title="Reset password"><i class="bi bi-key me-1"></i> Pwd</button>
                             <button class="btn btn-outline-danger btn-sm fw-bold" onclick="deleteStaffAccount('${u.username}')" title="Delete account"><i class="bi bi-trash"></i></button>
                         </td>
@@ -724,9 +724,8 @@
         }
 
         function toggleEditStaffBuildingSelection() {
-            const role = document.getElementById('editStaffRole').value;
             const container = document.getElementById('editStaffBuildingsContainer');
-            container.style.display = role === 'staff' ? 'block' : 'none';
+            container.style.display = 'block'; // Always available for both roles
         }
 
         function updateEditStaffBuildingCheckboxes(selectedBuildings = []) {
@@ -754,11 +753,8 @@
             const user = (appState.staff_users || []).find(u => u.username === username);
             if (!user) return;
 
-            let assignedBldgs = [];
-            if (role === 'staff') {
-                const checkboxes = document.querySelectorAll('.edit-staff-bldg-chk:checked');
-                assignedBldgs = Array.from(checkboxes).map(chk => chk.value);
-            }
+            const checkboxes = document.querySelectorAll('.edit-staff-bldg-chk:checked');
+            const assignedBldgs = Array.from(checkboxes).map(chk => chk.value);
 
             user.role = role;
             user.camp = camp;
@@ -798,9 +794,8 @@
         }
 
         function toggleStaffBuildingSelection() {
-            const role = document.getElementById('newStaffRole').value;
             const container = document.getElementById('staffBuildingsContainer');
-            container.style.display = role === 'staff' ? 'block' : 'none';
+            container.style.display = 'block'; // Always available for both roles
         }
 
         function updateStaffBuildingCheckboxes() {
@@ -828,11 +823,8 @@
             if (!username) return alert('Please enter a username.');
             if (appState.staff_users.some(u => u.username === username)) return alert('Username already exists.');
 
-            let assignedBldgs = [];
-            if (role === 'staff') {
-                const checkboxes = document.querySelectorAll('.new-staff-bldg-chk:checked');
-                assignedBldgs = Array.from(checkboxes).map(chk => chk.value);
-            }
+            const checkboxes = document.querySelectorAll('.new-staff-bldg-chk:checked');
+            const assignedBldgs = Array.from(checkboxes).map(chk => chk.value);
 
             const newAccount = {
                 username: username,
