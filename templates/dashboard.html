@@ -13,7 +13,8 @@
         .calendar-day-header { text-align: center; font-weight: bold; background: #e9ecef; padding: 8px; border-radius: 4px; font-size: 0.85rem; }
         .calendar-cell { min-height: 110px; background: #fff; border: 1px solid #dee2e6; border-radius: 4px; padding: 6px; font-size: 0.8rem; overflow-y: auto; }
         .calendar-cell.other-month { background: #f8f9fa; color: #adb5bd; }
-        .booking-badge { font-size: 0.7rem; padding: 2px 5px; border-radius: 3px; margin-bottom: 2px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .booking-badge { font-size: 0.7rem; padding: 2px 5px; border-radius: 3px; margin-bottom: 2px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+        .booking-badge:hover { opacity: 0.85; }
     </style>
 </head>
 <body onload="initStaffDashboard()">
@@ -34,7 +35,6 @@
 
     <div class="container py-4">
         
-        <!-- Camp Controls Card (Camp Admin Only) -->
         {% if role == 'camp_admin' %}
         <div class="row mb-4">
             <div class="col-md-12">
@@ -89,10 +89,9 @@
         </div>
         {% endif %}
 
-        <!-- View Selector / Header -->
         <div class="row mb-4 align-items-center">
             <div class="col-md-6">
-                <h4 class="fw-bold mb-0"><i class="bi bi-calendar-check me-2"></i>Appointments Management</h4>
+                <h4 class="fw-bold mb-0"><i class="bi bi-calendar-check me-2"></i>Appointments Management & Confirmation</h4>
             </div>
             <div class="col-md-6 text-md-end mt-3 mt-md-0">
                 <div class="btn-group shadow-sm" role="group">
@@ -102,20 +101,20 @@
             </div>
         </div>
 
-        <!-- Table View Section -->
         <div id="tableViewSection" class="card shadow-sm">
             <div class="card-body p-4">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Code</th>
+                                <th>Confirmation Code</th>
                                 <th>Service Member</th>
                                 <th>Branch</th>
+                                <th>Bldg / Camp</th>
                                 <th>Date & Time</th>
                                 <th>Purpose</th>
                                 <th>Status</th>
-                                <th>Actions / Notes</th>
+                                <th class="text-end">Actions / Notes</th>
                             </tr>
                         </thead>
                         <tbody id="staffAppointmentsTable"></tbody>
@@ -124,7 +123,6 @@
             </div>
         </div>
 
-        <!-- Calendar View Section -->
         <div id="calendarViewSection" class="card shadow-sm p-4 bg-white" style="display: none;">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h5 class="fw-bold mb-0"><i class="bi bi-calendar3 me-2"></i>Calendar View</h5>
@@ -148,6 +146,38 @@
 
     </div>
 
+    <div class="modal fade" id="bookingActionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-calendar-check me-2"></i>Manage Booking Confirmation</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="modalBookingIndex">
+                    <div id="modalBookingDetails" class="mb-3 p-3 bg-light rounded small border"></div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-primary"><i class="bi bi-clock-history me-1"></i> Reschedule Appointment</label>
+                        <div class="row g-2">
+                            <div class="col-7"><input type="date" id="rescheduleDate" class="form-control form-control-sm"></div>
+                            <div class="col-5"><input type="time" id="rescheduleTime" class="form-control form-control-sm"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <div>
+                        <button type="button" class="btn btn-outline-danger btn-sm fw-bold me-1" onclick="deleteBookingFromModal()"><i class="bi bi-trash me-1"></i> Delete</button>
+                        <button type="button" class="btn btn-outline-warning text-dark btn-sm fw-bold" onclick="cancelBookingFromModal()"><i class="bi bi-x-circle me-1"></i> Cancel</button>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="rescheduleBookingFromModal()"><i class="bi bi-check2-circle me-1"></i> Save Reschedule</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let appState = {};
@@ -155,6 +185,7 @@
         const staffAssignedBuildings = {{ buildings|tojson }};
         const userRole = "{{ role }}";
         let currentCalendarDate = new Date();
+        let activeBookingIndex = null;
 
         async function initStaffDashboard() {
             try {
@@ -231,10 +262,11 @@
 
                 let cellHtml = `<div class="calendar-cell"><div class="fw-bold mb-1 text-dark">${day}</div>`;
                 
-                const bookingsOnDay = (appState.bookings || []).filter(b => b.camp === staffCamp && effectiveBldgs.includes(b.building) && b.date === dateStr && b.status !== 'Cancelled');
+                const bookingsOnDay = (appState.bookings || []).filter(b => b.camp === staffCamp && effectiveBldgs.includes(String(b.building)) && b.date === dateStr);
                 bookingsOnDay.forEach(b => {
-                    const badgeColor = b.status === 'Confirmed' ? 'bg-success' : 'bg-primary';
-                    cellHtml += `<span class="booking-badge ${badgeColor}" title="${b.time} - ${b.firstName} ${b.lastName} (Bldg ${b.building})">${b.time} Bldg ${b.building} (${b.firstName})</span>`;
+                    const globalIdx = (appState.bookings || []).findIndex(item => item.confirmationCode === b.confirmationCode);
+                    const badgeColor = b.status === 'Confirmed' ? 'bg-success' : b.status === 'Cancelled' ? 'bg-danger text-decoration-line-through' : b.status === 'Rescheduled' ? 'bg-info text-dark' : 'bg-primary';
+                    cellHtml += `<span class="booking-badge ${badgeColor}" onclick="openBookingActionModal(${globalIdx})" title="${b.time} - ${b.firstName} ${b.lastName} (Bldg ${b.building})">${b.time} Bldg ${b.building} (${b.firstName})</span>`;
                 });
 
                 cellHtml += `</div>`;
@@ -383,29 +415,31 @@
             tbody.innerHTML = '';
 
             if (!appState.bookings || appState.bookings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No appointments found in the system.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">No appointments found in the system.</td></tr>`;
                 return;
             }
 
             const effectiveBldgs = getEffectiveBuildings();
-            const filtered = appState.bookings.filter(b => b.camp === staffCamp && effectiveBldgs.includes(b.building));
+            const filtered = appState.bookings.filter(b => b.camp === staffCamp && effectiveBldgs.includes(String(b.building)));
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No appointments found for ${staffCamp} in buildings: ${effectiveBldgs.join(', ')}.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">No appointments found for ${staffCamp} in buildings: ${effectiveBldgs.join(', ')}.</td></tr>`;
                 return;
             }
 
             filtered.forEach(b => {
-                const statusClass = b.status === 'Cancelled' ? 'bg-danger' : b.status === 'Confirmed' ? 'bg-success' : b.status === 'Completed' ? 'bg-primary' : 'bg-warning text-dark';
+                const globalIdx = appState.bookings.findIndex(item => item.confirmationCode === b.confirmationCode);
+                const statusClass = b.status === 'Cancelled' ? 'bg-danger' : b.status === 'Confirmed' ? 'bg-success' : b.status === 'Completed' ? 'bg-primary' : b.status === 'Rescheduled' ? 'bg-info text-dark' : 'bg-warning text-dark';
                 tbody.innerHTML += `
                     <tr>
                         <td><span class="fw-bold text-primary">${b.confirmationCode}</span></td>
                         <td>${b.firstName} ${b.lastName}<br><small class="text-muted">${b.email || ''}</small></td>
                         <td>${b.branch}</td>
+                        <td>Bldg ${b.building}</td>
                         <td>${b.date} @ ${b.time}</td>
                         <td>${b.purpose}</td>
                         <td><span class="badge ${statusClass}">${b.status || 'Pending'}</span></td>
-                        <td>
+                        <td class="text-end">
                             <div class="d-flex flex-column gap-2">
                                 <select class="form-select form-select-sm" onchange="updateStatus('${b.confirmationCode}', this.value)">
                                     <option value="Pending" ${b.status === 'Pending' ? 'selected' : ''}>Pending</option>
@@ -414,6 +448,7 @@
                                     <option value="Cancelled" ${b.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
                                 </select>
                                 <input type="text" class="form-control form-control-sm" placeholder="Add manager notes..." value="${b.staffNotes || ''}" onchange="updateNotes('${b.confirmationCode}', this.value)">
+                                <button class="btn btn-outline-primary btn-sm fw-bold" onclick="openBookingActionModal(${globalIdx})"><i class="bi bi-gear me-1"></i> Full Details</button>
                             </div>
                         </td>
                     </tr>
@@ -435,6 +470,61 @@
                 target.staffNotes = notes;
                 await saveState();
             }
+        }
+
+        function openBookingActionModal(index) {
+            activeBookingIndex = index;
+            const b = appState.bookings[index];
+            document.getElementById('modalBookingIndex').value = index;
+            document.getElementById('rescheduleDate').value = b.date || '';
+            document.getElementById('rescheduleTime').value = b.time || '';
+
+            document.getElementById('modalBookingDetails').innerHTML = `
+                <div class="row">
+                    <div class="col-6 mb-1"><strong>Confirmation Code:</strong> <span class="text-primary">${b.confirmationCode}</span></div>
+                    <div class="col-6 mb-1"><strong>Status:</strong> <span class="badge ${b.status === 'Cancelled' ? 'bg-danger' : 'bg-success'}">${b.status}</span></div>
+                    <div class="col-12 mb-1"><strong>Guest:</strong> ${b.firstName} ${b.lastName} (${b.branch})</div>
+                    <div class="col-12 mb-1"><strong>Email:</strong> ${b.email || 'N/A'}</div>
+                    <div class="col-12 mb-1"><strong>Location:</strong> ${b.camp} - Bldg ${b.building}</div>
+                    <div class="col-12 mb-0"><strong>Purpose:</strong> ${b.purpose}</div>
+                </div>
+            `;
+            const modal = new bootstrap.Modal(document.getElementById('bookingActionModal'));
+            modal.show();
+        }
+
+        async function cancelBookingFromModal() {
+            if (activeBookingIndex === null) return;
+            appState.bookings[activeBookingIndex].status = 'Cancelled';
+            await saveState();
+            bootstrap.Modal.getInstance(document.getElementById('bookingActionModal')).hide();
+            renderStaffAppointments();
+            renderCalendar();
+        }
+
+        async function rescheduleBookingFromModal() {
+            if (activeBookingIndex === null) return;
+            const newDate = document.getElementById('rescheduleDate').value;
+            const newTime = document.getElementById('rescheduleTime').value;
+            if (!newDate || !newTime) return alert('Please select both a new date and time.');
+            
+            appState.bookings[activeBookingIndex].date = newDate;
+            appState.bookings[activeBookingIndex].time = newTime;
+            appState.bookings[activeBookingIndex].status = 'Rescheduled';
+            await saveState();
+            bootstrap.Modal.getInstance(document.getElementById('bookingActionModal')).hide();
+            renderStaffAppointments();
+            renderCalendar();
+        }
+
+        async function deleteBookingFromModal() {
+            if (activeBookingIndex === null) return;
+            if (!confirm('Permanently delete this booking confirmation?')) return;
+            appState.bookings.splice(activeBookingIndex, 1);
+            await saveState();
+            bootstrap.Modal.getInstance(document.getElementById('bookingActionModal')).hide();
+            renderStaffAppointments();
+            renderCalendar();
         }
 
         async function saveState() {
