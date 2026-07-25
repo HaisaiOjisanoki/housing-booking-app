@@ -446,7 +446,7 @@
             const tbody = document.getElementById('allAppointmentsTable');
             tbody.innerHTML = appState.bookings.length === 0 ? `<tr><td colspan="8" class="text-center text-muted py-3">No appointments found.</td></tr>` : '';
             appState.bookings.forEach((b, idx) => {
-                const badge = b.status === 'Cancelled' ? 'bg-danger' : b.status === 'Rescheduled' ? 'bg-info text-dark' : 'bg-success';
+                const currentStatus = b.status || 'Pending';
                 tbody.innerHTML += `
                     <tr>
                         <td><span class="fw-bold text-primary">${b.confirmationCode}</span></td>
@@ -455,7 +455,15 @@
                         <td>${b.camp} - Bldg ${b.building}</td>
                         <td>${b.date} @ ${b.time}</td>
                         <td>${b.purpose}</td>
-                        <td><span class="badge ${badge}">${b.status}</span></td>
+                        <td>
+                            <select class="form-select form-select-sm" onchange="updateBookingStatus('${b.confirmationCode}', this.value)">
+                                <option value="Pending" ${currentStatus === 'Pending' ? 'selected' : ''}>Pending</option>
+                                <option value="Confirmed" ${currentStatus === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
+                                <option value="Rescheduled" ${currentStatus === 'Rescheduled' ? 'selected' : ''}>Rescheduled</option>
+                                <option value="Cancelled" ${currentStatus === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                                <option value="Completed" ${currentStatus === 'Completed' ? 'selected' : ''}>Completed</option>
+                            </select>
+                        </td>
                         <td class="text-end">
                             <button class="btn btn-outline-primary btn-sm fw-bold" onclick="openBookingActionModal(${idx})"><i class="bi bi-gear me-1"></i> Manage</button>
                         </td>
@@ -732,6 +740,27 @@
                 });
             } catch (err) {
                 console.error("Error saving state:", err);
+            }
+        }
+        
+        async function updateBookingStatus(code, newStatus) {
+            try {
+                const response = await fetch('/api/update_status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ confirmationCode: code, status: newStatus })
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    const booking = appState.bookings.find(b => b.confirmationCode === code);
+                    if (booking) booking.status = newStatus;
+                } else {
+                    alert('Error updating status: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to connect to the server.');
             }
         }
     </script>

@@ -1,6 +1,7 @@
 import os
 import json
 import traceback
+import copy
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 
 app = Flask(__name__)
@@ -83,7 +84,11 @@ def internal_error(e):
 
 @app.route('/')
 def index():
-    return render_template('index.html', state=app_state)
+    # Strip status fields before passing to the public UI to keep them hidden
+    public_state = copy.deepcopy(app_state)
+    for booking in public_state.get('bookings', []):
+        booking.pop('status', None)
+    return render_template('index.html', state=public_state)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -140,6 +145,14 @@ def api_state():
         if not new_state or not isinstance(new_state, dict):
             return jsonify({'error': 'Invalid JSON payload provided'}), 400
         
+        # Preserve existing statuses when staff syncs state
+        if 'bookings' in new_state:
+            for new_booking in new_state['bookings']:
+                code = new_booking.get('confirmationCode')
+                original_booking = next((b for b in app_state.get('bookings', []) if b.get('confirmationCode') == code), None)
+                if original_booking and 'status' in original_booking and 'status' not in new_booking:
+                    new_booking['status'] = original_booking['status']
+
         # Secure boundary checks for Camp Admins
         if user['role'] == 'camp_admin':
             camp = user['camp']
@@ -189,12 +202,45 @@ def api_book():
     if not data or not isinstance(data, dict):
         return jsonify({'error': 'Invalid data'}), 400
     
+    # Assign default status for new bookings
+    if 'status' not in data:
+        data['status'] = 'Pending'
+    
     if 'bookings' not in app_state:
         app_state['bookings'] = []
         
     app_state['bookings'].append(data)
     save_state(app_state)
     return jsonify({'status': 'success', 'confirmationCode': data.get('confirmationCode')})
+
+@app.route('/api/update_status', methods=['POST'])
+def api_update_status():
+    user = session.get('user')
+    if not user or user.get('role') not in ['superadmin', 'camp_admin', 'staff']:
+        return jsonify({'error': 'Unauthorized'}), 401
+        
+    data = request.get_json(silent=True)
+    if not data or 'confirmationCode' not in data or 'status' not in data:
+        return jsonify({'error': 'Invalid request payload'}), 400
+        
+    code = data['confirmationCode']
+    new_status = data['status']
+    
+    updated = False
+    global app_state
+    
+    if 'bookings' in app_state:
+        for booking in app_state['bookings']:
+            if booking.get('confirmationCode') == code:
+                booking['status'] = new_status
+                updated = True
+                break
+                
+    if updated:
+        save_state(app_state)
+        return jsonify({'status': 'success'})
+    else:
+        return jsonify({'error': 'Booking not found'}), 404
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
