@@ -140,12 +140,9 @@ def api_state():
         if not new_state or not isinstance(new_state, dict):
             return jsonify({'error': 'Invalid JSON payload provided'}), 400
         
-        # Secure boundary checks for Camp Admins
         if user['role'] == 'camp_admin':
             camp = user['camp']
             new_state['camps'] = app_state['camps']
-            
-            # Protect other camps' buildings
             if 'camp_buildings' in new_state:
                 for c in app_state['camp_buildings']:
                     if c != camp:
@@ -153,17 +150,15 @@ def api_state():
             else:
                 new_state['camp_buildings'] = app_state['camp_buildings']
             
-            # Protect superadmins and staff from other camps
             if 'staff_users' in new_state:
                 filtered_staff = []
                 for existing_su in app_state['staff_users']:
                     if existing_su['role'] == 'superadmin' or existing_su['camp'] != camp:
                         filtered_staff.append(existing_su)
-                
                 for submitted_su in new_state['staff_users']:
                     if submitted_su.get('camp') == camp and submitted_su.get('role') == 'staff':
                         filtered_staff.append(submitted_su)
-                    elif submitted_su.get('username') == user['username']: # Keep current camp admin
+                    elif submitted_su.get('username') == user['username']:
                         filtered_staff.append(submitted_su)
                 new_state['staff_users'] = filtered_staff
             else:
@@ -215,8 +210,7 @@ def api_update_booking_status():
     global app_state
     updated = False
     for booking in app_state.get('bookings', []):
-        if booking.get('confirmationCode') == confirmation_code or booking.get('confirmation_code') == confirmation_code:
-            # Enforce role boundaries for camp_admin and staff (UH Building Managers)
+        if booking.get('confirmationCode'] == confirmation_code or booking.get('confirmation_code') == confirmation_code:
             if user['role'] == 'camp_admin':
                 if booking.get('camp') != user.get('camp'):
                     return jsonify({'error': 'Forbidden for this camp'}), 403
