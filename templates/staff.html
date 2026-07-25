@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Staff Dashboard - Unaccompanied Housing Portal</title>
+    <title>Staff Dashboard - Unaccompanied Housing</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -12,19 +12,26 @@
         .sidebar .nav-link { color: rgba(255, 255, 255, 0.75); border-radius: 0.375rem; margin-bottom: 0.25rem; }
         .sidebar .nav-link:hover, .sidebar .nav-link.active { color: #fff; background-color: #0d6efd; }
         .card { border: none; border-radius: 0.5rem; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .calendar-day-header { text-align: center; font-weight: bold; background: #e9ecef; padding: 8px; border-radius: 4px; font-size: 0.85rem; }
+        .calendar-cell { min-height: 110px; background: #fff; border: 1px solid #dee2e6; border-radius: 4px; padding: 6px; font-size: 0.8rem; overflow-y: auto; }
+        .calendar-cell.other-month { background: #f8f9fa; color: #adb5bd; }
+        .booking-badge { font-size: 0.7rem; padding: 2px 5px; border-radius: 3px; margin-bottom: 2px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+        .booking-badge:hover { opacity: 0.85; }
     </style>
 </head>
 <body onload="initStaffDashboard()">
 
     <div class="container-fluid">
         <div class="row">
+            <!-- Sidebar -->
             <div class="col-md-3 col-lg-2 sidebar p-3 d-flex flex-column justify-content-between">
                 <div>
                     <div class="d-flex align-items-center mb-4 px-2">
                         <i class="bi bi-building-check fs-4 text-primary me-2"></i>
                         <div>
-                            <span id="sidebarUsername" class="fs-6 fw-bold d-block">Staff Portal</span>
-                            <small id="sidebarRoleCamp" class="text-muted">Loading...</small>
+                            <span class="fs-6 fw-bold d-block" id="sidebarUsername">Staff Portal</span>
+                            <small class="text-muted" id="sidebarRoleCamp">Loading role...</small>
                         </div>
                     </div>
                     <ul class="nav nav-pills flex-column mb-auto">
@@ -34,18 +41,19 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#appointmentsSection" class="nav-link" data-bs-toggle="pill" data-bs-target="#appointmentsSection" onclick="renderAppointmentsTable()">
-                                <i class="bi bi-table me-2"></i>Appointments
+                            <a href="#appointmentsSection" class="nav-link" data-bs-toggle="pill" data-bs-target="#appointmentsSection">
+                                <i class="bi bi-calendar-event me-2"></i>Appointments
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#calendarSection" class="nav-link" data-bs-toggle="pill" data-bs-target="#calendarSection" onclick="renderCalendarView()">
+                            <a href="#calendarSection" class="nav-link" data-bs-toggle="pill" data-bs-target="#calendarSection" onclick="renderCalendar()">
                                 <i class="bi bi-calendar3 me-2"></i>Calendar View
                             </a>
                         </li>
-                        <li class="nav-item" id="campManagementNav" style="display: none;">
-                            <a href="#campMgmtSection" class="nav-link" data-bs-toggle="pill" data-bs-target="#campMgmtSection" onclick="renderCampManagement()">
-                                <i class="bi bi-buildings me-2"></i>Camp Management
+                        <!-- Camp Admin Only Tab -->
+                        <li class="nav-item" id="campAdminTab" style="display: none;">
+                            <a href="#campAdminSection" class="nav-link" data-bs-toggle="pill" data-bs-target="#campAdminSection" onclick="renderCampManagement()">
+                                <i class="bi bi-shield-gear me-2"></i>Camp Management
                             </a>
                         </li>
                     </ul>
@@ -57,111 +65,123 @@
                 </div>
             </div>
 
+            <!-- Main Content Area -->
             <div class="col-md-9 col-lg-10 p-4">
                 <div class="tab-content">
                     
-                    <!-- OVERVIEW -->
+                    <!-- 1. OVERVIEW SECTION -->
                     <div class="tab-pane fade show active" id="overviewSection" role="tabpanel">
-                        <h2 class="fw-bold mb-4">Dashboard Overview</h2>
-                        <div class="row g-4">
-                            <div class="col-md-4">
+                        <div class="mb-4">
+                            <h2 class="fw-bold mb-1">Staff Dashboard Overview</h2>
+                            <p class="text-muted small mb-0" id="overviewSubtitle">Appointments and statistics for your assigned camp and buildings.</p>
+                        </div>
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-6">
                                 <div class="card shadow-sm p-3 bg-white border-start border-primary border-4">
-                                    <h6 class="text-muted fw-bold small">TOTAL APPOINTMENTS</h6>
-                                    <h2 id="statTotal" class="fw-bold text-primary mb-0">0</h2>
+                                    <h6 class="text-muted fw-bold small">ACCESSIBLE APPOINTMENTS</h6>
+                                    <h2 id="statTotalAppointments" class="fw-bold text-primary mb-0">0</h2>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="card shadow-sm p-3 bg-white border-start border-warning border-4">
-                                    <h6 class="text-muted fw-bold small">TODAY'S APPOINTMENTS</h6>
-                                    <h2 id="statToday" class="fw-bold text-warning mb-0">0</h2>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="card shadow-sm p-3 bg-white border-start border-success border-4">
-                                    <h6 class="text-muted fw-bold small">COMPLETED</h6>
-                                    <h2 id="statCompleted" class="fw-bold text-success mb-0">0</h2>
+                                    <h6 class="text-muted fw-bold small">ASSIGNED SCOPE</h6>
+                                    <h2 id="statScopeLabel" class="fw-bold text-success mb-0 fs-5 mt-1">Camp / Bldgs</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-dark text-white py-3">
+                                <h5 class="mb-0 fw-bold fs-6"><i class="bi bi-list-task me-2"></i>Appointments Breakdown by Type</h5>
+                            </div>
+                            <div class="card-body p-4">
+                                <div id="overviewAppointmentTypesContainer" class="row g-3"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. APPOINTMENTS SECTION -->
+                    <div class="tab-pane fade" id="appointmentsSection" role="tabpanel">
+                        <h2 class="fw-bold mb-4"><i class="bi bi-calendar-event me-2"></i>Service Member Appointments</h2>
+                        <div class="card shadow-sm">
+                            <div class="card-body p-4">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr><th>Code</th><th>Name</th><th>Branch</th><th>Camp / Building</th><th>Date & Time</th><th>Purpose</th><th>Status</th><th class="text-end">Actions</th></tr>
+                                        </thead>
+                                        <tbody id="assignedAppointmentsTable"></tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- APPOINTMENTS TABLE -->
-                    <div class="tab-pane fade" id="appointmentsSection" role="tabpanel">
-                        <h2 class="fw-bold mb-4">Appointments Table</h2>
-                        <div class="card shadow-sm p-4 bg-white">
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Code</th>
-                                            <th>Guest</th>
-                                            <th>Branch</th>
-                                            <th>Bldg</th>
-                                            <th>Date & Time</th>
-                                            <th>Purpose</th>
-                                            <th>Status</th>
-                                            <th class="text-end">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="appointmentsTableBody"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- CALENDAR VIEW -->
+                    <!-- 3. CALENDAR VIEW SECTION -->
                     <div class="tab-pane fade" id="calendarSection" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2 class="fw-bold mb-0">Calendar View</h2>
-                            <input type="date" id="calendarDateFilter" class="form-control form-control-sm" style="width: 200px;" onchange="renderCalendarView()">
+                            <div>
+                                <h2 class="fw-bold mb-1"><i class="bi bi-calendar3 me-2"></i>Master Calendar View</h2>
+                                <p class="text-muted small mb-0">Click any appointment badge below to manage, reschedule, cancel, or delete.</p>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button class="btn btn-outline-secondary btn-sm fw-bold" onclick="changeMonth(-1)"><i class="bi bi-chevron-left"></i> Prev</button>
+                                <span id="calendarMonthTitle" class="fw-bold fs-5 px-2">Month Year</span>
+                                <button class="btn btn-outline-secondary btn-sm fw-bold" onclick="changeMonth(1)">Next <i class="bi bi-chevron-right"></i></button>
+                            </div>
                         </div>
                         <div class="card shadow-sm p-4 bg-white">
-                            <div id="calendarEventsContainer" class="row g-3"></div>
+                            <div class="calendar-grid mb-2">
+                                <div class="calendar-day-header">Sun</div>
+                                <div class="calendar-day-header">Mon</div>
+                                <div class="calendar-day-header">Tue</div>
+                                <div class="calendar-day-header">Wed</div>
+                                <div class="calendar-day-header">Thu</div>
+                                <div class="calendar-day-header">Fri</div>
+                                <div class="calendar-day-header">Sat</div>
+                            </div>
+                            <div id="calendarDaysGrid" class="calendar-grid"></div>
                         </div>
                     </div>
 
-                    <!-- CAMP MANAGEMENT (Camp Admin Only) -->
-                    <div class="tab-pane fade" id="campMgmtSection" role="tabpanel">
-                        <h2 class="fw-bold mb-4">Camp Management</h2>
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <div class="card shadow-sm p-4 bg-white mb-4">
-                                    <h5 class="fw-bold fs-6 mb-3">Add Building to Camp</h5>
-                                    <div class="input-group">
-                                        <input type="text" id="newBuildingInput" class="form-control form-control-sm" placeholder="Building Number">
-                                        <button class="btn btn-primary btn-sm fw-bold" onclick="addBuildingToCamp()">Add Building</button>
-                                    </div>
-                                </div>
-                                <div class="card shadow-sm p-4 bg-white">
-                                    <h5 class="fw-bold fs-6 mb-3">Managed Buildings</h5>
-                                    <div id="campBuildingsList" class="d-flex flex-wrap gap-2"></div>
-                                </div>
+                    <!-- 4. CAMP MANAGEMENT SECTION (Camp Admin Only) -->
+                    <div class="tab-pane fade" id="campAdminSection" role="tabpanel">
+                        <div class="mb-4">
+                            <h2 class="fw-bold mb-1"><i class="bi bi-shield-gear me-2"></i>Camp Administration</h2>
+                            <p class="text-muted small mb-0" id="campAdminSubtitle">Manage buildings and UH Building Managers for your camp.</p>
+                        </div>
+
+                        <!-- Buildings Management Card -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header bg-dark text-white py-3">
+                                <h5 class="mb-0 fw-bold fs-6"><i class="bi bi-buildings me-2"></i>Manage Camp Buildings</h5>
                             </div>
-                            <div class="col-md-6">
-                                <div class="card shadow-sm p-4 bg-white mb-4">
-                                    <h5 class="fw-bold fs-6 mb-3">Create UH Building Manager</h5>
-                                    <form onsubmit="createStaffUser(event)">
-                                        <div class="mb-3">
-                                            <label class="form-label small fw-bold">Username</label>
-                                            <input type="text" id="staffUsername" class="form-control form-control-sm" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label small fw-bold">Password</label>
-                                            <input type="password" id="staffPassword" class="form-control form-control-sm" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label small fw-bold">Assigned Building</label>
-                                            <select id="staffBuildingSelect" class="form-select form-select-sm" required></select>
-                                        </div>
-                                        <button type="submit" class="btn btn-primary btn-sm fw-bold w-100">Create Manager</button>
-                                    </form>
+                            <div class="card-body p-4">
+                                <div class="input-group mb-3" style="max-width: 400px;">
+                                    <input type="text" id="newBuildingNumberInput" class="form-control form-control-sm" placeholder="Enter Building Number (e.g., 5701)">
+                                    <button class="btn btn-primary btn-sm fw-bold" onclick="addNewBuilding()"><i class="bi bi-plus-lg me-1"></i> Add Building</button>
                                 </div>
-                                <div class="card shadow-sm p-4 bg-white">
-                                    <h5 class="fw-bold fs-6 mb-3">Existing Managers</h5>
-                                    <div id="campStaffList"></div>
+                                <div id="campBuildingsList" class="d-flex flex-wrap gap-2"></div>
+                            </div>
+                        </div>
+
+                        <!-- UH Building Managers Management Card -->
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0 fw-bold fs-6"><i class="bi bi-people me-2"></i>UH Building Managers</h5>
+                                <button class="btn btn-sm btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#addManagerModal"><i class="bi bi-person-plus me-1"></i> Add New Manager</button>
+                            </div>
+                            <div class="card-body p-4">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr><th>Username</th><th>Assigned Buildings</th><th class="text-end">Actions</th></tr>
+                                        </thead>
+                                        <tbody id="campManagersTable"></tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
+
                     </div>
 
                 </div>
@@ -169,35 +189,85 @@
         </div>
     </div>
 
-    <!-- VIEW/MANAGE APPOINTMENT MODAL -->
-    <div class="modal fade" id="appointmentModal" tabindex="-1">
+    <!-- Booking Management Modal -->
+    <div class="modal fade" id="bookingActionModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-calendar-event me-2"></i>Appointment Details</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-calendar-check me-2"></i>Manage Booking</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="small mb-1"><strong>Confirmation Code:</strong> <span id="modalConfirmationCode" class="text-primary fw-bold"></span></p>
-                    <p class="small mb-1"><strong>Guest Name:</strong> <span id="modalGuestName"></span></p>
-                    <p class="small mb-1"><strong>Branch:</strong> <span id="modalBranch"></span></p>
-                    <p class="small mb-1"><strong>Location:</strong> <span id="modalLocation"></span></p>
-                    <p class="small mb-1"><strong>Date & Time:</strong> <span id="modalDateTime"></span></p>
-                    <p class="small mb-3"><strong>Purpose:</strong> <span id="modalPurpose"></span></p>
-                    
+                    <input type="hidden" id="modalBookingIndex">
+                    <div id="modalBookingDetails" class="mb-3 p-3 bg-light rounded small border"></div>
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Appointment Status</label>
-                        <select id="modalBookingStatus" class="form-select form-select-sm">
-                            <option value="Confirmed">Confirmed</option>
-                            <option value="Completed">Completed</option>
-                            <option value="Cancelled">Cancelled</option>
-                            <option value="No-Show">No-Show</option>
-                        </select>
+                        <label class="form-label fw-bold small text-primary"><i class="bi bi-clock-history me-1"></i> Reschedule Appointment</label>
+                        <div class="row g-2">
+                            <div class="col-7"><input type="date" id="rescheduleDate" class="form-control form-control-sm"></div>
+                            <div class="col-5"><input type="time" id="rescheduleTime" class="form-control form-control-sm"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <div>
+                        <button type="button" class="btn btn-outline-danger btn-sm fw-bold me-1" onclick="deleteBookingFromModal()"><i class="bi bi-trash me-1"></i> Delete</button>
+                        <button type="button" class="btn btn-outline-warning text-dark btn-sm fw-bold" onclick="cancelBookingFromModal()"><i class="bi bi-x-circle me-1"></i> Cancel</button>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="rescheduleBookingFromModal()"><i class="bi bi-check2-circle me-1"></i> Save Reschedule</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add UH Building Manager Modal -->
+    <div class="modal fade" id="addManagerModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-person-plus me-2"></i>Add UH Building Manager</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Username</label>
+                        <input type="text" id="newMgrUsername" class="form-control form-control-sm" placeholder="e.g. bldg5700_mgr">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Password</label>
+                        <input type="text" id="newMgrPassword" class="form-control form-control-sm" value="password123">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Assign Buildings</label>
+                        <div id="newMgrBuildingsCheckboxes" class="border p-3 rounded bg-light" style="max-height: 150px; overflow-y: auto;"></div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-success btn-sm fw-bold" onclick="updateBookingStatusFromModal()">Save Status Update</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="createManager()"><i class="bi bi-check-lg me-1"></i> Create Manager</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Manager Buildings Modal -->
+    <div class="modal fade" id="editManagerModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Assign Buildings to Manager</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editMgrUsernameHidden">
+                    <p class="small text-muted mb-2">Editing buildings for: <strong id="editMgrUsernameLabel" class="text-primary"></strong></p>
+                    <div id="editMgrBuildingsCheckboxes" class="border p-3 rounded bg-light" style="max-height: 180px; overflow-y: auto;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="saveManagerBuildings()"><i class="bi bi-check-lg me-1"></i> Save Assignments</button>
                 </div>
             </div>
         </div>
@@ -205,240 +275,383 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let currentUser = {};
         let appState = {};
-        let activeModalCode = null;
+        let currentUser = {};
+        let currentCalendarDate = new Date();
+        let activeBookingIndex = null;
 
         async function initStaffDashboard() {
             try {
-                const userRes = await fetch('/api/current_user');
-                currentUser = await userRes.json();
-                
-                document.getElementById('sidebarUsername').textContent = currentUser.username;
-                document.getElementById('sidebarRoleCamp').textContent = `${currentUser.role === 'camp_admin' ? 'Camp Admin' : 'UH Manager'} (${currentUser.camp})`;
+                const res = await fetch('/api/state');
+                appState = await res.json();
+                if (!appState.camps) appState.camps = [];
+                if (!appState.camp_buildings) appState.camp_buildings = {};
+                if (!appState.bookings) appState.bookings = [];
+                if (!appState.staff_users) appState.staff_users = [];
+                if (!appState.purposes) appState.purposes = ['Check-in / In-processing'];
 
-                if (currentUser.role === 'camp_admin') {
-                    document.getElementById('campManagementNav').style.display = 'block';
+                const userRes = await fetch('/api/current_user');
+                if (userRes.ok) {
+                    currentUser = await userRes.json();
+                } else {
+                    currentUser = appState.staff_users[0] || { username: 'Staff', role: 'staff', camp: appState.camps[0] || '', buildings: [] };
                 }
 
-                const stateRes = await fetch('/api/state');
-                appState = await stateRes.json();
+                document.getElementById('sidebarUsername').textContent = currentUser.username || 'Staff User';
+                const roleLabel = currentUser.role === 'camp_admin' ? 'Camp Admin' : 'UH Building Manager';
+                document.getElementById('sidebarRoleCamp').textContent = `${roleLabel} (${currentUser.camp || 'All Camps'})`;
+                
+                const scopeText = currentUser.role === 'camp_admin' 
+                    ? `${currentUser.camp} (All Bldgs)` 
+                    : `${currentUser.camp} - Bldgs: ${currentUser.buildings ? currentUser.buildings.join(', ') : 'None'}`;
+                
+                document.getElementById('overviewSubtitle').textContent = `Managing bookings for your assigned scope: ${scopeText}`;
+                document.getElementById('statScopeLabel').textContent = scopeText;
 
-                updateOverviewStats();
-                document.getElementById('calendarDateFilter').valueAsDate = new Date();
+                if (currentUser.role === 'camp_admin') {
+                    document.getElementById('campAdminTab').style.display = 'block';
+                    document.getElementById('campAdminSubtitle').textContent = `Manage buildings and UH Building Managers for ${currentUser.camp}.`;
+                }
+
+                renderOverview();
+                renderAssignedAppointments();
+                renderCalendar();
+                if (currentUser.role === 'camp_admin') {
+                    renderCampManagement();
+                }
             } catch (err) {
-                console.error('Error initializing staff dashboard:', err);
+                console.error("Error loading staff dashboard state:", err);
             }
         }
 
-        async function saveStateToServer() {
-            await fetch('/api/state', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(appState)
+        function getAccessibleBookings() {
+            const allBookings = appState.bookings || [];
+            return allBookings.filter(b => {
+                if (currentUser.role === 'camp_admin') {
+                    return b.camp === currentUser.camp;
+                } else if (currentUser.buildings && currentUser.buildings.length > 0) {
+                    return b.camp === currentUser.camp && currentUser.buildings.includes(String(b.building));
+                }
+                return b.camp === currentUser.camp;
             });
-            const stateRes = await fetch('/api/state');
-            appState = await stateRes.json();
-            updateOverviewStats();
         }
 
-        function getFilteredBookings() {
-            const bookings = appState.bookings || [];
-            if (currentUser.role === 'camp_admin') {
-                return bookings.filter(b => b.camp === currentUser.camp);
-            } else if (currentUser.role === 'staff') {
-                const allowedBldgs = currentUser.buildings || [];
-                return bookings.filter(b => b.camp === currentUser.camp && allowedBldgs.includes(b.building));
-            }
-            return [];
+        function renderOverview() {
+            const accessibleBookings = getAccessibleBookings();
+            document.getElementById('statTotalAppointments').textContent = accessibleBookings.length;
+            const typeContainer = document.getElementById('overviewAppointmentTypesContainer');
+            typeContainer.innerHTML = '';
+            const purposes = appState.purposes || [];
+            purposes.forEach(purpose => {
+                const count = accessibleBookings.filter(b => b.purpose === purpose).length;
+                typeContainer.innerHTML += `
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded bg-light">
+                            <span class="text-muted small fw-bold d-block text-truncate" title="${purpose}">${purpose}</span>
+                            <h3 class="fw-bold text-primary mb-0 mt-1">${count}</h3>
+                        </div>
+                    </div>
+                `;
+            });
         }
 
-        function updateOverviewStats() {
-            const filtered = getFilteredBookings();
-            const todayStr = new Date().toISOString().split('T')[0];
+        function renderAssignedAppointments() {
+            const tbody = document.getElementById('assignedAppointmentsTable');
+            const allBookings = appState.bookings || [];
+            const accessibleBookings = getAccessibleBookings();
+            tbody.innerHTML = accessibleBookings.length === 0 ? `<tr><td colspan="8" class="text-center text-muted py-3">No appointments found for your assigned scope.</td></tr>` : '';
             
-            document.getElementById('statTotal').textContent = filtered.length;
-            document.getElementById('statToday').textContent = filtered.filter(b => b.date === todayStr).length;
-            document.getElementById('statCompleted').textContent = filtered.filter(b => b.status === 'Completed').length;
-        }
-
-        function getStatusBadgeClass(status) {
-            switch(status) {
-                case 'Completed': return 'bg-success';
-                case 'Cancelled': return 'bg-danger';
-                case 'No-Show': return 'bg-dark';
-                default: return 'bg-primary';
-            }
-        }
-
-        function renderAppointmentsTable() {
-            const tbody = document.getElementById('appointmentsTableBody');
-            tbody.innerHTML = '';
-            const filtered = getFilteredBookings();
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">No appointments found.</td></tr>`;
-                return;
-            }
-
-            filtered.forEach(b => {
+            accessibleBookings.forEach(b => {
+                const globalIdx = allBookings.findIndex(item => item.confirmationCode === b.confirmationCode);
+                const badge = b.status === 'Cancelled' ? 'bg-danger' : b.status === 'Rescheduled' ? 'bg-info text-dark' : 'bg-success';
                 tbody.innerHTML += `
                     <tr>
-                        <td class="fw-bold text-primary">${b.confirmationCode}</td>
+                        <td><span class="fw-bold text-primary">${b.confirmationCode}</span></td>
                         <td>${b.firstName} ${b.lastName}</td>
                         <td>${b.branch}</td>
-                        <td>Bldg ${b.building}</td>
+                        <td>${b.camp} - Bldg ${b.building}</td>
                         <td>${b.date} @ ${b.time}</td>
                         <td>${b.purpose}</td>
-                        <td><span class="badge ${getStatusBadgeClass(b.status)}">${b.status || 'Confirmed'}</span></td>
+                        <td><span class="badge ${badge}">${b.status}</span></td>
                         <td class="text-end">
-                            <button class="btn btn-outline-primary btn-sm fw-bold" onclick="openAppointmentModal('${b.confirmationCode}')"><i class="bi bi-eye"></i></button>
+                            <button class="btn btn-outline-primary btn-sm fw-bold" onclick="openBookingActionModal(${globalIdx})"><i class="bi bi-gear me-1"></i> Manage</button>
                         </td>
                     </tr>
                 `;
             });
         }
 
-        function openAppointmentModal(code) {
-            const booking = (appState.bookings || []).find(b => b.confirmationCode === code);
-            if (!booking) return;
-
-            activeModalCode = code;
-            document.getElementById('modalConfirmationCode').textContent = booking.confirmationCode;
-            document.getElementById('modalGuestName').textContent = `${booking.firstName} ${booking.lastName}`;
-            document.getElementById('modalBranch').textContent = booking.branch;
-            document.getElementById('modalLocation').textContent = `${booking.camp} - Bldg ${booking.building}`;
-            document.getElementById('modalDateTime').textContent = `${booking.date} at ${booking.time}`;
-            document.getElementById('modalPurpose').textContent = booking.purpose;
-            document.getElementById('modalBookingStatus').value = booking.status || 'Confirmed';
-
-            new bootstrap.Modal(document.getElementById('appointmentModal')).show();
+        function changeMonth(direction) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
+            renderCalendar();
         }
 
-        async function updateBookingStatusFromModal() {
-            if (!activeModalCode) return;
-            const newStatus = document.getElementById('modalBookingStatus').value;
+        function renderCalendar() {
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            document.getElementById('calendarMonthTitle').textContent = `${monthNames[month]} ${year}`;
 
-            try {
-                const res = await fetch('/api/update_booking_status', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ confirmationCode: activeModalCode, status: newStatus })
+            const grid = document.getElementById('calendarDaysGrid');
+            grid.innerHTML = '';
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+            const prevTotalDays = new Date(year, month, 0).getDate();
+
+            for (let i = firstDayIndex; i > 0; i--) {
+                grid.innerHTML += `<div class="calendar-cell other-month"><div class="fw-bold mb-1">${prevTotalDays - i + 1}</div></div>`;
+            }
+
+            const accessibleBookings = getAccessibleBookings();
+            const allBookings = appState.bookings || [];
+
+            for (let day = 1; day <= totalDays; day++) {
+                const formattedMonth = String(month + 1).padStart(2, '0');
+                const formattedDay = String(day).padStart(2, '0');
+                const dateStr = `${year}-${formattedMonth}-${formattedDay}`;
+
+                let cellHtml = `<div class="calendar-cell"><div class="fw-bold mb-1 text-dark">${day}</div>`;
+                const bookingsOnDay = accessibleBookings.filter(b => b.date === dateStr);
+                bookingsOnDay.forEach(b => {
+                    const globalIdx = allBookings.findIndex(item => item.confirmationCode === b.confirmationCode);
+                    let badgeColor = 'bg-success';
+                    if (b.status === 'Cancelled') badgeColor = 'bg-secondary text-decoration-line-through';
+                    else if (b.status === 'Rescheduled') badgeColor = 'bg-info text-dark';
+                    cellHtml += `<span class="booking-badge ${badgeColor}" onclick="openBookingActionModal(${globalIdx})" title="${b.time} - ${b.firstName} ${b.lastName}">${b.time} ${b.firstName} (Bldg ${b.building})</span>`;
                 });
-
-                if (res.ok) {
-                    const stateRes = await fetch('/api/state');
-                    appState = await stateRes.json();
-                    updateOverviewStats();
-                    renderAppointmentsTable();
-                    renderCalendarView();
-                    bootstrap.Modal.getInstance(document.getElementById('appointmentModal')).hide();
-                    alert('Status updated successfully!');
-                } else {
-                    alert('Failed to update status.');
-                }
-            } catch (err) {
-                console.error('Error updating status:', err);
+                cellHtml += `</div>`;
+                grid.innerHTML += cellHtml;
             }
         }
 
-        function renderCalendarView() {
-            const container = document.getElementById('calendarEventsContainer');
-            container.innerHTML = '';
-            const selectedDate = document.getElementById('calendarDateFilter').value;
-            const filtered = getFilteredBookings().filter(b => b.date === selectedDate);
+        // --- CAMP ADMIN MANAGEMENT FUNCTIONS ---
+        function renderCampManagement() {
+            if (currentUser.role !== 'camp_admin') return;
+            const camp = currentUser.camp;
+            
+            // Render Buildings
+            const buildingsList = appState.camp_buildings[camp] || [];
+            const bldgsContainer = document.getElementById('campBuildingsList');
+            bldgsContainer.innerHTML = buildingsList.length === 0 ? `<span class="text-muted small">No buildings configured yet.</span>` : '';
+            buildingsList.forEach(bldg => {
+                bldgsContainer.innerHTML += `
+                    <span class="badge bg-secondary p-2 d-inline-flex align-items-center gap-2">
+                        Bldg ${bldg}
+                        <i class="bi bi-x-circle text-white" style="cursor: pointer;" onclick="deleteBuilding('${bldg}')" title="Delete building"></i>
+                    </span>
+                `;
+            });
 
-            if (filtered.length === 0) {
-                container.innerHTML = `<div class="col-12 text-center text-muted py-4">No appointments scheduled for this date.</div>`;
-                return;
-            }
+            // Render UH Building Managers Table
+            const managersTable = document.getElementById('campManagersTable');
+            const staffUsers = appState.staff_users || [];
+            const campManagers = staffUsers.filter(u => u.role === 'staff' && u.camp === camp);
+            
+            managersTable.innerHTML = campManagers.length === 0 ? `<tr><td colspan="3" class="text-center text-muted py-3">No UH Building Managers configured for your camp.</td></tr>` : '';
+            campManagers.forEach(mgr => {
+                const assignedBldgs = (mgr.buildings || []).join(', ') || 'None assigned';
+                managersTable.innerHTML += `
+                    <tr>
+                        <td><span class="fw-bold">${mgr.username}</span></td>
+                        <td><span class="text-muted">${assignedBldgs}</span></td>
+                        <td class="text-end">
+                            <button class="btn btn-outline-primary btn-sm fw-bold me-1" onclick="openEditManagerModal('${mgr.username}')"><i class="bi bi-building-add me-1"></i> Assign Buildings</button>
+                            <button class="btn btn-outline-danger btn-sm fw-bold" onclick="deleteManager('${mgr.username}')"><i class="bi bi-trash me-1"></i> Remove</button>
+                        </td>
+                    </tr>
+                `;
+            });
 
-            filtered.forEach(b => {
-                container.innerHTML += `
-                    <div class="col-md-6 col-lg-4">
-                        <div class="border rounded p-3 bg-light shadow-sm">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="fw-bold text-primary">${b.time}</span>
-                                <span class="badge ${getStatusBadgeClass(b.status)}">${b.status || 'Confirmed'}</span>
-                            </div>
-                            <h6 class="fw-bold mb-1">${b.firstName} ${b.lastName} (${b.branch})</h6>
-                            <p class="small text-muted mb-1">Building ${b.building} - ${b.purpose}</p>
-                            <button class="btn btn-outline-primary btn-sm w-100 mt-2 fw-bold" onclick="openAppointmentModal('${b.confirmationCode}')">Manage</button>
-                        </div>
+            // Populate Checkboxes in Add Manager Modal
+            const addCheckboxes = document.getElementById('newMgrBuildingsCheckboxes');
+            addCheckboxes.innerHTML = buildingsList.length === 0 ? `<span class="text-muted small">Add buildings first.</span>` : '';
+            buildingsList.forEach(bldg => {
+                addCheckboxes.innerHTML += `
+                    <div class="form-check">
+                        <input class="form-check-input new-mgr-bldg-chk" type="checkbox" value="${bldg}" id="new_bldg_${bldg}">
+                        <label class="form-check-label small" for="new_bldg_${bldg}">Building ${bldg}</label>
                     </div>
                 `;
             });
         }
 
-        function renderCampManagement() {
-            if (currentUser.role !== 'camp_admin') return;
-
-            const camp = currentUser.camp;
-            const buildings = (appState.camp_buildings || {})[camp] || [];
+        async function addNewBuilding() {
+            const input = document.getElementById('newBuildingNumberInput');
+            const bldgNum = input.value.trim();
+            if (!bldgNum) return alert('Please enter a building number.');
             
-            const bldgList = document.getElementById('campBuildingsList');
-            bldgList.innerHTML = buildings.length === 0 ? '<span class="text-muted small">No buildings configured.</span>' : 
-                buildings.map(b => `<span class="badge bg-secondary p-2">Bldg ${b}</span>`).join('');
-
-            const bldgSelect = document.getElementById('staffBuildingSelect');
-            bldgSelect.innerHTML = buildings.map(b => `<option value="${b}">Building ${b}</option>`).join('');
-
-            const staffList = document.getElementById('campStaffList');
-            const staffUsers = (appState.staff_users || []).filter(u => u.camp === camp && u.role === 'staff');
-            staffList.innerHTML = staffUsers.length === 0 ? '<span class="text-muted small">No managers created.</span>' :
-                staffUsers.map((u, idx) => `
-                    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
-                        <div>
-                            <span class="fw-bold">${u.username}</span>
-                            <small class="text-muted d-block">Bldg: ${u.buildings.join(', ')}</small>
-                        </div>
-                        <button class="btn btn-outline-danger btn-sm" onclick="deleteStaffUser('${u.username}')"><i class="bi bi-trash"></i></button>
-                    </div>
-                `).join('');
-        }
-
-        async function addBuildingToCamp() {
-            const bldgNum = document.getElementById('newBuildingInput').value.trim();
-            if (!bldgNum) return;
             const camp = currentUser.camp;
             if (!appState.camp_buildings[camp]) appState.camp_buildings[camp] = [];
-            if (!appState.camp_buildings[camp].includes(bldgNum)) {
-                appState.camp_buildings[camp].push(bldgNum);
-                document.getElementById('newBuildingInput').value = '';
-                await saveStateToServer();
-                renderCampManagement();
+            if (appState.camp_buildings[camp].includes(bldgNum)) {
+                alert('Building number already exists.');
+                return;
             }
-        }
 
-        async function createStaffUser(event) {
-            event.preventDefault();
-            const username = document.getElementById('staffUsername').value.trim();
-            const password = document.getElementById('staffPassword').value.trim();
-            const building = document.getElementById('staffBuildingSelect').value;
-
-            if (!username || !password) return;
-
-            appState.staff_users = appState.staff_users || [];
-            appState.staff_users.push({
-                username: username,
-                password: password,
-                role: 'staff',
-                camp: currentUser.camp,
-                buildings: [building],
-                recovery_email: `${username}@usmc.mil`
-            });
-
-            document.getElementById('staffUsername').value = '';
-            document.getElementById('staffPassword').value = '';
+            appState.camp_buildings[camp].push(bldgNum);
+            appState.camp_buildings[camp].sort();
+            input.value = '';
             await saveStateToServer();
             renderCampManagement();
         }
 
-        async function deleteStaffUser(username) {
-            if (!confirm('Remove staff user?')) return;
+        async function deleteBuilding(bldgNum) {
+            if (!confirm(`Are you sure you want to delete building ${bldgNum}?`)) return;
+            const camp = currentUser.camp;
+            appState.camp_buildings[camp] = appState.camp_buildings[camp].filter(b => b !== bldgNum);
+            
+            // Remove building from manager assignments as well
+            appState.staff_users.forEach(u => {
+                if (u.camp === camp && u.buildings) {
+                    u.buildings = u.buildings.filter(b => b !== bldgNum);
+                }
+            });
+
+            await saveStateToServer();
+            renderCampManagement();
+        }
+
+        async function createManager() {
+            const username = document.getElementById('newMgrUsername').value.trim();
+            const password = document.getElementById('newMgrPassword').value.trim();
+            if (!username) return alert('Please enter a username.');
+
+            const checkboxes = document.querySelectorAll('.new-mgr-bldg-chk:checked');
+            const assignedBldgs = Array.from(checkboxes).map(chk => chk.value);
+
+            if (appState.staff_users.some(u => u.username === username)) {
+                return alert('Username already exists.');
+            }
+
+            const newMgr = {
+                username: username,
+                password: password || 'password123',
+                role: 'staff',
+                camp: currentUser.camp,
+                buildings: assignedBldgs,
+                recovery_email: `${username}@usmc.mil`
+            };
+
+            appState.staff_users.push(newMgr);
+            await saveStateToServer();
+            bootstrap.Modal.getInstance(document.getElementById('addManagerModal')).hide();
+            document.getElementById('newMgrUsername').value = '';
+            renderCampManagement();
+        }
+
+        async function deleteManager(username) {
+            if (!confirm(`Are you sure you want to remove manager ${username}?`)) return;
             appState.staff_users = appState.staff_users.filter(u => u.username !== username);
             await saveStateToServer();
             renderCampManagement();
+        }
+
+        function openEditManagerModal(username) {
+            const mgr = appState.staff_users.find(u => u.username === username);
+            if (!mgr) return;
+
+            document.getElementById('editMgrUsernameHidden').value = username;
+            document.getElementById('editMgrUsernameLabel').textContent = username;
+
+            const camp = currentUser.camp;
+            const buildingsList = appState.camp_buildings[camp] || [];
+            const container = document.getElementById('editMgrBuildingsCheckboxes');
+            
+            container.innerHTML = buildingsList.length === 0 ? `<span class="text-muted small">No buildings available.</span>` : '';
+            buildingsList.forEach(bldg => {
+                const isChecked = (mgr.buildings || []).includes(bldg) ? 'checked' : '';
+                container.innerHTML += `
+                    <div class="form-check">
+                        <input class="form-check-input edit-mgr-bldg-chk" type="checkbox" value="${bldg}" id="edit_bldg_${bldg}" ${isChecked}>
+                        <label class="form-check-label small" for="edit_bldg_${bldg}">Building ${bldg}</label>
+                    </div>
+                `;
+            });
+
+            const modal = new bootstrap.Modal(document.getElementById('editManagerModal'));
+            modal.show();
+        }
+
+        async function saveManagerBuildings() {
+            const username = document.getElementById('editMgrUsernameHidden').value;
+            const mgr = appState.staff_users.find(u => u.username === username);
+            if (!mgr) return;
+
+            const checkboxes = document.querySelectorAll('.edit-mgr-bldg-chk:checked');
+            mgr.buildings = Array.from(checkboxes).map(chk => chk.value);
+
+            await saveStateToServer();
+            bootstrap.Modal.getInstance(document.getElementById('editManagerModal')).hide();
+            renderCampManagement();
+        }
+
+        // --- BOOKING MODAL ACTIONS ---
+        function openBookingActionModal(index) {
+            activeBookingIndex = index;
+            const b = appState.bookings[index];
+            document.getElementById('modalBookingIndex').value = index;
+            document.getElementById('rescheduleDate').value = b.date || '';
+            document.getElementById('rescheduleTime').value = b.time || '';
+
+            document.getElementById('modalBookingDetails').innerHTML = `
+                <div class="row">
+                    <div class="col-6 mb-1"><strong>Code:</strong> <span class="text-primary">${b.confirmationCode}</span></div>
+                    <div class="col-6 mb-1"><strong>Status:</strong> <span class="badge ${b.status === 'Cancelled' ? 'bg-danger' : 'bg-success'}">${b.status}</span></div>
+                    <div class="col-12 mb-1"><strong>Guest:</strong> ${b.firstName} ${b.lastName} (${b.branch})</div>
+                    <div class="col-12 mb-1"><strong>Location:</strong> ${b.camp} - Bldg ${b.building}</div>
+                    <div class="col-12 mb-0"><strong>Purpose:</strong> ${b.purpose}</div>
+                </div>
+            `;
+            const modal = new bootstrap.Modal(document.getElementById('bookingActionModal'));
+            modal.show();
+        }
+
+        async function cancelBookingFromModal() {
+            if (activeBookingIndex === null) return;
+            appState.bookings[activeBookingIndex].status = 'Cancelled';
+            await saveStateToServer();
+            bootstrap.Modal.getInstance(document.getElementById('bookingActionModal')).hide();
+            refreshAllViews();
+        }
+
+        async function rescheduleBookingFromModal() {
+            if (activeBookingIndex === null) return;
+            const newDate = document.getElementById('rescheduleDate').value;
+            const newTime = document.getElementById('rescheduleTime').value;
+            if (!newDate || !newTime) return alert('Please select both a new date and time.');
+            
+            appState.bookings[activeBookingIndex].date = newDate;
+            appState.bookings[activeBookingIndex].time = newTime;
+            appState.bookings[activeBookingIndex].status = 'Rescheduled';
+            await saveStateToServer();
+            bootstrap.Modal.getInstance(document.getElementById('bookingActionModal')).hide();
+            refreshAllViews();
+        }
+
+        async function deleteBookingFromModal() {
+            if (activeBookingIndex === null) return;
+            if (!confirm('Permanently delete this booking?')) return;
+            appState.bookings.splice(activeBookingIndex, 1);
+            await saveStateToServer();
+            bootstrap.Modal.getInstance(document.getElementById('bookingActionModal')).hide();
+            refreshAllViews();
+        }
+
+        function refreshAllViews() {
+            renderCalendar();
+            renderAssignedAppointments();
+            renderOverview();
+        }
+
+        async function saveStateToServer() {
+            try {
+                await fetch('/api/state', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(appState)
+                });
+            } catch (err) {
+                console.error("Error saving state:", err);
+            }
         }
     </script>
 </body>
