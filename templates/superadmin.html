@@ -332,13 +332,51 @@
                         <select id="newStaffCamp" class="form-select form-select-sm" onchange="updateStaffBuildingCheckboxes()"></select>
                     </div>
                     <div class="mb-3" id="staffBuildingsContainer" style="display: none;">
-                        <label class="form-label small fw-bold">Assigned Buildings</label>
+                        <label class="form-label small fw-bold">Assigned Buildings (Select Multiple)</label>
                         <div id="newStaffBuildingCheckboxes" class="border p-2 rounded bg-light" style="max-height: 120px; overflow-y: auto;"></div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="createNewStaffAccount()"><i class="bi bi-check-lg me-1"></i> Create Account</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Staff Account Modal -->
+    <div class="modal fade" id="editStaffModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-person-gear me-2"></i>Edit Staff Account & Building Assignments</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editStaffOriginalUsername">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Username</label>
+                        <input type="text" id="editStaffUsername" class="form-control form-control-sm" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Role</label>
+                        <select id="editStaffRole" class="form-select form-select-sm" onchange="toggleEditStaffBuildingSelection()">
+                            <option value="camp_admin">Camp Admin</option>
+                            <option value="staff">UH Building Manager</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Assigned Camp</label>
+                        <select id="editStaffCamp" class="form-select form-select-sm" onchange="updateEditStaffBuildingCheckboxes()"></select>
+                    </div>
+                    <div class="mb-3" id="editStaffBuildingsContainer" style="display: none;">
+                        <label class="form-label small fw-bold">Assigned Buildings (Select Multiple)</label>
+                        <div id="editStaffBuildingCheckboxes" class="border p-2 rounded bg-light" style="max-height: 140px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="saveEditedStaffAccount()"><i class="bi bi-check-lg me-1"></i> Save Changes</button>
                 </div>
             </div>
         </div>
@@ -629,7 +667,7 @@
             populateExportFilters();
         }
 
-        // --- STAFF ACCOUNTS MANAGEMENT & PASSWORD RESETS ---
+        // --- STAFF ACCOUNTS MANAGEMENT & MULTI-BUILDING ASSIGNMENTS ---
         function renderStaffAccounts() {
             const tbody = document.getElementById('staffAccountsTableBody');
             const staffUsers = appState.staff_users || [];
@@ -647,20 +685,88 @@
                         <td>${u.camp || 'System-wide'}</td>
                         <td><span class="text-muted small">${bldgs}</span></td>
                         <td class="text-end">
-                            <button class="btn btn-outline-warning text-dark btn-sm fw-bold me-1" onclick="promptResetStaffPassword('${u.username}')"><i class="bi bi-key me-1"></i> Reset Pwd</button>
-                            <button class="btn btn-outline-danger btn-sm fw-bold" onclick="deleteStaffAccount('${u.username}')"><i class="bi bi-trash me-1"></i> Remove</button>
+                            <button class="btn btn-outline-primary btn-sm fw-bold me-1" onclick="openEditStaffModal('${u.username}')" title="Edit account & assign multiple buildings"><i class="bi bi-pencil me-1"></i> Edit</button>
+                            <button class="btn btn-outline-warning text-dark btn-sm fw-bold me-1" onclick="promptResetStaffPassword('${u.username}')" title="Reset password"><i class="bi bi-key me-1"></i> Pwd</button>
+                            <button class="btn btn-outline-danger btn-sm fw-bold" onclick="deleteStaffAccount('${u.username}')" title="Delete account"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>
                 `;
             });
 
-            // Populate modal camp dropdown
+            // Populate modal camp dropdown for creation
             const campSelect = document.getElementById('newStaffCamp');
             campSelect.innerHTML = '';
             (appState.camps || []).forEach(c => {
                 campSelect.innerHTML += `<option value="${c}">${c}</option>`;
             });
             updateStaffBuildingCheckboxes();
+        }
+
+        function openEditStaffModal(username) {
+            const user = (appState.staff_users || []).find(u => u.username === username);
+            if (!user) return;
+
+            document.getElementById('editStaffOriginalUsername').value = user.username;
+            document.getElementById('editStaffUsername').value = user.username;
+            document.getElementById('editStaffRole').value = user.role || 'staff';
+
+            const campSelect = document.getElementById('editStaffCamp');
+            campSelect.innerHTML = '';
+            (appState.camps || []).forEach(c => {
+                campSelect.innerHTML += `<option value="${c}" ${user.camp === c ? 'selected' : ''}>${c}</option>`;
+            });
+
+            toggleEditStaffBuildingSelection();
+            updateEditStaffBuildingCheckboxes(user.buildings || []);
+
+            const modal = new bootstrap.Modal(document.getElementById('editStaffModal'));
+            modal.show();
+        }
+
+        function toggleEditStaffBuildingSelection() {
+            const role = document.getElementById('editStaffRole').value;
+            const container = document.getElementById('editStaffBuildingsContainer');
+            container.style.display = role === 'staff' ? 'block' : 'none';
+        }
+
+        function updateEditStaffBuildingCheckboxes(selectedBuildings = []) {
+            const selectedCamp = document.getElementById('editStaffCamp').value;
+            const container = document.getElementById('editStaffBuildingCheckboxes');
+            const buildings = (appState.camp_buildings && appState.camp_buildings[selectedCamp]) || [];
+
+            container.innerHTML = buildings.length === 0 ? `<span class="text-muted small">No buildings available in this camp.</span>` : '';
+            buildings.forEach(b => {
+                const isChecked = selectedBuildings.includes(String(b)) ? 'checked' : '';
+                container.innerHTML += `
+                    <div class="form-check">
+                        <input class="form-check-input edit-staff-bldg-chk" type="checkbox" value="${b}" id="edit_staff_bldg_${b}" ${isChecked}>
+                        <label class="form-check-label small" for="edit_staff_bldg_${b}">Building ${b}</label>
+                    </div>
+                `;
+            });
+        }
+
+        async function saveEditedStaffAccount() {
+            const username = document.getElementById('editStaffOriginalUsername').value;
+            const role = document.getElementById('editStaffRole').value;
+            const camp = document.getElementById('editStaffCamp').value;
+
+            const user = (appState.staff_users || []).find(u => u.username === username);
+            if (!user) return;
+
+            let assignedBldgs = [];
+            if (role === 'staff') {
+                const checkboxes = document.querySelectorAll('.edit-staff-bldg-chk:checked');
+                assignedBldgs = Array.from(checkboxes).map(chk => chk.value);
+            }
+
+            user.role = role;
+            user.camp = camp;
+            user.buildings = assignedBldgs;
+
+            await saveStateToServer();
+            bootstrap.Modal.getInstance(document.getElementById('editStaffModal')).hide();
+            renderStaffAccounts();
         }
 
         async function promptResetStaffPassword(username) {
