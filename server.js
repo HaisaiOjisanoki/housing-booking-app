@@ -36,55 +36,36 @@ const defaultState = {
 
 let appState = JSON.parse(JSON.stringify(defaultState));
 
-// Load and robustly merge saved state with defaults
 if (fs.existsSync(DATA_FILE)) {
     try {
         const fileData = fs.readFileSync(DATA_FILE, 'utf8');
         const savedState = JSON.parse(fileData);
-        
-        // Ensure camps always include defaults
-        if (savedState && Array.isArray(savedState.camps)) {
-            defaultState.camps.forEach(c => {
-                if (!savedState.camps.includes(c)) savedState.camps.push(c);
-            });
-            appState.camps = savedState.camps;
-        }
+        if (savedState) {
+            // Merge camps safely
+            appState.camps = (Array.isArray(savedState.camps) && savedState.camps.length > 0) ? savedState.camps : defaultState.camps;
 
-        // Ensure camp_buildings always include defaults
-        if (savedState && savedState.camp_buildings && typeof savedState.camp_buildings === 'object') {
-            Object.keys(defaultState.camp_buildings).forEach(camp => {
-                if (!savedState.camp_buildings[camp] || !Array.isArray(savedState.camp_buildings[camp]) || savedState.camp_buildings[camp].length === 0) {
-                    savedState.camp_buildings[camp] = defaultState.camp_buildings[camp];
+            // Merge camp buildings camp-by-camp to prevent empty overrides
+            appState.camp_buildings = {};
+            appState.camps.forEach(camp => {
+                if (savedState.camp_buildings && Array.isArray(savedState.camp_buildings[camp]) && savedState.camp_buildings[camp].length > 0) {
+                    appState.camp_buildings[camp] = savedState.camp_buildings[camp];
+                } else {
+                    appState.camp_buildings[camp] = defaultState.camp_buildings[camp] || [];
                 }
             });
-            appState.camp_buildings = savedState.camp_buildings;
-        }
 
-        if (savedState && Array.isArray(savedState.purposes) && savedState.purposes.length > 0) {
-            appState.purposes = savedState.purposes;
-        }
-        if (savedState && Array.isArray(savedState.staff_users) && savedState.staff_users.length > 0) {
-            appState.staff_users = savedState.staff_users;
-        }
-        if (savedState && Array.isArray(savedState.bookings)) {
-            appState.bookings = savedState.bookings;
+            if (Array.isArray(savedState.purposes) && savedState.purposes.length > 0) {
+                appState.purposes = savedState.purposes;
+            }
+            if (Array.isArray(savedState.staff_users) && savedState.staff_users.length > 0) {
+                appState.staff_users = savedState.staff_users;
+            }
+            if (Array.isArray(savedState.bookings)) {
+                appState.bookings = savedState.bookings;
+            }
         }
     } catch (err) {
-        console.error("Error reading data.json, using defaults:", err);
-    }
-} else {
-    try {
-        fs.writeFileSync(DATA_FILE, JSON.stringify(defaultState, null, 2));
-    } catch (e) {
-        console.error("Could not write initial data.json:", e);
-    }
-}
-
-function saveState() {
-    try {
-        fs.writeFileSync(DATA_FILE, JSON.stringify(appState, null, 2));
-    } catch (err) {
-        console.error("Error saving data.json:", err);
+        console.error("Error reading data.json:", err);
     }
 }
 
@@ -95,22 +76,17 @@ app.get('/api/state', (req, res) => {
 app.post('/api/state', (req, res) => {
     const newState = req.body;
     if (newState) {
-        if (Array.isArray(newState.camps) && newState.camps.length > 0) {
-            appState.camps = newState.camps;
+        if (Array.isArray(newState.camps)) appState.camps = newState.camps;
+        if (newState.camp_buildings) appState.camp_buildings = newState.camp_buildings;
+        if (Array.isArray(newState.purposes)) appState.purposes = newState.purposes;
+        if (Array.isArray(newState.staff_users)) appState.staff_users = newState.staff_users;
+        if (Array.isArray(newState.bookings)) appState.bookings = newState.bookings;
+        
+        try {
+            fs.writeFileSync(DATA_FILE, JSON.stringify(appState, null, 2));
+        } catch (err) {
+            console.error("Error saving data.json:", err);
         }
-        if (newState.camp_buildings && typeof newState.camp_buildings === 'object') {
-            appState.camp_buildings = newState.camp_buildings;
-        }
-        if (Array.isArray(newState.purposes) && newState.purposes.length > 0) {
-            appState.purposes = newState.purposes;
-        }
-        if (Array.isArray(newState.staff_users) && newState.staff_users.length > 0) {
-            appState.staff_users = newState.staff_users;
-        }
-        if (Array.isArray(newState.bookings)) {
-            appState.bookings = newState.bookings;
-        }
-        saveState();
         return res.json({ success: true, appState });
     }
     res.status(400).json({ success: false, message: "Invalid payload." });
