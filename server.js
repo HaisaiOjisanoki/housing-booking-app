@@ -1,67 +1,104 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'data.json');
 
+// Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Helper to load application state
-function loadState() {
-    if (fs.existsSync(DATA_FILE)) {
-        try {
-            return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-        } catch (e) {
-            console.error("Error reading data file:", e);
-        }
-    }
-    // Default initial mock state if no data.json exists yet
-    return {
-        camps: ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"],
-        camp_buildings: {
-            "Camp Hansen": ["5701", "5702", "5703"],
-            "Camp Schwab": ["3301", "3302"],
-            "Camp Foster": ["5601", "5602"],
-            "MCAS Futenma": ["1101", "1102"]
+// In-Memory State Architecture (Optimized for Cloud Deployment)
+let appState = {
+    camps: [
+        { 
+            id: 'foster', 
+            name: 'Camp Foster', 
+            buildings: ['Building 5700 - Barracks A', 'Building 5701 - Barracks B'] 
         },
-        bookings: [],
-        staff_users: [
-            { username: "superadmin", password: "password123", role: "superadmin", camp: "", buildings: [] },
-            { username: "hansen_admin", password: "password123", role: "camp_admin", camp: "Camp Hansen", buildings: ["5701", "5702", "5703"] }
-        ],
-        purposes: ['Check-in / In-processing', 'Out-processing', 'Room Inspection', 'Maintenance Request']
-    };
-}
+        { 
+            id: 'courtney', 
+            name: 'Camp Courtney', 
+            buildings: ['Building 4300 - Barracks 1', 'Building 4301 - Barracks 2'] 
+        },
+        { 
+            id: 'kadena', 
+            name: 'Kadena Air Base', 
+            buildings: ['Building 100 - Dorm 1', 'Building 101 - Dorm 2'] 
+        }
+    ],
+    appointments: [],
+    staff: [
+        { username: 'superadmin', password: 'securepassword123', role: 'superadmin', camp: 'All' },
+        { username: 'foster_mgr', password: 'securepassword123', role: 'manager', camp: 'Camp Foster' }
+    ]
+};
 
-// Helper to save application state
-function saveState(state) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2), 'utf8');
-}
-
-// API endpoint to get state
+// API: Get Application State
 app.get('/api/state', (req, res) => {
-    const state = loadState();
-    res.json(state);
+    res.json(appState);
 });
 
-// API endpoint to save state changes
-app.post('/api/state', (req, res) => {
-    try {
-        saveState(req.body);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+// API: Staff Login
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    const user = appState.staff.find(s => s.username === username && s.password === password);
+    
+    if (user) {
+        res.json({ success: true, user: { username: user.username, role: user.role, camp: user.camp } });
+    } else {
+        res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 });
 
-// Fallback to index.html for frontend routing
+// API: Create Appointment (Public Booking)
+app.post('/api/appointments', (req, res) => {
+    const { serviceMemberName, rank, contact, camp, building, date, timeSlot } = req.body;
+    
+    if (!serviceMemberName || !camp || !building || !date) {
+        return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    const newAppointment = {
+        id: 'APT-' + Date.now().toString().slice(-6),
+        serviceMemberName,
+        rank: rank || 'E-1 to E-4',
+        contact,
+        camp,
+        building,
+        date,
+        timeSlot: timeSlot || '09:00 - 11:00',
+        status: 'Pending',
+        createdAt: new Date().toISOString()
+    };
+
+    appState.appointments.push(newAppointment);
+    res.json({ success: true, appointment: newAppointment });
+});
+
+// API: Update Appointment Status (Staff/Admin)
+app.patch('/api/appointments/:id', (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const appointment = appState.appointments.find(a => a.id === id);
+    if (!appointment) {
+        return res.status(404).json({ success: false, message: 'Appointment not found' });
+    }
+
+    if (status) {
+        appointment.status = status;
+    }
+
+    res.json({ success: true, appointment });
+});
+
+// Fallback to index.html for SPA routing
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
