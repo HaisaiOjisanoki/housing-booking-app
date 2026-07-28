@@ -1,14 +1,6 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Auto-generate public directory and HTML files at runtime
-const publicDir = path.join(__dirname, 'public');
-if (!fs.existsSync(publicDir)) {
-    fs.mkdirSync(publicDir, { recursive: true });
-}
 
 // 1. PUBLIC BOOKING PAGE (index.html)
 const indexHtml = `<!DOCTYPE html>
@@ -277,7 +269,7 @@ const loginHtml = `<!DOCTYPE html>
 </body>
 </html>`;
 
-// 3. STAFF MANAGEMENT DASHBOARD (staff_dashboard.html) with Superadmin & Camp Admin capabilities[cite: 2]
+// 3. STAFF MANAGEMENT DASHBOARD (staff_dashboard.html)
 const staffHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -559,12 +551,12 @@ const staffHtml = `<!DOCTYPE html>
                 if (userRole === 'superadmin') roleLabel = 'Superadmin';
                 else if (userRole === 'camp_admin') roleLabel = 'Camp Admin';
 
-                let scopeDisplay = `(Bldgs: ${staffAssignedBuildings.join(', ')})`;
+                let scopeDisplay = \`(Bldgs: \${staffAssignedBuildings.join(', ')})\`;
                 if (userRole === 'superadmin') scopeDisplay = '(All Camps & Buildings)';
                 else if (userRole === 'camp_admin') scopeDisplay = '(All Camp Bldgs)';
 
-                document.getElementById('navCampInfo').innerHTML = `${staffCamp} ${scopeDisplay}`;
-                document.getElementById('navUserInfo').innerHTML = `Logged in as: <strong>${sessionUser.username}</strong> (${roleLabel})`;
+                document.getElementById('navCampInfo').innerHTML = \`\${staffCamp} \${scopeDisplay}\`;
+                document.getElementById('navUserInfo').innerHTML = \`Logged in as: <strong>\${sessionUser.username}</strong> (\${roleLabel})\`;
 
                 const res = await fetch('/api/state');
                 appState = await res.json();
@@ -599,7 +591,6 @@ const staffHtml = `<!DOCTYPE html>
             }
         }
 
-        // --- SUPERADMIN PANEL LOGIC ---
         function initSuperAdminPanel() {
             const campSelect = document.getElementById('superCampTargetSelect');
             campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
@@ -607,8 +598,8 @@ const staffHtml = `<!DOCTYPE html>
             saCampSelect.innerHTML = '<option value="">-- Select Camp --</option>';
 
             (appState.camps || []).forEach(c => {
-                campSelect.innerHTML += `<option value="${c}">${c}</option>`;
-                saCampSelect.innerHTML += `<option value="${c}">${c}</option>`;
+                campSelect.innerHTML += \`<option value="\${c}">\${c}</option>\`;
+                saCampSelect.innerHTML += \`<option value="\${c}">\${c}</option>\`;
             });
 
             renderSuperAdminUsersTable();
@@ -644,7 +635,7 @@ const staffHtml = `<!DOCTYPE html>
                 container.innerHTML = 'Buildings: None';
                 return;
             }
-            container.innerHTML = `<strong>Buildings in ${camp}:</strong> ${appState.camp_buildings[camp].join(', ') || 'None'}`;
+            container.innerHTML = \`<strong>Buildings in \${camp}:</strong> \${appState.camp_buildings[camp].join(', ') || 'None'}\`;
         }
 
         async function superAdminAddBuilding() {
@@ -689,12 +680,12 @@ const staffHtml = `<!DOCTYPE html>
                 return;
             }
             appState.camp_buildings[camp].forEach(b => {
-                container.innerHTML += `
+                container.innerHTML += \`
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input sa-bldg-chk" type="checkbox" value="${b}" id="sa_chk_${b}">
-                        <label class="form-check-label" for="sa_chk_${b}">Bldg ${b}</label>
+                        <input class="form-check-input sa-bldg-chk" type="checkbox" value="\${b}" id="sa_chk_\${b}">
+                        <label class="form-check-label" for="sa_chk_\${b}">Bldg \${b}</label>
                     </div>
-                `;
+                \`;
             });
         }
 
@@ -743,24 +734,24 @@ const staffHtml = `<!DOCTYPE html>
             const tbody = document.getElementById('superAdminUsersTableBody');
             if (!tbody) return;
             const users = appState.staff_users || [];
-            tbody.innerHTML = users.length === 0 ? `<tr><td colspan="5" class="text-center text-muted">No users found.</td></tr>` : '';
+            tbody.innerHTML = users.length === 0 ? \`<tr><td colspan="5" class="text-center text-muted">No users found.</td></tr>\` : '';
 
             users.forEach((u, idx) => {
                 let roleBadge = '<span class="badge bg-secondary">Manager</span>';
                 if (u.role === 'superadmin') roleBadge = '<span class="badge bg-danger">Superadmin</span>';
                 else if (u.role === 'camp_admin') roleBadge = '<span class="badge bg-primary">Camp Admin</span>';
 
-                tbody.innerHTML += `
+                tbody.innerHTML += \`
                     <tr>
-                        <td class="fw-bold">${u.username}</td>
-                        <td>${roleBadge}</td>
-                        <td>${u.camp || 'N/A'}</td>
-                        <td>${u.buildings ? u.buildings.join(', ') : 'All / None'}</td>
+                        <td class="fw-bold">\${u.username}</td>
+                        <td>\${roleBadge}</td>
+                        <td>\${u.camp || 'N/A'}</td>
+                        <td>\${u.buildings ? u.buildings.join(', ') : 'All / None'}</td>
                         <td class="text-end">
-                            <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="superAdminDeleteUser(${idx})" title="Delete User"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="superAdminDeleteUser(\${idx})" title="Delete User"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>
-                `;
+                \`;
             });
         }
 
@@ -773,7 +764,6 @@ const staffHtml = `<!DOCTYPE html>
             }
         }
 
-        // --- VIEW & CALENDAR LOGIC ---
         function switchView(viewType) {
             const tableView = document.getElementById('tableViewSection');
             const calView = document.getElementById('calendarViewSection');
@@ -803,7 +793,7 @@ const staffHtml = `<!DOCTYPE html>
             const year = currentCalendarDate.getFullYear();
             const month = currentCalendarDate.getMonth();
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            document.getElementById('calendarMonthTitle').textContent = `${monthNames[month]} ${year}`;
+            document.getElementById('calendarMonthTitle').textContent = \`\${monthNames[month]} \${year}\`;
 
             const grid = document.getElementById('calendarDaysGrid');
             grid.innerHTML = '';
@@ -815,15 +805,15 @@ const staffHtml = `<!DOCTYPE html>
 
             for (let i = firstDayIndex; i > 0; i--) {
                 const dayNum = prevTotalDays - i + 1;
-                grid.innerHTML += `<div class="calendar-cell other-month"><div class="fw-bold mb-1">${dayNum}</div></div>`;
+                grid.innerHTML += \`<div class="calendar-cell other-month"><div class="fw-bold mb-1">\${dayNum}</div></div>\`;
             }
 
             for (let day = 1; day <= totalDays; day++) {
                 const formattedMonth = String(month + 1).padStart(2, '0');
                 const formattedDay = String(day).padStart(2, '0');
-                const dateStr = `${year}-${formattedMonth}-${formattedDay}`;
+                const dateStr = \`\${year}-\${formattedMonth}-\${formattedDay}\`;
 
-                let cellHtml = `<div class="calendar-cell"><div class="fw-bold mb-1 text-dark">${day}</div>`;
+                let cellHtml = \`<div class="calendar-cell"><div class="fw-bold mb-1 text-dark">\${day}</div>\`;
                 
                 const bookingsOnDay = (appState.bookings || []).filter(b => {
                     if (userRole === 'superadmin') return b.date === dateStr;
@@ -832,17 +822,17 @@ const staffHtml = `<!DOCTYPE html>
 
                 bookingsOnDay.forEach(b => {
                     const globalIdx = (appState.bookings || []).findIndex(item => item.confirmationCode === b.confirmationCode);
-                    cellHtml += `<span class="booking-badge bg-primary text-white" onclick="openBookingActionModal(${globalIdx})" title="${b.time} - ${b.firstName} ${b.lastName} (Bldg ${b.building})">${b.time} Bldg ${b.building} (${b.firstName})</span>`;
+                    cellHtml += \`<span class="booking-badge bg-primary text-white" onclick="openBookingActionModal(\${globalIdx})" title="\${b.time} - \${b.firstName} \${b.lastName} (Bldg \${b.building})">\${b.time} Bldg \${b.building} (\${b.firstName})</span>\`;
                 });
 
-                cellHtml += `</div>`;
+                cellHtml += \`</div>\`;
                 grid.innerHTML += cellHtml;
             }
 
             const totalCellsSoFar = firstDayIndex + totalDays;
             const remainingCells = (totalCellsSoFar % 7 === 0) ? 0 : 7 - (totalCellsSoFar % 7);
             for (let i = 1; i <= remainingCells; i++) {
-                grid.innerHTML += `<div class="calendar-cell other-month"><div class="fw-bold mb-1">${i}</div></div>`;
+                grid.innerHTML += \`<div class="calendar-cell other-month"><div class="fw-bold mb-1">\${i}</div></div>\`;
             }
         }
 
@@ -852,28 +842,28 @@ const staffHtml = `<!DOCTYPE html>
                 container.innerHTML = 'Current Buildings: None';
                 return;
             }
-            container.innerHTML = `<strong>Registered Buildings:</strong> ${appState.camp_buildings[staffCamp].join(', ')}`;
+            container.innerHTML = \`<strong>Registered Buildings:</strong> \${appState.camp_buildings[staffCamp].join(', ')}\`;
         }
 
         function renderCampManagers() {
             const tbody = document.getElementById('campManagersTableBody');
             if (!tbody) return;
             const managers = (appState.staff_users || []).filter(u => u.camp === staffCamp && u.role === 'staff');
-            tbody.innerHTML = managers.length === 0 ? `<tr><td colspan="3" class="text-muted text-center">No managers found for this camp.</td></tr>` : '';
+            tbody.innerHTML = managers.length === 0 ? \`<tr><td colspan="3" class="text-muted text-center">No managers found for this camp.</td></tr>\` : '';
             
             managers.forEach((m) => {
                 const globalIdx = appState.staff_users.findIndex(u => u.username === m.username);
                 const bldgs = m.buildings ? m.buildings.join(', ') : 'None';
-                tbody.innerHTML += `
+                tbody.innerHTML += \`
                     <tr>
-                        <td class="fw-bold">${m.username}</td>
-                        <td>Bldg ${bldgs}</td>
+                        <td class="fw-bold">\${m.username}</td>
+                        <td>Bldg \${bldgs}</td>
                         <td class="text-end">
-                            <button class="btn btn-outline-warning btn-sm py-0 px-1" onclick="campAdminResetPassword(${globalIdx})" title="Reset Password"><i class="bi bi-key"></i></button>
-                            <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="campAdminDeleteManager(${globalIdx})" title="Delete"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-outline-warning btn-sm py-0 px-1" onclick="campAdminResetPassword(\${globalIdx})" title="Reset Password"><i class="bi bi-key"></i></button>
+                            <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="campAdminDeleteManager(\${globalIdx})" title="Delete"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>
-                `;
+                \`;
             });
         }
 
@@ -905,12 +895,12 @@ const staffHtml = `<!DOCTYPE html>
                 return;
             }
             appState.camp_buildings[staffCamp].forEach(b => {
-                container.innerHTML += `
+                container.innerHTML += \`
                     <div class="form-check">
-                        <input class="form-check-input ca-bldg-chk" type="checkbox" value="${b}" id="ca_chk_${b}">
-                        <label class="form-check-label" for="ca_chk_${b}">Bldg ${b}</label>
+                        <input class="form-check-input ca-bldg-chk" type="checkbox" value="\${b}" id="ca_chk_\${b}">
+                        <label class="form-check-label" for="ca_chk_\${b}">Bldg \${b}</label>
                     </div>
-                `;
+                \`;
             });
         }
 
@@ -979,7 +969,7 @@ const staffHtml = `<!DOCTYPE html>
             tbody.innerHTML = '';
 
             if (!appState.bookings || appState.bookings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No appointments found in the system.</td></tr>`;
+                tbody.innerHTML = \`<tr><td colspan="7" class="text-center text-muted py-4">No appointments found in the system.</td></tr>\`;
                 return;
             }
 
@@ -990,28 +980,28 @@ const staffHtml = `<!DOCTYPE html>
             });
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No appointments found.</td></tr>`;
+                tbody.innerHTML = \`<tr><td colspan="7" class="text-center text-muted py-4">No appointments found.</td></tr>\`;
                 return;
             }
 
             filtered.forEach(b => {
                 const globalIdx = appState.bookings.findIndex(item => item.confirmationCode === b.confirmationCode);
-                tbody.innerHTML += `
+                tbody.innerHTML += \`
                     <tr>
-                        <td><span class="fw-bold text-primary">${b.confirmationCode}</span></td>
-                        <td>${b.firstName} ${b.lastName}<br><small class="text-muted">${b.email || ''}</small></td>
-                        <td>${b.branch}</td>
-                        <td>Bldg ${b.building} (${b.camp})</td>
-                        <td>${b.date} @ ${b.time}</td>
-                        <td>${b.purpose}</td>
+                        <td><span class="fw-bold text-primary">\${b.confirmationCode}</span></td>
+                        <td>\${b.firstName} \${b.lastName}<br><small class="text-muted">\${b.email || ''}</small></td>
+                        <td>\${b.branch}</td>
+                        <td>Bldg \${b.building} (\${b.camp})</td>
+                        <td>\${b.date} @ \${b.time}</td>
+                        <td>\${b.purpose}</td>
                         <td class="text-end">
                             <div class="d-flex flex-column gap-2">
-                                <input type="text" class="form-control form-control-sm" placeholder="Add manager notes..." value="${b.staffNotes || ''}" onchange="updateNotes('${b.confirmationCode}', this.value)">
-                                <button class="btn btn-outline-primary btn-sm fw-bold" onclick="openBookingActionModal(${globalIdx})"><i class="bi bi-gear me-1"></i> Full Details</button>
+                                <input type="text" class="form-control form-control-sm" placeholder="Add manager notes..." value="\${b.staffNotes || ''}" onchange="updateNotes('\${b.confirmationCode}', this.value)">
+                                <button class="btn btn-outline-primary btn-sm fw-bold" onclick="openBookingActionModal(\${globalIdx})"><i class="bi bi-gear me-1"></i> Full Details</button>
                             </div>
                         </td>
                     </tr>
-                `;
+                \`;
             });
         }
 
@@ -1030,15 +1020,15 @@ const staffHtml = `<!DOCTYPE html>
             document.getElementById('rescheduleDate').value = b.date || '';
             document.getElementById('rescheduleTime').value = b.time || '';
 
-            document.getElementById('modalBookingDetails').innerHTML = `
+            document.getElementById('modalBookingDetails').innerHTML = \`
                 <div class="row">
-                    <div class="col-6 mb-1"><strong>Confirmation Code:</strong> <span class="text-primary">${b.confirmationCode}</span></div>
-                    <div class="col-12 mb-1"><strong>Guest:</strong> ${b.firstName} ${b.lastName} (${b.branch})</div>
-                    <div class="col-12 mb-1"><strong>Email:</strong> ${b.email || 'N/A'}</div>
-                    <div class="col-12 mb-1"><strong>Location:</strong> ${b.camp} - Bldg ${b.building}</div>
-                    <div class="col-12 mb-0"><strong>Purpose:</strong> ${b.purpose}</div>
+                    <div class="col-6 mb-1"><strong>Confirmation Code:</strong> <span class="text-primary">\${b.confirmationCode}</span></div>
+                    <div class="col-12 mb-1"><strong>Guest:</strong> \${b.firstName} \${b.lastName} (\${b.branch})</div>
+                    <div class="col-12 mb-1"><strong>Email:</strong> \${b.email || 'N/A'}</div>
+                    <div class="col-12 mb-1"><strong>Location:</strong> \${b.camp} - Bldg \${b.building}</div>
+                    <div class="col-12 mb-0"><strong>Purpose:</strong> \${b.purpose}</div>
                 </div>
-            `;
+            \`;
             const modal = new bootstrap.Modal(document.getElementById('bookingActionModal'));
             modal.show();
         }
@@ -1084,12 +1074,7 @@ const staffHtml = `<!DOCTYPE html>
 </body>
 </html>`;
 
-// Write runtime files
-fs.writeFileSync(path.join(publicDir, 'index.html'), indexHtml);
-fs.writeFileSync(path.join(publicDir, 'login.html'), loginHtml);
-fs.writeFileSync(path.join(publicDir, 'staff_dashboard.html'), staffHtml);
-
-// Middleware & Session cookie helper setup
+// Middleware setup
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -1103,8 +1088,6 @@ app.use((req, res, next) => {
     }
     next();
 });
-
-app.use(express.static(publicDir));
 
 // In-Memory Database State with default superadmin
 let appState = {
@@ -1193,20 +1176,20 @@ app.get('/api/session', (req, res) => {
     }
 });
 
-// Route Handlers
+// Route Handlers (Serving from memory variables to prevent Render read-only disk crashes)
+app.get('/', (req, res) => {
+    res.send(indexHtml);
+});
+
 app.get('/login', (req, res) => {
-    res.sendFile(path.join(publicDir, 'login.html'));
+    res.send(loginHtml);
 });
 
 app.get('/dashboard', (req, res) => {
     if (!req.user) {
         return res.redirect('/login');
     }
-    res.sendFile(path.join(publicDir, 'staff_dashboard.html'));
-});
-
-app.get('/staff', (req, res) => {
-    res.redirect('/login');
+    res.send(staffHtml);
 });
 
 app.get('/logout', (req, res) => {
@@ -1217,10 +1200,6 @@ app.get('/logout', (req, res) => {
     }
     res.setHeader('Set-Cookie', 'session_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
     res.redirect('/login');
-});
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(publicDir, 'index.html'));
 });
 
 app.listen(PORT, () => {
