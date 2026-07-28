@@ -1283,3 +1283,265 @@ app.get('/logout', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Unaccompanied Housing server running on port ${PORT}`);
 });
+// ==========================================
+// 1. In-Memory Stores for Bookings & Rules
+// ==========================================
+let availabilityRules = [];
+let bookings = [];
+
+// ==========================================
+// 2. Permission Verification Middleware
+// ==========================================
+function verifyAvailabilityPermission(req, res, next) {
+    const user = req.session && req.session.user;
+    if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Superadmins have global system access
+    if (user.role === 'Superadmin') {
+        return next();
+    }
+
+    const targetCampId = req.body.campId || req.query.campId;
+    const targetBuildingId = req.body.buildingId || req.query.buildingId;
+
+    if (user.role === 'Camp Admin') {
+        if (targetCampId && String(targetCampId) === String(user.assignedCampId)) {
+            return next();
+        }
+        return res.status(403).json({ error: "Forbidden: Outside camp jurisdiction" });
+    }
+
+    if (user.role === 'UH Building Manager') {
+        if (targetBuildingId && user.assignedBuildingIds && user.assignedBuildingIds.map(String).includes(String(targetBuildingId))) {
+            return next();
+        }
+        return res.status(403).json({ error: "Forbidden: Outside building jurisdiction" });
+    }
+
+    return res.status(403).json({ error: "Forbidden: Invalid role permissions" });
+}
+
+// ==========================================
+// 3. Availability Management Endpoints
+// ==========================================
+
+// GET availability rules with optional filters
+app.get('/api/availability', (req, res) => {
+    const { campId, buildingId, userId } = req.query;
+    let results = availabilityRules.filter(r => r.isActive);
+
+    if (campId) results = results.filter(r => String(r.campId) === String(campId));
+    if (buildingId) results = results.filter(r => String(r.buildingId) === String(buildingId));
+    if (userId) results = results.filter(r => String(r.userId) === String(userId));
+
+    res.json(results);
+});
+
+// POST to set or update availability rules (Restricted to authorized roles)
+app.post('/api/availability', verifyAvailabilityPermission, (req, res) => {
+    const { campId, buildingId, dayOfWeek, specificDate, startTime, endTime, slotDurationMinutes } = req.body;
+    const user = req.session.user;
+
+    const newRule = {
+        id: Date.now(),
+        userId: user.id,
+        role: user.role,
+        campId: campId ? String(campId) : null,
+        buildingId: buildingId ? String(buildingId) : null,
+        dayOfWeek: dayOfWeek !== undefined && dayOfWeek !== null ? parseInt(dayOfWeek) : null,
+        specificDate: specificDate || null,
+        startTime: startTime || "08:00",
+        endTime: endTime || "16:00",
+        slotDurationMinutes: slotDurationMinutes ? parseInt(slotDurationMinutes, 10) : 30,
+        isActive: true
+    };
+
+    availabilityRules.push(newRule);
+    res.status(201).json(newRule);
+});
+
+// DELETE to remove an availability rule
+app.delete('/api/availability/:id', (req, res) => {
+    const ruleId = parseInt(req.params.id, 10);
+    const user = req.session && req.session.user;
+
+    if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const ruleIndex = availabilityRules.findIndex(r => r.id === ruleId);
+    if (ruleIndex === -1) {
+        return res.status(404).json({ error: "Rule not found" });
+    }
+
+    const rule = availabilityRules[ruleIndex];
+
+    if (user.role !== 'Superadmin') {
+        if (user.role === 'Camp Admin' && String(rule.campId) !== String(user.assignedCampId)) {
+            return res.status(403).json({ error: "Forbidden" });
+        }
+        if (user.role === 'UH Building Manager' && (!user.assignedBuildingIds || !user.assignedBuildingIds.map(String).includes(String(rule.buildingId)))) {
+            return res.status(403).json({ error: "Forbidden" });
+        }
+    }
+
+    availabilityRules.splice(ruleIndex, 1);
+    res.json({ message: "Availability rule deleted successfully" });
+});
+
+// ==========================================
+// 4. Booking Page Synchronization Endpoints
+// ==========================================
+
+// Helper: Generate granular intervals between configured start and end times
+function generateTimeSlots(startTime, endTime, durationMinutes) {
+    const slots = [];
+    let [startHour, startMin] = startTime.split(':').map(Number);
+    let [endHour, endMin] = endTime.split(':').map(Number);
+
+    let currentTotalMinutes = startHour * 60 + startMin;
+    const endTotalMinutes = endHour * 60 + endMin;
+
+    while (currentTotalMinutes + durationMinutes <= endTotalMinutes) {
+        let h = Math.floor(currentTotalMinutes / 60).toString().padStart(2, '0');
+        let m = (currentTotalMinutes % 60).toString().padStart(2, '0');
+        let slotStart = `${h}:${m}`;
+
+        currentTotalMinutes += durationMinutes;
+        let eh = Math.floor(currentTotalMinutes / 60).toString().padStart(2, '0');
+        let em = (currentTotalMinutes % 60).toString().padStart(2, '0');
+        let slotEnd = `${eh}:${em}`;
+
+        slots.push({ startTime: slotStart, endTime: slotEnd });
+    }
+    return slots;
+}
+
+// GET available slots synchronized for the booking form based on camp and building filters
+app.get('/api/booking-slots', (req, res) => {
+    const { campId, buildingId, date } = req.query;
+
+    if (!campId || !buildingId || !date) {
+        return res.status(400).json({ error: "Missing required query parameters: campId, buildingId, date" });
+    }
+
+    const targetDateObj = new Date(date);
+    const dayOfWeek = targetDateObj.getDay(); // 0 = Sunday, 6 = Saturday
+
+    // 1. Check for a specific date override first
+    let matchingRule = availabilityRules.find(r => 
+        r.isActive && 
+        String(r.campId) === String(campId) && 
+        String(r.buildingId) === String(buildingId) && 
+        r.specificDate === date
+    );
+
+    // 2. Fall back to recurring weekly schedule if no date override exists
+    if (!matchingRule) {
+        matchingRule = availabilityRules.find(r => 
+            r.isActive && 
+            String(r.campId) === String(campId) && 
+            String(r.buildingId) === String(buildingId) && 
+            r.dayOfWeek === dayOfWeek && 
+            !r.specificDate
+        );
+    }
+
+    if (!matchingRule) {
+        return res.json({ availableSlots: [], message: "No active availability configured for this building and date." });
+    }
+
+    // Generate theoretical slots from rule
+    let slots = generateTimeSlots(matchingRule.startTime, matchingRule.endTime, matchingRule.slotDurationMinutes);
+
+    // Filter out already booked slots for that building and date
+    const bookedSlotsForDate = bookings.filter(b => 
+        String(b.campId) === String(campId) && 
+        String(b.buildingId) === String(buildingId) && 
+        b.date === date && 
+        b.status !== 'Cancelled'
+    );
+
+    const availableSlots = slots.filter(slot => {
+        return !bookedSlotsForDate.some(b => b.startTime === slot.startTime);
+    });
+
+    res.json({
+        ruleId: matchingRule.id,
+        campId,
+        buildingId,
+        date,
+        availableSlots
+    });
+});
+
+// POST to submit a booking (validates live against manager availability rules)
+app.post('/api/bookings', (req, res) => {
+    const { campId, buildingId, date, startTime, residentName, contactInfo } = req.body;
+
+    if (!campId || !buildingId || !date || !startTime || !residentName) {
+        return res.status(400).json({ error: "Missing required booking fields" });
+    }
+
+    const targetDateObj = new Date(date);
+    const dayOfWeek = targetDateObj.getDay();
+
+    let matchingRule = availabilityRules.find(r => 
+        r.isActive && 
+        String(r.campId) === String(campId) && 
+        String(r.buildingId) === String(buildingId) && 
+        r.specificDate === date
+    );
+
+    if (!matchingRule) {
+        matchingRule = availabilityRules.find(r => 
+            r.isActive && 
+            String(r.campId) === String(campId) && 
+            String(r.buildingId) === String(buildingId) && 
+            r.dayOfWeek === dayOfWeek && 
+            !r.specificDate
+        );
+    }
+
+    if (!matchingRule) {
+        return res.status(400).json({ error: "Selected time is outside active operating hours or unavailable." });
+    }
+
+    const slots = generateTimeSlots(matchingRule.startTime, matchingRule.endTime, matchingRule.slotDurationMinutes);
+    const selectedSlot = slots.find(s => s.startTime === startTime);
+
+    if (!selectedSlot) {
+        return res.status(400).json({ error: "Invalid time slot selected for this building." });
+    }
+
+    // Prevent double booking
+    const existingBooking = bookings.find(b => 
+        String(b.campId) === String(campId) && 
+        String(b.buildingId) === String(buildingId) && 
+        b.date === date && 
+        b.startTime === startTime && 
+        b.status !== 'Cancelled'
+    );
+
+    if (existingBooking) {
+        return res.status(409).json({ error: "This time slot has already been booked." });
+    }
+
+    const newBooking = {
+        id: Date.now(),
+        campId: String(campId),
+        buildingId: String(buildingId),
+        date,
+        startTime: selectedSlot.startTime,
+        endTime: selectedSlot.endTime,
+        residentName,
+        contactInfo: contactInfo || "",
+        status: 'Confirmed',
+        createdAt: new Date().toISOString()
+    };
+
+    bookings.push(newBooking);
+    res.status(201).json({ message: "Booking confirmed successfully", booking: newBooking });
+});
