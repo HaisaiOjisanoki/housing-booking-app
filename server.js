@@ -312,17 +312,18 @@ const staffHtml = `<!DOCTYPE html>
             <div class="col-md-12">
                 <div class="card shadow-sm p-4 bg-white border border-danger">
                     <h5 class="fw-bold mb-3 text-danger"><i class="bi bi-shield-fill-exclamation me-2"></i>Superadmin Master Controls</h5>
-                    <p class="text-muted small">Global administration: Register camps, configure building numbers across all camps, and create or manage Camp Admins & UH Building Managers.</p>
+                    <p class="text-muted small">Global administration: Add/remove camps, manage building numbers across all camps, and create or manage staff accounts with password reset capabilities.</p>
                     
                     <div class="row g-4">
                         <div class="col-md-6">
-                            <h6 class="fw-bold text-secondary">Add New Camp Location</h6>
-                            <div class="input-group mb-3">
+                            <h6 class="fw-bold text-secondary">Manage Camp Locations</h6>
+                            <div class="input-group mb-2">
                                 <input type="text" id="superNewCampInput" class="form-control" placeholder="Camp Name (e.g., Camp Hansen)">
                                 <button class="btn btn-dark fw-bold" onclick="superAdminAddCamp()">Add Camp</button>
                             </div>
+                            <div id="superCampsList" class="small text-muted mb-3 d-flex flex-wrap gap-1"></div>
 
-                            <h6 class="fw-bold text-secondary">Assign Buildings to Any Camp</h6>
+                            <h6 class="fw-bold text-secondary">Manage Buildings for Camp</h6>
                             <div class="mb-2">
                                 <select id="superCampTargetSelect" class="form-select form-select-sm mb-2" onchange="superAdminUpdateCampBldgPreview()">
                                     <option value="">-- Select Camp --</option>
@@ -393,7 +394,7 @@ const staffHtml = `<!DOCTYPE html>
                     
                     <div class="row g-4">
                         <div class="col-md-6">
-                            <h6 class="fw-bold text-secondary">Add New Building Number</h6>
+                            <h6 class="fw-bold text-secondary">Add / Remove Building Numbers</h6>
                             <div class="input-group mb-2">
                                 <input type="text" id="newBuildingInput" class="form-control" placeholder="Building # (e.g., 1004)">
                                 <button class="btn btn-success fw-bold" onclick="addBuildingToCamp()">Add Building</button>
@@ -602,6 +603,16 @@ const staffHtml = `<!DOCTYPE html>
                 saCampSelect.innerHTML += \`<option value="\${c}">\${c}</option>\`;
             });
 
+            const campsListContainer = document.getElementById('superCampsList');
+            if (campsListContainer) {
+                let html = '';
+                (appState.camps || []).forEach(c => {
+                    html += \`<span class="badge bg-secondary me-1 mb-1">\${c} <a href="javascript:void(0)" class="text-white ms-1 text-decoration-none" onclick="superAdminDeleteCamp('\${c}')">&times;</a></span>\`;
+                });
+                campsListContainer.innerHTML = html || 'No camps registered.';
+            }
+
+            superAdminUpdateCampBldgPreview();
             renderSuperAdminUsersTable();
         }
 
@@ -628,6 +639,19 @@ const staffHtml = `<!DOCTYPE html>
             }
         }
 
+        async function superAdminDeleteCamp(campName) {
+            if (!confirm(\`Permanently delete \${campName} and all its associated buildings?\`)) return;
+            appState.camps = (appState.camps || []).filter(c => c !== campName);
+            if (appState.camp_buildings) {
+                delete appState.camp_buildings[campName];
+            }
+            const res = await saveState();
+            if (res) {
+                alert('Camp deleted successfully!');
+                initSuperAdminPanel();
+            }
+        }
+
         function superAdminUpdateCampBldgPreview() {
             const camp = document.getElementById('superCampTargetSelect').value;
             const container = document.getElementById('superCampBldgsList');
@@ -635,7 +659,16 @@ const staffHtml = `<!DOCTYPE html>
                 container.innerHTML = 'Buildings: None';
                 return;
             }
-            container.innerHTML = \`<strong>Buildings in \${camp}:</strong> \${appState.camp_buildings[camp].join(', ') || 'None'}\`;
+            const bldgs = appState.camp_buildings[camp];
+            if (bldgs.length === 0) {
+                container.innerHTML = 'Buildings: None';
+                return;
+            }
+            let html = '<strong>Buildings:</strong> ';
+            bldgs.forEach(b => {
+                html += \`<span class="badge bg-light text-dark border me-1 mb-1">Bldg \${b} <a href="javascript:void(0)" class="text-danger ms-1 text-decoration-none" onclick="superAdminDeleteBuilding('\${camp}', '\${b}')">&times;</a></span>\`;
+            });
+            container.innerHTML = html;
         }
 
         async function superAdminAddBuilding() {
@@ -657,6 +690,18 @@ const staffHtml = `<!DOCTYPE html>
             if (res) {
                 alert('Building added successfully!');
                 superAdminUpdateCampBldgPreview();
+            }
+        }
+
+        async function superAdminDeleteBuilding(camp, bldg) {
+            if (!confirm(\`Delete building \${bldg} from \${camp}?\`)) return;
+            if (appState.camp_buildings && appState.camp_buildings[camp]) {
+                appState.camp_buildings[camp] = appState.camp_buildings[camp].filter(b => b !== bldg);
+            }
+            const res = await saveState();
+            if (res) {
+                superAdminUpdateCampBldgPreview();
+                superAdminCampChanged();
             }
         }
 
@@ -748,11 +793,23 @@ const staffHtml = `<!DOCTYPE html>
                         <td>\${u.camp || 'N/A'}</td>
                         <td>\${u.buildings ? u.buildings.join(', ') : 'All / None'}</td>
                         <td class="text-end">
+                            <button class="btn btn-outline-warning btn-sm py-0 px-1 me-1" onclick="superAdminResetPassword(\${idx})" title="Reset Password"><i class="bi bi-key"></i></button>
                             <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="superAdminDeleteUser(\${idx})" title="Delete User"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>
                 \`;
             });
+        }
+
+        async function superAdminResetPassword(idx) {
+            const newPass = prompt("Enter new password for this user:");
+            if (!newPass) return;
+            appState.staff_users[idx].password = newPass;
+            const res = await saveState();
+            if (res) {
+                alert('Password reset successfully!');
+                renderSuperAdminUsersTable();
+            }
         }
 
         async function superAdminDeleteUser(idx) {
@@ -842,7 +899,28 @@ const staffHtml = `<!DOCTYPE html>
                 container.innerHTML = 'Current Buildings: None';
                 return;
             }
-            container.innerHTML = \`<strong>Registered Buildings:</strong> \${appState.camp_buildings[staffCamp].join(', ')}\`;
+            const bldgs = appState.camp_buildings[staffCamp];
+            if (bldgs.length === 0) {
+                container.innerHTML = 'Current Buildings: None';
+                return;
+            }
+            let html = '<strong>Registered Buildings:</strong> ';
+            bldgs.forEach(b => {
+                html += \`<span class="badge bg-light text-dark border me-1 mb-1">Bldg \${b} <a href="javascript:void(0)" class="text-danger ms-1 text-decoration-none" onclick="campAdminDeleteBuilding('\${b}')">&times;</a></span>\`;
+            });
+            container.innerHTML = html;
+        }
+
+        async function campAdminDeleteBuilding(bldg) {
+            if (!confirm(\`Delete building \${bldg} from \${staffCamp}?\`)) return;
+            if (appState.camp_buildings && appState.camp_buildings[staffCamp]) {
+                appState.camp_buildings[staffCamp] = appState.camp_buildings[staffCamp].filter(b => b !== bldg);
+            }
+            const res = await saveState();
+            if (res) {
+                renderCampBuildings();
+                renderCaBuildingCheckboxes();
+            }
         }
 
         function renderCampManagers() {
@@ -859,7 +937,7 @@ const staffHtml = `<!DOCTYPE html>
                         <td class="fw-bold">\${m.username}</td>
                         <td>Bldg \${bldgs}</td>
                         <td class="text-end">
-                            <button class="btn btn-outline-warning btn-sm py-0 px-1" onclick="campAdminResetPassword(\${globalIdx})" title="Reset Password"><i class="bi bi-key"></i></button>
+                            <button class="btn btn-outline-warning btn-sm py-0 px-1 me-1" onclick="campAdminResetPassword(\${globalIdx})" title="Reset Password"><i class="bi bi-key"></i></button>
                             <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="campAdminDeleteManager(\${globalIdx})" title="Delete"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>
