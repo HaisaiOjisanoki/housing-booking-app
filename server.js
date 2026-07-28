@@ -277,7 +277,7 @@ const loginHtml = `<!DOCTYPE html>
 </body>
 </html>`;
 
-// 3. ORIGINAL STAFF MANAGEMENT DASHBOARD (staff_dashboard.html)[cite: 2]
+// 3. STAFF MANAGEMENT DASHBOARD (staff_dashboard.html) with Superadmin & Camp Admin capabilities[cite: 2]
 const staffHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -315,6 +315,84 @@ const staffHtml = `<!DOCTYPE html>
 
     <div class="container py-4">
         
+        <!-- SUPERADMIN GLOBAL CONTROLS SECTION -->
+        <div id="superAdminSection" class="row mb-4" style="display: none;">
+            <div class="col-md-12">
+                <div class="card shadow-sm p-4 bg-white border border-danger">
+                    <h5 class="fw-bold mb-3 text-danger"><i class="bi bi-shield-fill-exclamation me-2"></i>Superadmin Master Controls</h5>
+                    <p class="text-muted small">Global administration: Register camps, configure building numbers across all camps, and create or manage Camp Admins & UH Building Managers.</p>
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-secondary">Add New Camp Location</h6>
+                            <div class="input-group mb-3">
+                                <input type="text" id="superNewCampInput" class="form-control" placeholder="Camp Name (e.g., Camp Hansen)">
+                                <button class="btn btn-dark fw-bold" onclick="superAdminAddCamp()">Add Camp</button>
+                            </div>
+
+                            <h6 class="fw-bold text-secondary">Assign Buildings to Any Camp</h6>
+                            <div class="mb-2">
+                                <select id="superCampTargetSelect" class="form-select form-select-sm mb-2" onchange="superAdminUpdateCampBldgPreview()">
+                                    <option value="">-- Select Camp --</option>
+                                </select>
+                                <div class="input-group mb-2">
+                                    <input type="text" id="superNewBldgInput" class="form-control form-control-sm" placeholder="Building # (e.g., 5704)">
+                                    <button class="btn btn-success btn-sm fw-bold" onclick="superAdminAddBuilding()">Add Building</button>
+                                </div>
+                                <div id="superCampBldgsList" class="small text-muted mb-3"></div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-secondary">Create System Staff User (Superadmin / Camp Admin / Manager)</h6>
+                            <form onsubmit="superAdminCreateUser(event)" class="border p-3 rounded bg-light">
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6">
+                                        <input type="text" id="saUsername" class="form-control form-control-sm" required placeholder="Username">
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="password" id="saPassword" class="form-control form-control-sm" required placeholder="Password">
+                                    </div>
+                                </div>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6">
+                                        <select id="saRole" class="form-select form-select-sm" onchange="superAdminRoleChanged()">
+                                            <option value="staff">UH Building Manager</option>
+                                            <option value="camp_admin">Camp Admin</option>
+                                            <option value="superadmin">Superadmin</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <select id="saCamp" class="form-select form-select-sm" onchange="superAdminCampChanged()">
+                                            <option value="">-- Select Camp --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mb-2" id="saBuildingsContainer">
+                                    <label class="form-label small fw-bold mb-1">Assigned Buildings:</label>
+                                    <div id="saBuildingCheckboxes" class="d-flex flex-wrap gap-2 small border p-2 bg-white rounded" style="max-height: 90px; overflow-y: auto;"></div>
+                                </div>
+                                <button type="submit" class="btn btn-danger btn-sm fw-bold w-100">Create Staff Account</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <h6 class="fw-bold text-secondary">All System User Accounts</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr><th>Username</th><th>Role</th><th>Camp</th><th>Buildings</th><th class="text-end">Actions</th></tr>
+                                </thead>
+                                <tbody id="superAdminUsersTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CAMP ADMIN CONTROLS SECTION -->
         <div id="campAdminSection" class="row mb-4" style="display: none;">
             <div class="col-md-12">
                 <div class="card shadow-sm p-4 bg-white">
@@ -477,38 +555,225 @@ const staffHtml = `<!DOCTYPE html>
                 staffAssignedBuildings = sessionUser.buildings || [];
                 userRole = sessionUser.role;
 
-                // Header data rendering
-                document.getElementById('navCampInfo').innerHTML = \`\${staffCamp} \${userRole === 'camp_admin' ? '(All Camp Bldgs)' : '(Bldgs: ' + staffAssignedBuildings.join(', ') + ')'}\`;
-                document.getElementById('navUserInfo').innerHTML = \`Logged in as: <strong>\${sessionUser.username}</strong> (\${userRole === 'camp_admin' ? 'Camp Admin' : 'UH Building Manager'})\`;
+                let roleLabel = 'UH Building Manager';
+                if (userRole === 'superadmin') roleLabel = 'Superadmin';
+                else if (userRole === 'camp_admin') roleLabel = 'Camp Admin';
 
-                if (userRole === 'camp_admin') {
-                    document.getElementById('campAdminSection').style.display = 'block';
-                    document.getElementById('adminCampName').textContent = staffCamp;
-                }
+                let scopeDisplay = `(Bldgs: ${staffAssignedBuildings.join(', ')})`;
+                if (userRole === 'superadmin') scopeDisplay = '(All Camps & Buildings)';
+                else if (userRole === 'camp_admin') scopeDisplay = '(All Camp Bldgs)';
+
+                document.getElementById('navCampInfo').innerHTML = `${staffCamp} ${scopeDisplay}`;
+                document.getElementById('navUserInfo').innerHTML = `Logged in as: <strong>${sessionUser.username}</strong> (${roleLabel})`;
 
                 const res = await fetch('/api/state');
                 appState = await res.json();
-                
-                renderStaffAppointments();
-                renderCalendar();
-                if (userRole === 'camp_admin') {
+
+                if (userRole === 'superadmin') {
+                    document.getElementById('superAdminSection').style.display = 'block';
+                    initSuperAdminPanel();
+                } else if (userRole === 'camp_admin') {
+                    document.getElementById('campAdminSection').style.display = 'block';
+                    document.getElementById('adminCampName').textContent = staffCamp;
                     renderCampBuildings();
                     renderCaBuildingCheckboxes();
                     renderCampManagers();
                 }
+
+                renderStaffAppointments();
+                renderCalendar();
             } catch (err) {
                 console.error("Error loading session or state:", err);
             }
         }
 
         function getEffectiveBuildings() {
-            if (userRole === 'camp_admin') {
+            if (userRole === 'superadmin') {
+                let all = [];
+                Object.values(appState.camp_buildings || {}).forEach(arr => all.push(...arr));
+                return all;
+            } else if (userRole === 'camp_admin') {
                 return (appState.camp_buildings && appState.camp_buildings[staffCamp]) ? appState.camp_buildings[staffCamp] : [];
             } else {
                 return staffAssignedBuildings;
             }
         }
 
+        // --- SUPERADMIN PANEL LOGIC ---
+        function initSuperAdminPanel() {
+            const campSelect = document.getElementById('superCampTargetSelect');
+            campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
+            const saCampSelect = document.getElementById('saCamp');
+            saCampSelect.innerHTML = '<option value="">-- Select Camp --</option>';
+
+            (appState.camps || []).forEach(c => {
+                campSelect.innerHTML += `<option value="${c}">${c}</option>`;
+                saCampSelect.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+
+            renderSuperAdminUsersTable();
+        }
+
+        async function superAdminAddCamp() {
+            const input = document.getElementById('superNewCampInput');
+            const campName = input.value.trim();
+            if (!campName) return;
+
+            if (!appState.camps) appState.camps = [];
+            if (appState.camps.includes(campName)) {
+                alert('Camp already exists.');
+                return;
+            }
+
+            appState.camps.push(campName);
+            if (!appState.camp_buildings) appState.camp_buildings = {};
+            appState.camp_buildings[campName] = [];
+            input.value = '';
+
+            const res = await saveState();
+            if (res) {
+                alert('Camp created successfully!');
+                initSuperAdminPanel();
+            }
+        }
+
+        function superAdminUpdateCampBldgPreview() {
+            const camp = document.getElementById('superCampTargetSelect').value;
+            const container = document.getElementById('superCampBldgsList');
+            if (!camp || !appState.camp_buildings || !appState.camp_buildings[camp]) {
+                container.innerHTML = 'Buildings: None';
+                return;
+            }
+            container.innerHTML = `<strong>Buildings in ${camp}:</strong> ${appState.camp_buildings[camp].join(', ') || 'None'}`;
+        }
+
+        async function superAdminAddBuilding() {
+            const camp = document.getElementById('superCampTargetSelect').value;
+            const bldgInput = document.getElementById('superNewBldgInput');
+            const bldg = bldgInput.value.trim();
+            if (!camp) return alert('Please select a camp first.');
+            if (!bldg) return alert('Please enter a building number.');
+
+            if (!appState.camp_buildings[camp]) appState.camp_buildings[camp] = [];
+            if (appState.camp_buildings[camp].includes(bldg)) {
+                alert('Building already exists for this camp.');
+                return;
+            }
+
+            appState.camp_buildings[camp].push(bldg);
+            bldgInput.value = '';
+            const res = await saveState();
+            if (res) {
+                alert('Building added successfully!');
+                superAdminUpdateCampBldgPreview();
+            }
+        }
+
+        function superAdminRoleChanged() {
+            const role = document.getElementById('saRole').value;
+            const container = document.getElementById('saBuildingsContainer');
+            if (role === 'superadmin') {
+                container.style.display = 'none';
+            } else {
+                container.style.display = 'block';
+                superAdminCampChanged();
+            }
+        }
+
+        function superAdminCampChanged() {
+            const camp = document.getElementById('saCamp').value;
+            const container = document.getElementById('saBuildingCheckboxes');
+            container.innerHTML = '';
+            if (!camp || !appState.camp_buildings || !appState.camp_buildings[camp] || appState.camp_buildings[camp].length === 0) {
+                container.innerHTML = '<span class="text-muted">No buildings available for this camp.</span>';
+                return;
+            }
+            appState.camp_buildings[camp].forEach(b => {
+                container.innerHTML += `
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input sa-bldg-chk" type="checkbox" value="${b}" id="sa_chk_${b}">
+                        <label class="form-check-label" for="sa_chk_${b}">Bldg ${b}</label>
+                    </div>
+                `;
+            });
+        }
+
+        async function superAdminCreateUser(e) {
+            e.preventDefault();
+            const username = document.getElementById('saUsername').value.trim();
+            const password = document.getElementById('saPassword').value.trim();
+            const role = document.getElementById('saRole').value;
+            const camp = document.getElementById('saCamp').value;
+
+            let selectedBldgs = [];
+            if (role !== 'superadmin') {
+                if (!camp) return alert('Please select a camp.');
+                const checkboxes = document.querySelectorAll('.sa-bldg-chk:checked');
+                selectedBldgs = Array.from(checkboxes).map(chk => chk.value);
+                if (role === 'staff' && selectedBldgs.length === 0) {
+                    return alert('Please select at least one building for the UH Building Manager.');
+                }
+            }
+
+            if (!appState.staff_users) appState.staff_users = [];
+            if (appState.staff_users.some(u => u.username === username)) {
+                return alert('Username already exists.');
+            }
+
+            const newUser = {
+                username,
+                password,
+                role,
+                camp: camp || (appState.camps[0] || 'Camp Hansen'),
+                buildings: role === 'superadmin' ? [] : (role === 'camp_admin' ? (appState.camp_buildings[camp] || []) : selectedBldgs),
+                recovery_email: username + '@mil.mil'
+            };
+
+            appState.staff_users.push(newUser);
+            const res = await saveState();
+            if (res) {
+                alert('Staff account created successfully!');
+                document.getElementById('saUsername').value = '';
+                document.getElementById('saPassword').value = '';
+                renderSuperAdminUsersTable();
+            }
+        }
+
+        function renderSuperAdminUsersTable() {
+            const tbody = document.getElementById('superAdminUsersTableBody');
+            if (!tbody) return;
+            const users = appState.staff_users || [];
+            tbody.innerHTML = users.length === 0 ? `<tr><td colspan="5" class="text-center text-muted">No users found.</td></tr>` : '';
+
+            users.forEach((u, idx) => {
+                let roleBadge = '<span class="badge bg-secondary">Manager</span>';
+                if (u.role === 'superadmin') roleBadge = '<span class="badge bg-danger">Superadmin</span>';
+                else if (u.role === 'camp_admin') roleBadge = '<span class="badge bg-primary">Camp Admin</span>';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="fw-bold">${u.username}</td>
+                        <td>${roleBadge}</td>
+                        <td>${u.camp || 'N/A'}</td>
+                        <td>${u.buildings ? u.buildings.join(', ') : 'All / None'}</td>
+                        <td class="text-end">
+                            <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="superAdminDeleteUser(${idx})" title="Delete User"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function superAdminDeleteUser(idx) {
+            if (!confirm('Permanently delete this user account?')) return;
+            appState.staff_users.splice(idx, 1);
+            const res = await saveState();
+            if (res) {
+                renderSuperAdminUsersTable();
+            }
+        }
+
+        // --- VIEW & CALENDAR LOGIC ---
         function switchView(viewType) {
             const tableView = document.getElementById('tableViewSection');
             const calView = document.getElementById('calendarViewSection');
@@ -538,7 +803,7 @@ const staffHtml = `<!DOCTYPE html>
             const year = currentCalendarDate.getFullYear();
             const month = currentCalendarDate.getMonth();
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            document.getElementById('calendarMonthTitle').textContent = \`\${monthNames[month]} \${year}\`;
+            document.getElementById('calendarMonthTitle').textContent = `${monthNames[month]} ${year}`;
 
             const grid = document.getElementById('calendarDaysGrid');
             grid.innerHTML = '';
@@ -550,30 +815,34 @@ const staffHtml = `<!DOCTYPE html>
 
             for (let i = firstDayIndex; i > 0; i--) {
                 const dayNum = prevTotalDays - i + 1;
-                grid.innerHTML += \`<div class="calendar-cell other-month"><div class="fw-bold mb-1">\${dayNum}</div></div>\`;
+                grid.innerHTML += `<div class="calendar-cell other-month"><div class="fw-bold mb-1">${dayNum}</div></div>`;
             }
 
             for (let day = 1; day <= totalDays; day++) {
                 const formattedMonth = String(month + 1).padStart(2, '0');
                 const formattedDay = String(day).padStart(2, '0');
-                const dateStr = \`\${year}-\${formattedMonth}-\${formattedDay}\`;
+                const dateStr = `${year}-${formattedMonth}-${formattedDay}`;
 
-                let cellHtml = \`<div class="calendar-cell"><div class="fw-bold mb-1 text-dark">\${day}</div>\`;
+                let cellHtml = `<div class="calendar-cell"><div class="fw-bold mb-1 text-dark">${day}</div>`;
                 
-                const bookingsOnDay = (appState.bookings || []).filter(b => b.camp === staffCamp && effectiveBldgs.includes(String(b.building)) && b.date === dateStr);
-                bookingsOnDay.forEach(b => {
-                    const globalIdx = (appState.bookings || []).findIndex(item => item.confirmationCode === b.confirmationCode);
-                    cellHtml += \`<span class="booking-badge bg-primary text-white" onclick="openBookingActionModal(\${globalIdx})" title="\${b.time} - \${b.firstName} \${b.lastName} (Bldg \${b.building})">\${b.time} Bldg \${b.building} (\${b.firstName})</span>\`;
+                const bookingsOnDay = (appState.bookings || []).filter(b => {
+                    if (userRole === 'superadmin') return b.date === dateStr;
+                    return b.camp === staffCamp && effectiveBldgs.includes(String(b.building)) && b.date === dateStr;
                 });
 
-                cellHtml += \`</div>\`;
+                bookingsOnDay.forEach(b => {
+                    const globalIdx = (appState.bookings || []).findIndex(item => item.confirmationCode === b.confirmationCode);
+                    cellHtml += `<span class="booking-badge bg-primary text-white" onclick="openBookingActionModal(${globalIdx})" title="${b.time} - ${b.firstName} ${b.lastName} (Bldg ${b.building})">${b.time} Bldg ${b.building} (${b.firstName})</span>`;
+                });
+
+                cellHtml += `</div>`;
                 grid.innerHTML += cellHtml;
             }
 
             const totalCellsSoFar = firstDayIndex + totalDays;
             const remainingCells = (totalCellsSoFar % 7 === 0) ? 0 : 7 - (totalCellsSoFar % 7);
             for (let i = 1; i <= remainingCells; i++) {
-                grid.innerHTML += \`<div class="calendar-cell other-month"><div class="fw-bold mb-1">\${i}</div></div>\`;
+                grid.innerHTML += `<div class="calendar-cell other-month"><div class="fw-bold mb-1">${i}</div></div>`;
             }
         }
 
@@ -583,28 +852,28 @@ const staffHtml = `<!DOCTYPE html>
                 container.innerHTML = 'Current Buildings: None';
                 return;
             }
-            container.innerHTML = \`<strong>Registered Buildings:</strong> \${appState.camp_buildings[staffCamp].join(', ')}\`;
+            container.innerHTML = `<strong>Registered Buildings:</strong> ${appState.camp_buildings[staffCamp].join(', ')}`;
         }
 
         function renderCampManagers() {
             const tbody = document.getElementById('campManagersTableBody');
             if (!tbody) return;
             const managers = (appState.staff_users || []).filter(u => u.camp === staffCamp && u.role === 'staff');
-            tbody.innerHTML = managers.length === 0 ? \`<tr><td colspan="3" class="text-muted text-center">No managers found for this camp.</td></tr>\` : '';
+            tbody.innerHTML = managers.length === 0 ? `<tr><td colspan="3" class="text-muted text-center">No managers found for this camp.</td></tr>` : '';
             
             managers.forEach((m) => {
                 const globalIdx = appState.staff_users.findIndex(u => u.username === m.username);
                 const bldgs = m.buildings ? m.buildings.join(', ') : 'None';
-                tbody.innerHTML += \`
+                tbody.innerHTML += `
                     <tr>
-                        <td class="fw-bold">\${m.username}</td>
-                        <td>Bldg \${bldgs}</td>
+                        <td class="fw-bold">${m.username}</td>
+                        <td>Bldg ${bldgs}</td>
                         <td class="text-end">
-                            <button class="btn btn-outline-warning btn-sm py-0 px-1" onclick="campAdminResetPassword(\${globalIdx})" title="Reset Password"><i class="bi bi-key"></i></button>
-                            <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="campAdminDeleteManager(\${globalIdx})" title="Delete"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-outline-warning btn-sm py-0 px-1" onclick="campAdminResetPassword(${globalIdx})" title="Reset Password"><i class="bi bi-key"></i></button>
+                            <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="campAdminDeleteManager(${globalIdx})" title="Delete"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>
-                \`;
+                `;
             });
         }
 
@@ -636,12 +905,12 @@ const staffHtml = `<!DOCTYPE html>
                 return;
             }
             appState.camp_buildings[staffCamp].forEach(b => {
-                container.innerHTML += \`
+                container.innerHTML += `
                     <div class="form-check">
-                        <input class="form-check-input ca-bldg-chk" type="checkbox" value="\${b}" id="ca_chk_\${b}">
-                        <label class="form-check-label" for="ca_chk_\${b}">Bldg \${b}</label>
+                        <input class="form-check-input ca-bldg-chk" type="checkbox" value="${b}" id="ca_chk_${b}">
+                        <label class="form-check-label" for="ca_chk_${b}">Bldg ${b}</label>
                     </div>
-                \`;
+                `;
             });
         }
 
@@ -710,36 +979,39 @@ const staffHtml = `<!DOCTYPE html>
             tbody.innerHTML = '';
 
             if (!appState.bookings || appState.bookings.length === 0) {
-                tbody.innerHTML = \`<tr><td colspan="7" class="text-center text-muted py-4">No appointments found in the system.</td></tr>\`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No appointments found in the system.</td></tr>`;
                 return;
             }
 
             const effectiveBldgs = getEffectiveBuildings();
-            const filtered = appState.bookings.filter(b => b.camp === staffCamp && effectiveBldgs.includes(String(b.building)));
+            const filtered = (appState.bookings || []).filter(b => {
+                if (userRole === 'superadmin') return true;
+                return b.camp === staffCamp && effectiveBldgs.includes(String(b.building));
+            });
 
             if (filtered.length === 0) {
-                tbody.innerHTML = \`<tr><td colspan="7" class="text-center text-muted py-4">No appointments found for \${staffCamp}.</td></tr>\`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No appointments found.</td></tr>`;
                 return;
             }
 
             filtered.forEach(b => {
                 const globalIdx = appState.bookings.findIndex(item => item.confirmationCode === b.confirmationCode);
-                tbody.innerHTML += \`
+                tbody.innerHTML += `
                     <tr>
-                        <td><span class="fw-bold text-primary">\${b.confirmationCode}</span></td>
-                        <td>\${b.firstName} \${b.lastName}<br><small class="text-muted">\${b.email || ''}</small></td>
-                        <td>\${b.branch}</td>
-                        <td>Bldg \${b.building}</td>
-                        <td>\${b.date} @ \${b.time}</td>
-                        <td>\${b.purpose}</td>
+                        <td><span class="fw-bold text-primary">${b.confirmationCode}</span></td>
+                        <td>${b.firstName} ${b.lastName}<br><small class="text-muted">${b.email || ''}</small></td>
+                        <td>${b.branch}</td>
+                        <td>Bldg ${b.building} (${b.camp})</td>
+                        <td>${b.date} @ ${b.time}</td>
+                        <td>${b.purpose}</td>
                         <td class="text-end">
                             <div class="d-flex flex-column gap-2">
-                                <input type="text" class="form-control form-control-sm" placeholder="Add manager notes..." value="\${b.staffNotes || ''}" onchange="updateNotes('\${b.confirmationCode}', this.value)">
-                                <button class="btn btn-outline-primary btn-sm fw-bold" onclick="openBookingActionModal(\${globalIdx})"><i class="bi bi-gear me-1"></i> Full Details</button>
+                                <input type="text" class="form-control form-control-sm" placeholder="Add manager notes..." value="${b.staffNotes || ''}" onchange="updateNotes('${b.confirmationCode}', this.value)">
+                                <button class="btn btn-outline-primary btn-sm fw-bold" onclick="openBookingActionModal(${globalIdx})"><i class="bi bi-gear me-1"></i> Full Details</button>
                             </div>
                         </td>
                     </tr>
-                \`;
+                `;
             });
         }
 
@@ -758,15 +1030,15 @@ const staffHtml = `<!DOCTYPE html>
             document.getElementById('rescheduleDate').value = b.date || '';
             document.getElementById('rescheduleTime').value = b.time || '';
 
-            document.getElementById('modalBookingDetails').innerHTML = \`
+            document.getElementById('modalBookingDetails').innerHTML = `
                 <div class="row">
-                    <div class="col-6 mb-1"><strong>Confirmation Code:</strong> <span class="text-primary">\${b.confirmationCode}</span></div>
-                    <div class="col-12 mb-1"><strong>Guest:</strong> \${b.firstName} \${b.lastName} (\${b.branch})</div>
-                    <div class="col-12 mb-1"><strong>Email:</strong> \${b.email || 'N/A'}</div>
-                    <div class="col-12 mb-1"><strong>Location:</strong> \${b.camp} - Bldg \${b.building}</div>
-                    <div class="col-12 mb-0"><strong>Purpose:</strong> \${b.purpose}</div>
+                    <div class="col-6 mb-1"><strong>Confirmation Code:</strong> <span class="text-primary">${b.confirmationCode}</span></div>
+                    <div class="col-12 mb-1"><strong>Guest:</strong> ${b.firstName} ${b.lastName} (${b.branch})</div>
+                    <div class="col-12 mb-1"><strong>Email:</strong> ${b.email || 'N/A'}</div>
+                    <div class="col-12 mb-1"><strong>Location:</strong> ${b.camp} - Bldg ${b.building}</div>
+                    <div class="col-12 mb-0"><strong>Purpose:</strong> ${b.purpose}</div>
                 </div>
-            \`;
+            `;
             const modal = new bootstrap.Modal(document.getElementById('bookingActionModal'));
             modal.show();
         }
@@ -821,7 +1093,6 @@ fs.writeFileSync(path.join(publicDir, 'staff_dashboard.html'), staffHtml);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Simple in-memory session tracking via lightweight token cookie/header simulation
 let activeSessions = {};
 
 app.use((req, res, next) => {
@@ -835,7 +1106,7 @@ app.use((req, res, next) => {
 
 app.use(express.static(publicDir));
 
-// In-Memory Database State
+// In-Memory Database State with default superadmin
 let appState = {
     camps: ["Camp Hansen", "Camp Schwab", "Camp Foster", "McNair", "Courtney"],
     camp_buildings: {
@@ -857,9 +1128,9 @@ let appState = {
         {
             username: "superadmin",
             password: "password123",
-            role: "camp_admin",
+            role: "superadmin",
             camp: "Camp Hansen",
-            buildings: ["5701", "5702", "5703"],
+            buildings: [],
             recovery_email: "superadmin@usmc.mil"
         }
     ]
@@ -934,7 +1205,6 @@ app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(publicDir, 'staff_dashboard.html'));
 });
 
-// Legacy fallback route compatibility
 app.get('/staff', (req, res) => {
     res.redirect('/login');
 });
