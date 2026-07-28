@@ -10,7 +10,7 @@ if (!fs.existsSync(publicDir)) {
     fs.mkdirSync(publicDir, { recursive: true });
 }
 
-// 1. PUBLIC BOOKING PAGE (Updated UI)
+// 1. PUBLIC BOOKING PAGE (index.html)
 const indexHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -32,7 +32,7 @@ const indexHtml = `<!DOCTYPE html>
                 <i class="bi bi-building me-2"></i>Unaccompanied Housing Portal
             </span>
             <div>
-                <a href="/staff" class="btn btn-outline-light btn-sm fw-bold">
+                <a href="/login" class="btn btn-outline-light btn-sm fw-bold">
                     <i class="bi bi-shield-lock me-1"></i> Staff Login
                 </a>
             </div>
@@ -148,21 +148,19 @@ const indexHtml = `<!DOCTYPE html>
                 const res = await fetch('/api/state');
                 appState = await res.json();
                 
-                // Populate Camps
                 const campSelect = document.getElementById('campSelect');
                 campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
                 (appState.camps || []).forEach(c => {
                     campSelect.innerHTML += \`<option value="\${c}">\${c}</option>\`;
                 });
 
-                // Populate Purposes
                 const purposeSelect = document.getElementById('purposeSelect');
                 purposeSelect.innerHTML = '<option value="">-- Select Purpose --</option>';
                 (appState.purposes || []).forEach(p => {
                     purposeSelect.innerHTML += \`<option value="\${p}">\${p}</option>\`;
                 });
             } catch (err) {
-                console.error("Error loading application state:", err);
+                console.error("Error loading state:", err);
             }
         }
 
@@ -222,153 +220,622 @@ const indexHtml = `<!DOCTYPE html>
 </body>
 </html>`;
 
-// 2. SUPERADMIN DASHBOARD
-const superadminHtml = `<!DOCTYPE html>
+// 2. STAFF LOGIN PAGE (login.html)
+const loginHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unaccompanied Housing - Superadmin Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <title>Staff Login - UH Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>body { background-color: #f4f6f9; }</style>
 </head>
-<body class="bg-light">
-    <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Superadmin Dashboard</h2>
-            <div>
-                <a href="/" class="btn btn-outline-primary btn-sm me-2">Back to Booking</a>
-                <a href="/logout" class="btn btn-danger btn-sm">Logout</a>
+<body class="d-flex align-items-center py-4 bg-light" style="height: 100vh;">
+    <main class="form-signin w-100 m-auto" style="max-width: 400px;">
+        <div class="card shadow-sm p-4 bg-white">
+            <div class="text-center mb-4">
+                <i class="bi bi-shield-lock fs-1 text-primary"></i>
+                <h3 class="h3 mb-3 fw-bold">Staff Login</h3>
+                <p class="text-muted small">Sign in to manage camp appointments</p>
+            </div>
+            <form onsubmit="handleLogin(event)">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Username</label>
+                    <input type="text" id="loginUser" class="form-control" required placeholder="Enter username">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Password</label>
+                    <input type="password" id="loginPass" class="form-control" required placeholder="Password">
+                </div>
+                <button type="submit" class="btn btn-primary w-100 fw-bold py-2">Sign In</button>
+            </form>
+            <div class="text-center mt-3">
+                <a href="/" class="small text-decoration-none"><i class="bi bi-arrow-left me-1"></i>Back to Booking Portal</a>
             </div>
         </div>
-        <div class="card shadow p-4 mb-4">
-            <h4 class="mb-3">Manage Bookings & Appointments</h4>
-            <div class="table-responsive">
-                <table class="table table-striped align-middle">
-                    <thead>
-                        <tr>
-                            <th>Code</th>
-                            <th>Name</th>
-                            <th>Branch</th>
-                            <th>Camp / Bldg</th>
-                            <th>Date & Time</th>
-                            <th>Purpose</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="admin-bookings-body">
-                        <tr><td colspan="8" class="text-center">Loading appointments...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    </main>
     <script>
-        let state = {};
+        async function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('loginUser').value.trim();
+            const password = document.getElementById('loginPass').value.trim();
 
-        async function loadAdminData() {
-            const res = await fetch('/api/state');
-            state = await res.json();
-            const tbody = document.getElementById('admin-bookings-body');
-            if (state.bookings && state.bookings.length > 0) {
-                tbody.innerHTML = state.bookings.map((b, index) => \`
-                    <tr>
-                        <td><strong>\${b.confirmationCode}</strong></td>
-                        <td>\${b.firstName} \${b.lastName}</td>
-                        <td>\${b.branch}</td>
-                        <td>\${b.camp} (Bldg \${b.building})</td>
-                        <td>\${b.date} \${b.time}</td>
-                        <td>\${b.purpose}</td>
-                        <td><span class="badge bg-success">\${b.status}</span></td>
-                        <td>
-                            <button class="btn btn-sm btn-danger" onclick="cancelBooking(\${index})">Cancel</button>
-                        </td>
-                    </tr>
-                \`).join('');
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.href = '/dashboard';
             } else {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No appointments recorded.</td></tr>';
+                alert(data.message || 'Invalid username or password.');
             }
         }
-
-        async function cancelBooking(index) {
-            if (confirm('Are you sure you want to cancel this booking?')) {
-                state.bookings.splice(index, 1);
-                await fetch('/api/state', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(state)
-                });
-                loadAdminData();
-            }
-        }
-
-        loadAdminData();
     </script>
 </body>
 </html>`;
 
-// 3. STAFF DASHBOARD
+// 3. ORIGINAL STAFF MANAGEMENT DASHBOARD (staff_dashboard.html)[cite: 2]
 const staffHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unaccompanied Housing - Staff Portal</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <title>UH Management Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .card { border: none; border-radius: 0.5rem; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .calendar-day-header { text-align: center; font-weight: bold; background: #e9ecef; padding: 8px; border-radius: 4px; font-size: 0.85rem; }
+        .calendar-cell { min-height: 110px; background: #fff; border: 1px solid #dee2e6; border-radius: 4px; padding: 6px; font-size: 0.8rem; overflow-y: auto; }
+        .calendar-cell.other-month { background: #f8f9fa; color: #adb5bd; }
+        .booking-badge { font-size: 0.7rem; padding: 2px 5px; border-radius: 3px; margin-bottom: 2px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+        .booking-badge:hover { opacity: 0.85; }
+    </style>
 </head>
-<body class="bg-light">
-    <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Staff Portal</h2>
-            <div>
-                <a href="/superadmin" class="btn btn-outline-secondary btn-sm me-2">Superadmin View</a>
-                <a href="/" class="btn btn-outline-primary btn-sm me-2">Back to Booking</a>
-                <a href="/logout" class="btn btn-danger btn-sm">Logout</a>
+<body onload="initStaffDashboard()">
+
+    <nav class="navbar navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid px-4">
+            <span class="navbar-brand fw-bold">
+                <i class="bi bi-building me-2"></i>UH Management Dashboard — <span class="text-info" id="navCampInfo">Loading...</span>
+            </span>
+            <div class="d-flex align-items-center">
+                <span class="text-light me-3 small" id="navUserInfo"></span>
+                <a href="/logout" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-box-arrow-right me-1"></i>Sign Out
+                </a>
             </div>
         </div>
-        <div class="card shadow p-4">
-            <h4 class="mb-3">Camp Staff Check-in & Management</h4>
-            <p class="text-muted">Review daily resident arrivals and manage building rosters.</p>
-            <div id="staff-bookings-list" class="list-group"></div>
+    </nav>
+
+    <div class="container py-4">
+        
+        <div id="campAdminSection" class="row mb-4" style="display: none;">
+            <div class="col-md-12">
+                <div class="card shadow-sm p-4 bg-white">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-building-add me-2"></i>Camp Admin Controls for <span id="adminCampName"></span></h5>
+                    <p class="text-muted small">Manage building numbers and UH Building Managers assigned to your camp.</p>
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-secondary">Add New Building Number</h6>
+                            <div class="input-group mb-2">
+                                <input type="text" id="newBuildingInput" class="form-control" placeholder="Building # (e.g., 1004)">
+                                <button class="btn btn-success fw-bold" onclick="addBuildingToCamp()">Add Building</button>
+                            </div>
+                            <div id="campBuildingsList" class="small text-muted mb-4"></div>
+
+                            <h6 class="fw-bold text-secondary">Managed Building Managers</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr><th>Username</th><th>Buildings</th><th class="text-end">Actions</th></tr>
+                                    </thead>
+                                    <tbody id="campManagersTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-secondary">Assign UH Building Manager</h6>
+                            <form onsubmit="campAdminCreateManager(event)" class="border p-3 rounded bg-light">
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6">
+                                        <input type="text" id="caMgrUsername" class="form-control form-control-sm" required placeholder="Username">
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="password" id="caMgrPassword" class="form-control form-control-sm" required placeholder="Initial Password">
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <input type="email" id="caMgrEmail" class="form-control form-control-sm" required placeholder="Recovery Email (e.g. mgr@mil.mil)">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold mb-1">Select Buildings:</label>
+                                    <div id="caBuildingCheckboxes" class="d-flex flex-wrap gap-2 small"></div>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-sm fw-bold w-100">Create Manager</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4 align-items-center">
+            <div class="col-md-6">
+                <h4 class="fw-bold mb-0"><i class="bi bi-calendar-check me-2"></i>Appointments Management</h4>
+            </div>
+            <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                <div class="btn-group shadow-sm" role="group">
+                    <button type="button" class="btn btn-primary fw-bold" id="btnTableView" onclick="switchView('table')"><i class="bi bi-table me-1"></i> Table View</button>
+                    <button type="button" class="btn btn-outline-primary fw-bold" id="btnCalendarView" onclick="switchView('calendar')"><i class="bi bi-calendar3 me-1"></i> Calendar View</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tableViewSection" class="card shadow-sm">
+            <div class="card-body p-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Confirmation Code</th>
+                                <th>Service Member</th>
+                                <th>Branch</th>
+                                <th>Bldg / Camp</th>
+                                <th>Date & Time</th>
+                                <th>Purpose</th>
+                                <th class="text-end">Actions / Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staffAppointmentsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="calendarViewSection" class="card shadow-sm p-4 bg-white" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="fw-bold mb-0"><i class="bi bi-calendar3 me-2"></i>Calendar View</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-outline-secondary btn-sm fw-bold" onclick="changeMonth(-1)"><i class="bi bi-chevron-left"></i> Prev</button>
+                    <span id="calendarMonthTitle" class="fw-bold fs-5 px-2">Month Year</span>
+                    <button class="btn btn-outline-secondary btn-sm fw-bold" onclick="changeMonth(1)">Next <i class="bi bi-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="calendar-grid mb-2">
+                <div class="calendar-day-header">Sun</div>
+                <div class="calendar-day-header">Mon</div>
+                <div class="calendar-day-header">Tue</div>
+                <div class="calendar-day-header">Wed</div>
+                <div class="calendar-day-header">Thu</div>
+                <div class="calendar-day-header">Fri</div>
+                <div class="calendar-day-header">Sat</div>
+            </div>
+            <div id="calendarDaysGrid" class="calendar-grid"></div>
+        </div>
+
+    </div>
+
+    <div class="modal fade" id="bookingActionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-calendar-check me-2"></i>Manage Booking Confirmation</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="modalBookingIndex">
+                    <div id="modalBookingDetails" class="mb-3 p-3 bg-light rounded small border"></div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-primary"><i class="bi bi-clock-history me-1"></i> Reschedule Appointment</label>
+                        <div class="row g-2">
+                            <div class="col-7"><input type="date" id="rescheduleDate" class="form-control form-control-sm"></div>
+                            <div class="col-5"><input type="time" id="rescheduleTime" class="form-control form-control-sm"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <div>
+                        <button type="button" class="btn btn-outline-danger btn-sm fw-bold" onclick="deleteBookingFromModal()"><i class="bi bi-trash me-1"></i> Delete</button>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="rescheduleBookingFromModal()"><i class="bi bi-check2-circle me-1"></i> Save Reschedule</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        async function loadStaffPortal() {
-            const res = await fetch('/api/state');
-            const data = await res.json();
-            const container = document.getElementById('staff-bookings-list');
-            if (data.bookings && data.bookings.length > 0) {
-                container.innerHTML = data.bookings.map(b => \`
-                    <div class="list-group-item list-group-item-action flex-column align-items-start mb-2 shadow-sm rounded">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h5 class="mb-1">\${b.firstName} \${b.lastName} (\${b.branch})</h5>
-                            <small class="text-muted">Code: \${b.confirmationCode}</small>
-                        </div>
-                        <p class="mb-1"><strong>Camp:</strong> \${b.camp} | <strong>Building:</strong> \${b.building}</p>
-                        <p class="mb-1"><strong>Purpose:</strong> \${b.purpose}</p>
-                        <small>Scheduled: \${b.date} at \${b.time}</small>
-                    </div>
-                \`).join('');
-            } else {
-                container.innerHTML = '<p class="text-muted">No appointments scheduled for review.</p>';
+        let appState = {};
+        let sessionUser = {};
+        let staffCamp = "";
+        let staffAssignedBuildings = [];
+        let userRole = "";
+        let currentCalendarDate = new Date();
+        let activeBookingIndex = null;
+
+        async function initStaffDashboard() {
+            try {
+                const sessionRes = await fetch('/api/session');
+                sessionUser = await sessionRes.json();
+                if (!sessionUser.username) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                staffCamp = sessionUser.camp;
+                staffAssignedBuildings = sessionUser.buildings || [];
+                userRole = sessionUser.role;
+
+                // Header data rendering
+                document.getElementById('navCampInfo').innerHTML = \`\${staffCamp} \${userRole === 'camp_admin' ? '(All Camp Bldgs)' : '(Bldgs: ' + staffAssignedBuildings.join(', ') + ')'}\`;
+                document.getElementById('navUserInfo').innerHTML = \`Logged in as: <strong>\${sessionUser.username}</strong> (\${userRole === 'camp_admin' ? 'Camp Admin' : 'UH Building Manager'})\`;
+
+                if (userRole === 'camp_admin') {
+                    document.getElementById('campAdminSection').style.display = 'block';
+                    document.getElementById('adminCampName').textContent = staffCamp;
+                }
+
+                const res = await fetch('/api/state');
+                appState = await res.json();
+                
+                renderStaffAppointments();
+                renderCalendar();
+                if (userRole === 'camp_admin') {
+                    renderCampBuildings();
+                    renderCaBuildingCheckboxes();
+                    renderCampManagers();
+                }
+            } catch (err) {
+                console.error("Error loading session or state:", err);
             }
         }
-        loadStaffPortal();
+
+        function getEffectiveBuildings() {
+            if (userRole === 'camp_admin') {
+                return (appState.camp_buildings && appState.camp_buildings[staffCamp]) ? appState.camp_buildings[staffCamp] : [];
+            } else {
+                return staffAssignedBuildings;
+            }
+        }
+
+        function switchView(viewType) {
+            const tableView = document.getElementById('tableViewSection');
+            const calView = document.getElementById('calendarViewSection');
+            const btnTable = document.getElementById('btnTableView');
+            const btnCal = document.getElementById('btnCalendarView');
+
+            if (viewType === 'table') {
+                tableView.style.display = 'block';
+                calView.style.display = 'none';
+                btnTable.className = 'btn btn-primary fw-bold';
+                btnCal.className = 'btn btn-outline-primary fw-bold';
+            } else {
+                tableView.style.display = 'none';
+                calView.style.display = 'block';
+                btnTable.className = 'btn btn-outline-primary fw-bold';
+                btnCal.className = 'btn btn-primary fw-bold';
+                renderCalendar();
+            }
+        }
+
+        function changeMonth(direction) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            document.getElementById('calendarMonthTitle').textContent = \`\${monthNames[month]} \${year}\`;
+
+            const grid = document.getElementById('calendarDaysGrid');
+            grid.innerHTML = '';
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+            const prevTotalDays = new Date(year, month, 0).getDate();
+            const effectiveBldgs = getEffectiveBuildings();
+
+            for (let i = firstDayIndex; i > 0; i--) {
+                const dayNum = prevTotalDays - i + 1;
+                grid.innerHTML += \`<div class="calendar-cell other-month"><div class="fw-bold mb-1">\${dayNum}</div></div>\`;
+            }
+
+            for (let day = 1; day <= totalDays; day++) {
+                const formattedMonth = String(month + 1).padStart(2, '0');
+                const formattedDay = String(day).padStart(2, '0');
+                const dateStr = \`\${year}-\${formattedMonth}-\${formattedDay}\`;
+
+                let cellHtml = \`<div class="calendar-cell"><div class="fw-bold mb-1 text-dark">\${day}</div>\`;
+                
+                const bookingsOnDay = (appState.bookings || []).filter(b => b.camp === staffCamp && effectiveBldgs.includes(String(b.building)) && b.date === dateStr);
+                bookingsOnDay.forEach(b => {
+                    const globalIdx = (appState.bookings || []).findIndex(item => item.confirmationCode === b.confirmationCode);
+                    cellHtml += \`<span class="booking-badge bg-primary text-white" onclick="openBookingActionModal(\${globalIdx})" title="\${b.time} - \${b.firstName} \${b.lastName} (Bldg \${b.building})">\${b.time} Bldg \${b.building} (\${b.firstName})</span>\`;
+                });
+
+                cellHtml += \`</div>\`;
+                grid.innerHTML += cellHtml;
+            }
+
+            const totalCellsSoFar = firstDayIndex + totalDays;
+            const remainingCells = (totalCellsSoFar % 7 === 0) ? 0 : 7 - (totalCellsSoFar % 7);
+            for (let i = 1; i <= remainingCells; i++) {
+                grid.innerHTML += \`<div class="calendar-cell other-month"><div class="fw-bold mb-1">\${i}</div></div>\`;
+            }
+        }
+
+        function renderCampBuildings() {
+            const container = document.getElementById('campBuildingsList');
+            if (!appState.camp_buildings || !appState.camp_buildings[staffCamp]) {
+                container.innerHTML = 'Current Buildings: None';
+                return;
+            }
+            container.innerHTML = \`<strong>Registered Buildings:</strong> \${appState.camp_buildings[staffCamp].join(', ')}\`;
+        }
+
+        function renderCampManagers() {
+            const tbody = document.getElementById('campManagersTableBody');
+            if (!tbody) return;
+            const managers = (appState.staff_users || []).filter(u => u.camp === staffCamp && u.role === 'staff');
+            tbody.innerHTML = managers.length === 0 ? \`<tr><td colspan="3" class="text-muted text-center">No managers found for this camp.</td></tr>\` : '';
+            
+            managers.forEach((m) => {
+                const globalIdx = appState.staff_users.findIndex(u => u.username === m.username);
+                const bldgs = m.buildings ? m.buildings.join(', ') : 'None';
+                tbody.innerHTML += \`
+                    <tr>
+                        <td class="fw-bold">\${m.username}</td>
+                        <td>Bldg \${bldgs}</td>
+                        <td class="text-end">
+                            <button class="btn btn-outline-warning btn-sm py-0 px-1" onclick="campAdminResetPassword(\${globalIdx})" title="Reset Password"><i class="bi bi-key"></i></button>
+                            <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="campAdminDeleteManager(\${globalIdx})" title="Delete"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                \`;
+            });
+        }
+
+        async function campAdminResetPassword(idx) {
+            const newPass = prompt("Enter temporary password for this manager:");
+            if (!newPass) return;
+            appState.staff_users[idx].password = newPass;
+            const res = await saveState();
+            if (res) {
+                alert('Password reset successfully!');
+                renderCampManagers();
+            }
+        }
+
+        async function campAdminDeleteManager(idx) {
+            if (!confirm('Are you sure you want to delete this manager?')) return;
+            appState.staff_users.splice(idx, 1);
+            const res = await saveState();
+            if (res) {
+                renderCampManagers();
+            }
+        }
+
+        function renderCaBuildingCheckboxes() {
+            const container = document.getElementById('caBuildingCheckboxes');
+            container.innerHTML = '';
+            if (!appState.camp_buildings || !appState.camp_buildings[staffCamp] || appState.camp_buildings[staffCamp].length === 0) {
+                container.innerHTML = '<span class="text-muted">No buildings available.</span>';
+                return;
+            }
+            appState.camp_buildings[staffCamp].forEach(b => {
+                container.innerHTML += \`
+                    <div class="form-check">
+                        <input class="form-check-input ca-bldg-chk" type="checkbox" value="\${b}" id="ca_chk_\${b}">
+                        <label class="form-check-label" for="ca_chk_\${b}">Bldg \${b}</label>
+                    </div>
+                \`;
+            });
+        }
+
+        async function addBuildingToCamp() {
+            const input = document.getElementById('newBuildingInput');
+            const bldg = input.value.trim();
+            if (!bldg) return;
+
+            if (!appState.camp_buildings) appState.camp_buildings = {};
+            if (!appState.camp_buildings[staffCamp]) appState.camp_buildings[staffCamp] = [];
+
+            if (appState.camp_buildings[staffCamp].includes(bldg)) {
+                alert('This building already exists for this camp.');
+                return;
+            }
+
+            appState.camp_buildings[staffCamp].push(bldg);
+            input.value = '';
+
+            const res = await saveState();
+            if (res) {
+                alert('Building added successfully!');
+                renderCampBuildings();
+                renderCaBuildingCheckboxes();
+            }
+        }
+
+        async function campAdminCreateManager(e) {
+            e.preventDefault();
+            const username = document.getElementById('caMgrUsername').value.trim();
+            const password = document.getElementById('caMgrPassword').value.trim();
+            const email = document.getElementById('caMgrEmail').value.trim();
+            const checkboxes = document.querySelectorAll('.ca-bldg-chk:checked');
+            const selectedBldgs = Array.from(checkboxes).map(chk => chk.value);
+
+            if (selectedBldgs.length === 0) {
+                alert('Please select at least one building.');
+                return;
+            }
+
+            if (!appState.staff_users) appState.staff_users = [];
+
+            const newMgr = {
+                username: username,
+                password: password,
+                recovery_email: email,
+                role: 'staff',
+                camp: staffCamp,
+                buildings: selectedBldgs
+            };
+
+            appState.staff_users.push(newMgr);
+            const res = await saveState();
+            if (res) {
+                alert('UH Building Manager created successfully!');
+                document.getElementById('caMgrUsername').value = '';
+                document.getElementById('caMgrPassword').value = '';
+                document.getElementById('caMgrEmail').value = '';
+                renderCaBuildingCheckboxes();
+                renderCampManagers();
+            }
+        }
+
+        function renderStaffAppointments() {
+            const tbody = document.getElementById('staffAppointmentsTable');
+            tbody.innerHTML = '';
+
+            if (!appState.bookings || appState.bookings.length === 0) {
+                tbody.innerHTML = \`<tr><td colspan="7" class="text-center text-muted py-4">No appointments found in the system.</td></tr>\`;
+                return;
+            }
+
+            const effectiveBldgs = getEffectiveBuildings();
+            const filtered = appState.bookings.filter(b => b.camp === staffCamp && effectiveBldgs.includes(String(b.building)));
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = \`<tr><td colspan="7" class="text-center text-muted py-4">No appointments found for \${staffCamp}.</td></tr>\`;
+                return;
+            }
+
+            filtered.forEach(b => {
+                const globalIdx = appState.bookings.findIndex(item => item.confirmationCode === b.confirmationCode);
+                tbody.innerHTML += \`
+                    <tr>
+                        <td><span class="fw-bold text-primary">\${b.confirmationCode}</span></td>
+                        <td>\${b.firstName} \${b.lastName}<br><small class="text-muted">\${b.email || ''}</small></td>
+                        <td>\${b.branch}</td>
+                        <td>Bldg \${b.building}</td>
+                        <td>\${b.date} @ \${b.time}</td>
+                        <td>\${b.purpose}</td>
+                        <td class="text-end">
+                            <div class="d-flex flex-column gap-2">
+                                <input type="text" class="form-control form-control-sm" placeholder="Add manager notes..." value="\${b.staffNotes || ''}" onchange="updateNotes('\${b.confirmationCode}', this.value)">
+                                <button class="btn btn-outline-primary btn-sm fw-bold" onclick="openBookingActionModal(\${globalIdx})"><i class="bi bi-gear me-1"></i> Full Details</button>
+                            </div>
+                        </td>
+                    </tr>
+                \`;
+            });
+        }
+
+        async function updateNotes(code, notes) {
+            const target = appState.bookings.find(b => b.confirmationCode === code);
+            if (target) {
+                target.staffNotes = notes;
+                await saveState();
+            }
+        }
+
+        function openBookingActionModal(index) {
+            activeBookingIndex = index;
+            const b = appState.bookings[index];
+            document.getElementById('modalBookingIndex').value = index;
+            document.getElementById('rescheduleDate').value = b.date || '';
+            document.getElementById('rescheduleTime').value = b.time || '';
+
+            document.getElementById('modalBookingDetails').innerHTML = \`
+                <div class="row">
+                    <div class="col-6 mb-1"><strong>Confirmation Code:</strong> <span class="text-primary">\${b.confirmationCode}</span></div>
+                    <div class="col-12 mb-1"><strong>Guest:</strong> \${b.firstName} \${b.lastName} (\${b.branch})</div>
+                    <div class="col-12 mb-1"><strong>Email:</strong> \${b.email || 'N/A'}</div>
+                    <div class="col-12 mb-1"><strong>Location:</strong> \${b.camp} - Bldg \${b.building}</div>
+                    <div class="col-12 mb-0"><strong>Purpose:</strong> \${b.purpose}</div>
+                </div>
+            \`;
+            const modal = new bootstrap.Modal(document.getElementById('bookingActionModal'));
+            modal.show();
+        }
+
+        async function rescheduleBookingFromModal() {
+            if (activeBookingIndex === null) return;
+            const newDate = document.getElementById('rescheduleDate').value;
+            const newTime = document.getElementById('rescheduleTime').value;
+            if (!newDate || !newTime) return alert('Please select both a new date and time.');
+            
+            appState.bookings[activeBookingIndex].date = newDate;
+            appState.bookings[activeBookingIndex].time = newTime;
+            await saveState();
+            bootstrap.Modal.getInstance(document.getElementById('bookingActionModal')).hide();
+            renderStaffAppointments();
+            renderCalendar();
+        }
+
+        async function deleteBookingFromModal() {
+            if (activeBookingIndex === null) return;
+            if (!confirm('Permanently delete this booking confirmation?')) return;
+            appState.bookings.splice(activeBookingIndex, 1);
+            await saveState();
+            bootstrap.Modal.getInstance(document.getElementById('bookingActionModal')).hide();
+            renderStaffAppointments();
+            renderCalendar();
+        }
+
+        async function saveState() {
+            try {
+                const res = await fetch('/api/state', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(appState)
+                });
+                return res.ok;
+            } catch (err) {
+                console.error("Error saving state:", err);
+                return false;
+            }
+        }
     </script>
 </body>
 </html>`;
 
-// Write the runtime files to public directory
+// Write runtime files
 fs.writeFileSync(path.join(publicDir, 'index.html'), indexHtml);
-fs.writeFileSync(path.join(publicDir, 'superadmin_dashboard.html'), superadminHtml);
+fs.writeFileSync(path.join(publicDir, 'login.html'), loginHtml);
 fs.writeFileSync(path.join(publicDir, 'staff_dashboard.html'), staffHtml);
 
-// Middleware
+// Middleware & Session cookie helper setup
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Simple in-memory session tracking via lightweight token cookie/header simulation
+let activeSessions = {};
+
+app.use((req, res, next) => {
+    const cookieHeader = req.headers['cookie'] || '';
+    const match = cookieHeader.match(/session_token=([^;]+)/);
+    if (match && activeSessions[match[1]]) {
+        req.user = activeSessions[match[1]];
+    }
+    next();
+});
+
 app.use(express.static(publicDir));
 
-// In-Memory State Architecture
+// In-Memory Database State
 let appState = {
     camps: ["Camp Hansen", "Camp Schwab", "Camp Foster", "McNair", "Courtney"],
     camp_buildings: {
@@ -390,9 +857,9 @@ let appState = {
         {
             username: "superadmin",
             password: "password123",
-            role: "superadmin",
-            camp: "ALL",
-            buildings: [],
+            role: "camp_admin",
+            camp: "Camp Hansen",
+            buildings: ["5701", "5702", "5703"],
             recovery_email: "superadmin@usmc.mil"
         }
     ]
@@ -408,10 +875,9 @@ app.post('/api/state', (req, res) => {
         appState = req.body;
         return res.json({ success: true, message: "State updated successfully" });
     }
-    res.status(400).json({ success: false, error: "Invalid state payload" });
+    res.status(400).json({ success: false, error: "Invalid payload" });
 });
 
-// Dedicated Booking Endpoint for the updated UI
 app.post('/api/book', (req, res) => {
     try {
         const newBooking = {
@@ -428,25 +894,59 @@ app.post('/api/book', (req, res) => {
             status: 'Confirmed',
             staffNotes: ''
         };
-        
         appState.bookings.push(newBooking);
         res.json({ status: 'success', confirmationCode: newBooking.confirmationCode });
     } catch (err) {
-        res.status(500).json({ status: 'error', message: 'Failed to process booking' });
+        res.status(500).json({ status: 'error' });
     }
 });
 
-// Routes
-app.get('/superadmin', (req, res) => {
-    res.sendFile(path.join(publicDir, 'superadmin_dashboard.html'));
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    const user = (appState.staff_users || []).find(u => u.username === username && u.password === password);
+    if (user) {
+        const token = Math.random().toString(36).substring(2);
+        activeSessions[token] = user;
+        res.setHeader('Set-Cookie', `session_token=${token}; Path=/; HttpOnly`);
+        res.json({ success: true });
+    } else {
+        res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
 });
 
-app.get('/staff', (req, res) => {
+app.get('/api/session', (req, res) => {
+    if (req.user) {
+        res.json(req.user);
+    } else {
+        res.status(401).json({});
+    }
+});
+
+// Route Handlers
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(publicDir, 'login.html'));
+});
+
+app.get('/dashboard', (req, res) => {
+    if (!req.user) {
+        return res.redirect('/login');
+    }
     res.sendFile(path.join(publicDir, 'staff_dashboard.html'));
 });
 
+// Legacy fallback route compatibility
+app.get('/staff', (req, res) => {
+    res.redirect('/login');
+});
+
 app.get('/logout', (req, res) => {
-    res.redirect('/');
+    const cookieHeader = req.headers['cookie'] || '';
+    const match = cookieHeader.match(/session_token=([^;]+)/);
+    if (match && activeSessions[match[1]]) {
+        delete activeSessions[match[1]];
+    }
+    res.setHeader('Set-Cookie', 'session_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+    res.redirect('/login');
 });
 
 app.get('/', (req, res) => {
@@ -454,5 +954,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Unaccompanied Housing Dashboard server running on port ${PORT}`);
+    console.log(`Unaccompanied Housing server running on port ${PORT}`);
 });
