@@ -1,7 +1,11 @@
 {
   "name": "housing-portal",
   "version": "1.0.0",
+<<<<<<< HEAD
   "description": "Unaccompanied Housing Management Portal",
+=======
+  "description": "Housing Management Portal",
+>>>>>>> 312a167190675a00a5c825a99f825fd1421e36bd
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

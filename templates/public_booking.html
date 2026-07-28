@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Housing Appointment Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light" onload="initBookingPage()">
+
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-dark bg-dark shadow-sm">
+        <div class="container px-4">
+            <span class="navbar-brand fw-bold">
+                <i class="bi bi-buildings-fill me-2"></i>Housing Appointment Portal
+            </span>
+            <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-shield-lock me-1"></i>Staff Portal
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                
+                <!-- Booking Card -->
+                <div class="card shadow border-0 p-4 mb-4" id="bookingCard">
+                    <div class="text-center mb-4">
+                        <h3 class="fw-bold text-dark">Schedule a Housing Appointment</h3>
+                        <p class="text-muted small">Select your preferred camp, building, and appointment time.</p>
+                    </div>
+
+                    <form id="bookingForm" onsubmit="submitBooking(event)">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small text-muted">First Name *</label>
+                                <input type="text" id="firstName" class="form-control" required placeholder="John">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small text-muted">Last Name *</label>
+                                <input type="text" id="lastName" class="form-control" required placeholder="Doe">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small text-muted">Email Address *</label>
+                                <input type="email" id="email" class="form-control" required placeholder="john.doe@example.com">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small text-muted">Branch / Affiliation *</label>
+                                <select id="branch" class="form-select" required>
+                                    <option value="">-- Select Branch --</option>
+                                    <option value="Marine Corps">Marine Corps</option>
+                                    <option value="Navy">Navy</option>
+                                    <option value="Army">Army</option>
+                                    <option value="Air Force">Air Force</option>
+                                    <option value="Civilian / Contractor">Civilian / Contractor</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small text-muted">Select Camp *</label>
+                                <select id="campSelect" class="form-select" required onchange="updateBuildingsList()">
+                                    <option value="">-- Select Camp --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small text-muted">Select Building *</label>
+                                <select id="buildingSelect" class="form-select" required>
+                                    <option value="">-- Select Camp First --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label small text-muted">Purpose of Visit *</label>
+                                <select id="purpose" class="form-select" required>
+                                    <option value="Check-in">Check-in</option>
+                                    <option value="Check-out">Check-out</option>
+                                    <option value="Maintenance Request">Maintenance Request</option>
+                                    <option value="General Inquiry">General Inquiry</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label small text-muted">Appointment Date *</label>
+                                <input type="date" id="appointmentDate" class="form-control" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label small text-muted">Appointment Time *</label>
+                                <select id="appointmentTime" class="form-select" required>
+                                    <option value="09:00 AM">09:00 AM</option>
+                                    <option value="10:00 AM">10:00 AM</option>
+                                    <option value="11:00 AM">11:00 AM</option>
+                                    <option value="01:00 PM">01:00 PM</option>
+                                    <option value="02:00 PM">02:00 PM</option>
+                                    <option value="03:00 PM">03:00 PM</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 fw-bold py-2 mt-3">Submit Appointment Request</button>
+                    </form>
+                </div>
+
+                <!-- Success Confirmation Card (Hidden by Default) -->
+                <div class="card shadow border-0 p-5 text-center d-none" id="successCard">
+                    <div class="mb-3">
+                        <i class="bi bi-check-circle-fill text-success display-1"></i>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-2">Appointment Requested Successfully!</h3>
+                    <p class="text-muted mb-4">Your appointment request has been submitted to the housing office.</p>
+                    
+                    <div class="bg-light p-3 rounded mb-4 border">
+                        <span class="small text-muted d-block">Your Confirmation Code:</span>
+                        <h2 id="displayConfirmationCode" class="fw-bold text-primary mb-0 font-monospace"></h2>
+                    </div>
+
+                    <button class="btn btn-outline-primary btn-sm" onclick="resetForm()">Book Another Appointment</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function initBookingPage() {
+            // Seed default data if missing
+            if (!localStorage.getItem('housing_camps')) {
+                localStorage.setItem('housing_camps', JSON.stringify(["Camp Hansen", "Camp Schwab", "Camp Foster", "Camp Courtney", "Camp Kinser"]));
+            }
+            if (!localStorage.getItem('housing_camp_buildings')) {
+                localStorage.setItem('housing_camp_buildings', JSON.stringify({
+                    "Camp Hansen": ["Bldg 2304", "Bldg 2305"],
+                    "Camp Schwab": ["Bldg 301", "Bldg 302"],
+                    "Camp Foster": ["Bldg 5700", "Bldg 5710"],
+                    "Camp Courtney": ["Bldg 4300"],
+                    "Camp Kinser": ["Bldg 1200", "Bldg 1250"]
+                }));
+            }
+
+            // Populate camps dropdown
+            const camps = JSON.parse(localStorage.getItem('housing_camps')) || [];
+            const campSelect = document.getElementById('campSelect');
+            campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
+            camps.forEach(c => {
+                campSelect.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+
+            // Set minimum date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('appointmentDate').min = today;
+        }
+
+        function updateBuildingsList() {
+            const selectedCamp = document.getElementById('campSelect').value;
+            const buildingSelect = document.getElementById('buildingSelect');
+            buildingSelect.innerHTML = '<option value="">-- Select Building --</option>';
+
+            if (!selectedCamp) return;
+
+            const campBuildingsMap = JSON.parse(localStorage.getItem('housing_camp_buildings')) || {};
+            const buildings = campBuildingsMap[selectedCamp] || [];
+
+            buildings.forEach(b => {
+                buildingSelect.innerHTML += `<option value="${b}">${b}</option>`;
+            });
+        }
+
+        function submitBooking(e) {
+            e.preventDefault();
+
+            const firstName = document.getElementById('firstName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const branch = document.getElementById('branch').value;
+            const camp = document.getElementById('campSelect').value;
+            const building = document.getElementById('buildingSelect').value;
+            const purpose = document.getElementById('purpose').value;
+            const date = document.getElementById('appointmentDate').value;
+            const time = document.getElementById('appointmentTime').value;
+
+            const confirmationCode = 'HSG-' + Math.floor(100000 + Math.random() * 900000);
+
+            const newBooking = {
+                id: Date.now(),
+                confirmationCode,
+                firstName,
+                lastName,
+                email,
+                branch,
+                camp,
+                building,
+                purpose,
+                date,
+                time,
+                status: 'Pending',
+                staffNotes: ''
+            };
+
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
+            bookings.push(newBooking);
+            localStorage.setItem('housing_bookings', JSON.stringify(bookings));
+
+            document.getElementById('displayConfirmationCode').textContent = confirmationCode;
+            document.getElementById('bookingCard').classList.add('d-none');
+            document.getElementById('successCard').classList.remove('d-none');
+        }
+
+        function resetForm() {
+            document.getElementById('bookingForm').reset();
+            document.getElementById('successCard').classList.add('d-none');
+            document.getElementById('bookingCard').classList.remove('d-none');
+            initBookingPage();
+        }
+    </script>
+</body>
+</html>
