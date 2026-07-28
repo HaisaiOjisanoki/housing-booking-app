@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Appointment Booking - Housing Portal</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light" onload="initPublicForm()">
+
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#"><i class="bi bi-house-door-fill me-2"></i>Housing Portal - Public Booking</a>
+            <a href="/login" class="btn btn-outline-light btn-sm"><i class="bi bi-shield-lock me-1"></i>Staff Sign In</a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-7">
+                
+                <!-- Status Alert Notification -->
+                <div id="publicAlert" class="alert d-none mb-4" role="alert"></div>
+
+                <div class="card shadow border-0">
+                    <div class="card-header bg-primary text-white py-3">
+                        <h4 class="mb-0 fw-bold"><i class="bi bi-calendar-plus me-2"></i>Schedule Housing Appointment</h4>
+                        <p class="mb-0 small text-white-50">Select your preferred date, time, and facility for in-processing or housing inquiries.</p>
+                    </div>
+                    <div class="card-body p-4">
+                        
+                        <!-- Dynamic Availability & Restrictions Notice Box -->
+                        <div class="alert alert-secondary mb-4 small" id="availabilityNoticeBox">
+                            <div class="fw-bold text-dark mb-1"><i class="bi bi-clock me-1 text-primary"></i>Current Facility Schedule & Restrictions:</div>
+                            <ul class="mb-0 ps-3" id="availabilityRulesList">
+                                <li>Operating Hours: Loading...</li>
+                                <li>Lunch Block: Loading...</li>
+                            </ul>
+                        </div>
+
+                        <form id="publicBookingForm" onsubmit="submitPublicBooking(event)">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label text-muted small">Branch</label>
+                                    <select id="pubBranch" class="form-select form-select-sm" required>
+                                        <option value="USMC">USMC</option>
+                                        <option value="US Army">US Army</option>
+                                        <option value="US Navy">US Navy</option>
+                                        <option value="US Air Force">US Air Force</option>
+                                        <option value="US Space Force">US Space Force</option>
+                                        <option value="Civilian">Civilian</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label text-muted small">Last Name</label>
+                                    <input type="text" id="pubLastName" class="form-control form-control-sm" required placeholder="Miller">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label text-muted small">First Name</label>
+                                    <input type="text" id="pubFirstName" class="form-control form-control-sm" required placeholder="John">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label text-muted small fw-bold text-primary">Assigned Building / Facility</label>
+                                <select id="pubBuilding" class="form-select form-select-sm border-primary" required>
+                                    <option value="">-- Select Building / Facility --</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label text-muted small fw-bold text-primary">Purpose of Visit</label>
+                                <select id="pubPurpose" class="form-select form-select-sm border-primary" required>
+                                    <option value="">-- Select Purpose --</option>
+                                </select>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-muted small">Appointment Date</label>
+                                    <input type="date" id="pubDate" class="form-control form-control-sm" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-muted small">Appointment Time</label>
+                                    <input type="time" id="pubTime" class="form-control form-control-sm" required>
+                                    <div class="form-text small text-danger" id="timeRestrictionHelp">Bookings outside operating hours or during lunch/blocked windows are restricted.</div>
+                                </div>
+                            </div>
+
+                            <div class="d-grid mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg"><i class="bi bi-check-circle me-2"></i>Submit Appointment Request</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let currentAvailability = null;
+
+        function initPublicForm() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('pubDate').min = today;
+            document.getElementById('pubDate').value = today;
+
+            loadPublicBuildings();
+            loadPublicPurposes();
+            loadAndDisplayAvailabilityRules();
+        }
+
+        function loadAndDisplayAvailabilityRules() {
+            const storedAvail = localStorage.getItem('housing_availability');
+            currentAvailability = storedAvail ? JSON.parse(storedAvail) : {
+                start: "08:00",
+                end: "17:00",
+                lunchStart: "12:00",
+                lunchEnd: "13:00",
+                publicBlockedCategory: "",
+                blockedStartTime: "",
+                blockedEndTime: ""
+            };
+
+            const rulesList = document.getElementById('availabilityRulesList');
+            let html = `
+                <li><strong>Operating Hours:</strong> ${formatTime12hr(currentAvailability.start)} – ${formatTime12hr(currentAvailability.end)}</li>
+                <li><strong>Lunch Block:</strong> <span class="text-danger fw-bold">${formatTime12hr(currentAvailability.lunchStart)} – ${formatTime12hr(currentAvailability.lunchEnd)} (Restricted)</span></li>
+            `;
+
+            if (currentAvailability.publicBlockedCategory && currentAvailability.blockedStartTime && currentAvailability.blockedEndTime) {
+                html += `
+                    <li><strong>Blocked Window (${currentAvailability.publicBlockedCategory}):</strong> <span class="text-danger fw-bold">${formatTime12hr(currentAvailability.blockedStartTime)} – ${formatTime12hr(currentAvailability.blockedEndTime)} (Restricted)</span></li>
+                `;
+            }
+
+            rulesList.innerHTML = html;
+        }
+
+        function formatTime12hr(timeStr) {
+            if (!timeStr) return '';
+            const [hour, minute] = timeStr.split(':');
+            let h = parseInt(hour, 10);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12 || 12;
+            return `${h}:${minute} ${ampm}`;
+        }
+
+        function loadPublicBuildings() {
+            const buildings = JSON.parse(localStorage.getItem('housing_assigned_buildings')) || [];
+            const select = document.getElementById('pubBuilding');
+            select.innerHTML = '<option value="">-- Select Building / Facility --</option>';
+
+            const activeBuildings = buildings.filter(b => !b.status || b.status === 'Active');
+
+            if (activeBuildings.length === 0) {
+                select.innerHTML += '<option value="" disabled>No buildings currently assigned</option>';
+                return;
+            }
+
+            activeBuildings.forEach(b => {
+                select.innerHTML += `<option value="${b.name}">${b.name}</option>`;
+            });
+        }
+
+        function loadPublicPurposes() {
+            const purposes = JSON.parse(localStorage.getItem('housing_purposes')) || [
+                "Check-in / In-processing", 
+                "Out-processing Inspection", 
+                "Maintenance Request", 
+                "Room Change Inquiry"
+            ];
+            const select = document.getElementById('pubPurpose');
+            select.innerHTML = '<option value="">-- Select Purpose --</option>';
+            purposes.forEach(p => {
+                select.innerHTML += `<option value="${p}">${p}</option>`;
+            });
+        }
+
+        function submitPublicBooking(event) {
+            event.preventDefault();
+
+            const branch = document.getElementById('pubBranch').value;
+            const lastName = document.getElementById('pubLastName').value.trim();
+            const firstName = document.getElementById('pubFirstName').value.trim();
+            const building = document.getElementById('pubBuilding').value;
+            const purpose = document.getElementById('pubPurpose').value;
+            const date = document.getElementById('pubDate').value;
+            const time = document.getElementById('pubTime').value;
+
+            if (!lastName || !firstName || !building || !purpose || !date || !time) {
+                showPublicAlert("Please complete all required booking fields.", "danger");
+                return;
+            }
+
+            if (currentAvailability) {
+                if (time < currentAvailability.start || time > currentAvailability.end) {
+                    showPublicAlert(`Selected time (${formatTime12hr(time)}) is outside operating hours (${formatTime12hr(currentAvailability.start)} – ${formatTime12hr(currentAvailability.end)}).`, "danger");
+                    return;
+                }
+
+                if (currentAvailability.lunchStart && currentAvailability.lunchEnd) {
+                    if (time >= currentAvailability.lunchStart && time <= currentAvailability.lunchEnd) {
+                        showPublicAlert(`Selected time falls within the designated lunch block (${formatTime12hr(currentAvailability.lunchStart)} – ${formatTime12hr(currentAvailability.lunchEnd)}). Bookings are restricted.`, "danger");
+                        return;
+                    }
+                }
+
+                if (currentAvailability.publicBlockedCategory && currentAvailability.blockedStartTime && currentAvailability.blockedEndTime) {
+                    if (time >= currentAvailability.blockedStartTime && time <= currentAvailability.blockedEndTime) {
+                        showPublicAlert(`Selected time falls within the restricted window for "${currentAvailability.publicBlockedCategory}" (${formatTime12hr(currentAvailability.blockedStartTime)} – ${formatTime12hr(currentAvailability.blockedEndTime)}).`, "danger");
+                        return;
+                    }
+                }
+            }
+
+            let bookings = JSON.parse(localStorage.getItem('housing_bookings')) || [];
+            const newBooking = {
+                id: Date.now(),
+                branch: branch,
+                lastName: lastName,
+                firstName: firstName,
+                building: building,
+                purpose: purpose,
+                date: date,
+                time: time,
+                status: "Pending",
+                internalNote: "Submitted via Public Booking Portal.",
+                username: "public_user"
+            };
+
+            bookings.push(newBooking);
+            localStorage.setItem('housing_bookings', JSON.stringify(bookings));
+
+            showPublicAlert("Appointment request successfully submitted! Staff will review and confirm your booking.", "success");
+            document.getElementById('publicBookingForm').reset();
+            document.getElementById('pubDate').value = new Date().toISOString().split('T')[0];
+        }
+
+        function showPublicAlert(message, type) {
+            const alert = document.getElementById('publicAlert');
+            alert.className = `alert alert-${type} mb-4`;
+            alert.textContent = message;
+            alert.classList.remove('d-none');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => alert.classList.add('d-none'), 6000);
+        }
+    </script>
+</body>
+</html>
