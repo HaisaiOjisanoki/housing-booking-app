@@ -1,15 +1,17 @@
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const DATA_FILE = path.join(__dirname, 'data.json');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Master In-Memory State for Cloud Execution
-let appState = {
+// Default Master State
+const defaultState = {
     camps: ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"],
     camp_buildings: {
         "Camp Hansen": ["1001", "1002", "1003"],
@@ -33,6 +35,26 @@ let appState = {
     bookings: []
 };
 
+// Load state from disk if available, otherwise use defaults
+let appState = defaultState;
+if (fs.existsSync(DATA_FILE)) {
+    try {
+        const fileData = fs.readFileSync(DATA_FILE, 'utf8');
+        appState = JSON.parse(fileData);
+    } catch (err) {
+        console.error("Error reading data.json, falling back to defaults:", err);
+    }
+}
+
+// Helper to save state to disk
+function saveStateToDisk() {
+    try {
+        fs.writeFileSync(DATA_FILE, JSON.stringify(appState, null, 2), 'utf8');
+    } catch (err) {
+        console.error("Error writing data.json:", err);
+    }
+}
+
 app.get('/api/state', (req, res) => {
     res.json(appState);
 });
@@ -40,21 +62,8 @@ app.get('/api/state', (req, res) => {
 app.post('/api/state', (req, res) => {
     const newState = req.body;
     if (newState) {
-        if (Array.isArray(newState.camps) && newState.camps.length > 0) {
-            appState.camps = newState.camps;
-        }
-        if (newState.camp_buildings && typeof newState.camp_buildings === 'object') {
-            appState.camp_buildings = newState.camp_buildings;
-        }
-        if (Array.isArray(newState.purposes) && newState.purposes.length > 0) {
-            appState.purposes = newState.purposes;
-        }
-        if (Array.isArray(newState.staff_users)) {
-            appState.staff_users = newState.staff_users;
-        }
-        if (Array.isArray(newState.bookings)) {
-            appState.bookings = newState.bookings;
-        }
+        appState = newState;
+        saveStateToDisk();
         return res.json({ success: true, appState });
     }
     res.status(400).json({ success: false, message: "Invalid payload." });
