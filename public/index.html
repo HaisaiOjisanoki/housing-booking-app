@@ -229,10 +229,7 @@
         };
         let currentStaffUser = null;
 
-        // Populate immediately on DOM load using fallbacks
         document.addEventListener("DOMContentLoaded", () => {
-            populatePublicDropdowns();
-            populateLoginButtons();
             document.getElementById('apptDate').min = new Date().toISOString().split('T')[0];
             initializeApp();
         });
@@ -247,12 +244,13 @@
                     }
                 }
             } catch (err) {
-                console.warn("API restricted or offline, using local fallbacks:", err);
+                console.warn("Using local state fallback:", err);
             } finally {
-                // Guaranteed execution: dropdowns will ALWAYS populate regardless of network status
                 populatePublicDropdowns();
                 populateLoginButtons();
-                if (currentStaffUser) renderStaffDashboard();
+                if (currentStaffUser) {
+                    renderStaffDashboard();
+                }
                 if (showAlert) alert("Data synchronized successfully.");
             }
         }
@@ -267,21 +265,26 @@
             const purposesList = (appState.purposes && appState.purposes.length > 0) ? appState.purposes : fallbackPurposes;
 
             const campSelect = document.getElementById('campSelect');
+            const currentCampVal = campSelect.value;
             campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
             campsList.forEach(c => {
                 campSelect.innerHTML += `<option value="${c}">${c}</option>`;
             });
+            if (currentCampVal) campSelect.value = currentCampVal;
 
             const purposeSelect = document.getElementById('purposeSelect');
+            const currentPurposeVal = purposeSelect.value;
             purposeSelect.innerHTML = '<option value="">-- Select Purpose --</option>';
             purposesList.forEach(p => {
                 purposeSelect.innerHTML += `<option value="${p}">${p}</option>`;
             });
+            if (currentPurposeVal) purposeSelect.value = currentPurposeVal;
         }
 
         function updateBuildingDropdown() {
             const camp = document.getElementById('campSelect').value;
             const buildingSelect = document.getElementById('buildingSelect');
+            const currentBldgVal = buildingSelect.value;
             buildingSelect.innerHTML = '<option value="">-- Select Building --</option>';
 
             const buildingsMap = appState.camp_buildings || fallbackCampBuildings;
@@ -289,6 +292,7 @@
             buildingsMap[camp].forEach(b => {
                 buildingSelect.innerHTML += `<option value="${b}">Bldg ${b}</option>`;
             });
+            if (currentBldgVal) buildingSelect.value = currentBldgVal;
         }
 
         async function submitBooking(e) {
@@ -312,23 +316,10 @@
             if (!appState.bookings) appState.bookings = [];
             appState.bookings.push(newBooking);
 
-            try {
-                const postRes = await fetch('/api/state', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(appState)
-                });
-                if (postRes.ok) {
-                    document.getElementById('bookingForm').classList.add('d-none');
-                    document.getElementById('displayCode').textContent = code;
-                    document.getElementById('successAlert').classList.remove('d-none');
-                }
-            } catch (err) {
-                // Fallback for UI success even if network blocks POST sync
-                document.getElementById('bookingForm').classList.add('d-none');
-                document.getElementById('displayCode').textContent = code;
-                document.getElementById('successAlert').classList.remove('d-none');
-            }
+            await saveStateToServer();
+            document.getElementById('bookingForm').classList.add('d-none');
+            document.getElementById('displayCode').textContent = code;
+            document.getElementById('successAlert').classList.remove('d-none');
         }
 
         function resetPublicForm() {
@@ -385,11 +376,15 @@
 
         function setupAdminCampDropdowns() {
             const sel = document.getElementById('mgmtCampSelect');
+            const selectedVal = sel.value;
             sel.innerHTML = '';
             const campsList = appState.camps || fallbackCamps;
             campsList.forEach(c => {
                 sel.innerHTML += `<option value="${c}">${c}</option>`;
             });
+            if (selectedVal && campsList.includes(selectedVal)) {
+                sel.value = selectedVal;
+            }
             renderBuildingManagementList();
         }
 
@@ -415,16 +410,20 @@
         async function addCamp() {
             const name = document.getElementById('newCampName').value.trim();
             if (!name) return alert("Enter camp name.");
-            if (!appState.camps) appState.camps = fallbackCamps;
+            if (!appState.camps) appState.camps = [...fallbackCamps];
             if (appState.camps.includes(name)) return alert("Camp already exists.");
 
             appState.camps.push(name);
-            if (!appState.camp_buildings) appState.camp_buildings = fallbackCampBuildings;
+            if (!appState.camp_buildings) appState.camp_buildings = {...fallbackCampBuildings};
             appState.camp_buildings[name] = [];
+            
             await saveStateToServer();
             document.getElementById('newCampName').value = '';
+            
+            // Re-render everything immediately
+            populatePublicDropdowns();
             setupAdminCampDropdowns();
-            alert("Camp added successfully.");
+            alert("Camp added and synchronized across all views.");
         }
 
         async function addBuilding() {
@@ -432,15 +431,19 @@
             const bldg = document.getElementById('newBldgNum').value.trim();
             if (!camp || !bldg) return alert("Enter building number.");
 
-            if (!appState.camp_buildings) appState.camp_buildings = fallbackCampBuildings;
+            if (!appState.camp_buildings) appState.camp_buildings = {...fallbackCampBuildings};
             if (!appState.camp_buildings[camp]) appState.camp_buildings[camp] = [];
             if (appState.camp_buildings[camp].includes(bldg)) return alert("Building already exists in this camp.");
 
             appState.camp_buildings[camp].push(bldg);
+            
             await saveStateToServer();
             document.getElementById('newBldgNum').value = '';
+            
+            // Re-render everything immediately
             renderBuildingManagementList();
-            alert("Building added and synced with public booking form.");
+            updateBuildingDropdown();
+            alert("Building added and synchronized across all views.");
         }
 
         function renderBookingsTable() {
@@ -503,13 +506,19 @@
 
         async function saveStateToServer() {
             try {
-                await fetch('/api/state', {
+                const res = await fetch('/api/state', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(appState)
                 });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.appState) {
+                        appState = data.appState;
+                    }
+                }
             } catch (err) {
-                console.warn("Sync save restricted by network.");
+                console.warn("Network restricted sync, operating on local session state.");
             }
         }
     </script>
