@@ -30,7 +30,7 @@
                 <div class="card shadow border-0">
                     <div class="card-header bg-primary text-white py-3">
                         <h4 class="mb-0 fw-bold"><i class="bi bi-calendar-plus me-2"></i>Schedule Housing Appointment</h4>
-                        <p class="mb-0 small text-white-50">Select your preferred camp, building, and time synced live with Superadmin.</p>
+                        <p class="mb-0 small text-white-50">Select your camp and building synced live with Superadmin records.</p>
                     </div>
                     <div class="card-body p-4">
                         
@@ -119,19 +119,10 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        const fallbackCamps = ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"];
-        const fallbackCampBuildings = {
-            "Camp Hansen": ["1001", "1002", "1003"],
-            "Camp Schwab": ["2001", "2002"],
-            "Camp Foster": ["3001", "3002", "3003"],
-            "MCAS Futenma": ["4001", "4002"]
-        };
-        const fallbackPurposes = ["Initial Check-in", "Final Check-out / Clearance", "Room Maintenance Request", "Housing Inquiry"];
-
         let appState = {
-            camps: fallbackCamps,
-            camp_buildings: fallbackCampBuildings,
-            purposes: fallbackPurposes,
+            camps: [],
+            camp_buildings: {},
+            purposes: [],
             staff_users: [],
             bookings: []
         };
@@ -145,7 +136,7 @@
             }
 
             await fetchServerState();
-            setInterval(() => fetchServerState(), 8000);
+            setInterval(() => fetchServerState(), 5000); // Live-sync loop
         }
 
         async function fetchServerState() {
@@ -155,18 +146,17 @@
                     const data = await res.json();
                     if (data) {
                         appState = data;
+                        populatePublicCampsAndPurposes();
                     }
                 }
             } catch (err) {
-                console.warn("Using local fallback state.");
-            } finally {
-                populatePublicDropdowns();
+                console.warn("Could not sync with server state.");
             }
         }
 
-        function populatePublicDropdowns() {
-            const camps = (Array.isArray(appState.camps) && appState.camps.length > 0) ? appState.camps : fallbackCamps;
-            const purposes = (Array.isArray(appState.purposes) && appState.purposes.length > 0) ? appState.purposes : fallbackPurposes;
+        function populatePublicCampsAndPurposes() {
+            const camps = Array.isArray(appState.camps) ? appState.camps : [];
+            const purposes = Array.isArray(appState.purposes) ? appState.purposes : [];
 
             const campSelect = document.getElementById('pubCamp');
             if(!campSelect) return;
@@ -204,11 +194,11 @@
             buildingSelect.innerHTML = '<option value="">-- Select Camp First --</option>';
             if (!camp) return;
 
-            const buildingsMap = appState.camp_buildings || fallbackCampBuildings;
-            const bldgs = buildingsMap[camp] || fallbackCampBuildings[camp] || [];
+            const buildingsMap = appState.camp_buildings || {};
+            const bldgs = buildingsMap[camp] || [];
 
             if (bldgs.length === 0) {
-                buildingSelect.innerHTML = '<option value="" disabled>No buildings available for this camp</option>';
+                buildingSelect.innerHTML = '<option value="" disabled>No buildings configured for this camp</option>';
                 return;
             }
 
