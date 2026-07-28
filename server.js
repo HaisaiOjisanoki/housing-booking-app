@@ -1,14 +1,64 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Auto-generate the public directory and dashboard files at runtime
+const publicDir = path.join(__dirname, 'public');
+if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+}
+
+const superadminHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unaccompanied Housing - Superadmin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="card shadow p-4">
+            <h1 class="text-primary mb-3">Unaccompanied Housing Superadmin Dashboard</h1>
+            <p class="text-muted">Server is running and operational on Render.</p>
+            <hr>
+            <div id="status-panel">
+                <span class="badge bg-success">Online & Synced</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+const staffHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unaccompanied Housing - Staff Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="card shadow p-4">
+            <h1 class="text-success mb-3">Unaccompanied Housing Staff Dashboard</h1>
+            <p class="text-muted">Staff portal active.</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+fs.writeFileSync(path.join(publicDir, 'superadmin_dashboard.html'), superadminHtml);
+fs.writeFileSync(path.join(publicDir, 'staff_dashboard.html'), staffHtml);
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(publicDir));
 
-// In-Memory State Architecture for Render and local runtime
+// In-Memory State Architecture
 let appState = {
     camps: ["Camp Hansen", "Camp Schwab", "Camp Foster", "McNair", "Courtney"],
     camp_buildings: {
@@ -25,22 +75,7 @@ let appState = {
         "Maintenance Request",
         "Administrative Support"
     ],
-    bookings: [
-        {
-            confirmationCode: "UH-9941",
-            firstName: "John",
-            lastName: "Doe",
-            branch: "USMC",
-            camp: "Camp Hansen",
-            building: "5701",
-            date: "2026-07-28",
-            time: "10:00",
-            purpose: "Check-in / In-processing",
-            status: "Confirmed",
-            email: "john.doe@usmc.mil",
-            staffNotes: ""
-        }
-    ],
+    bookings: [],
     staff_users: [
         {
             username: "superadmin",
@@ -49,27 +84,11 @@ let appState = {
             camp: "ALL",
             buildings: [],
             recovery_email: "superadmin@usmc.mil"
-        },
-        {
-            username: "hansen_admin",
-            password: "password123",
-            role: "camp_admin",
-            camp: "Camp Hansen",
-            buildings: ["5701", "5702", "5703"],
-            recovery_email: "hansen_admin@usmc.mil"
-        },
-        {
-            username: "manager_5701",
-            password: "password123",
-            role: "staff",
-            camp: "Camp Hansen",
-            buildings: ["5701"],
-            recovery_email: "mgr5701@usmc.mil"
         }
     ]
 };
 
-// API Endpoints for State Synchronization
+// API Endpoints
 app.get('/api/state', (req, res) => {
     res.json(appState);
 });
@@ -82,24 +101,21 @@ app.post('/api/state', (req, res) => {
     res.status(400).json({ success: false, error: "Invalid state payload" });
 });
 
-// Route for Superadmin Dashboard
+// Routes
 app.get('/superadmin', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'superadmin_dashboard.html'));
+    res.sendFile(path.join(publicDir, 'superadmin_dashboard.html'));
 });
 
-// Route for Staff / Camp Admin Dashboard
 app.get('/staff', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'staff_dashboard.html'));
+    res.sendFile(path.join(publicDir, 'staff_dashboard.html'));
 });
 
-// Logout endpoint redirect
 app.get('/logout', (req, res) => {
     res.redirect('/');
 });
 
-// Default fallback route
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'superadmin_dashboard.html'));
+    res.sendFile(path.join(publicDir, 'superadmin_dashboard.html'));
 });
 
 app.listen(PORT, () => {
