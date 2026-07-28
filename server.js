@@ -50,12 +50,21 @@ const defaultState = {
     ]
 };
 
-// Load state from data.json if it exists, otherwise create it using defaultState
+// Load state from data.json and merge with defaults to prevent missing properties
 let appState = defaultState;
 if (fs.existsSync(DATA_FILE)) {
     try {
         const fileData = fs.readFileSync(DATA_FILE, 'utf8');
-        appState = JSON.parse(fileData);
+        const savedState = JSON.parse(fileData);
+        appState = {
+            ...defaultState,
+            ...savedState,
+            camps: savedState.camps && savedState.camps.length > 0 ? savedState.camps : defaultState.camps,
+            camp_buildings: { ...defaultState.camp_buildings, ...(savedState.camp_buildings || {}) },
+            purposes: savedState.purposes && savedState.purposes.length > 0 ? savedState.purposes : defaultState.purposes,
+            staff_users: savedState.staff_users && savedState.staff_users.length > 0 ? savedState.staff_users : defaultState.staff_users,
+            bookings: savedState.bookings || defaultState.bookings
+        };
     } catch (err) {
         console.error("Error reading data.json, using defaults:", err);
     }
@@ -80,8 +89,14 @@ app.get('/api/state', (req, res) => {
 // API: Update synchronized state and save to file
 app.post('/api/state', (req, res) => {
     const newState = req.body;
-    if (newState && newState.camps && newState.camp_buildings && newState.bookings) {
-        appState = newState;
+    if (newState) {
+        appState = {
+            ...defaultState,
+            ...newState,
+            camps: newState.camps || defaultState.camps,
+            camp_buildings: newState.camp_buildings || defaultState.camp_buildings,
+            bookings: newState.bookings || defaultState.bookings
+        };
         saveState();
         return res.json({ success: true, message: "State synchronized and saved successfully." });
     }
