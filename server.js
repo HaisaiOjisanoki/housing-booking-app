@@ -8,11 +8,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-<<<<<<< HEAD
 // Robust In-Memory State for Cloud Execution
-=======
-// Master In-Memory State for Render Cloud Deployment
->>>>>>> 312a167190675a00a5c825a99f825fd1421e36bd
 let appState = {
     camps: ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"],
     camp_buildings: {
@@ -65,9 +61,5 @@ app.post('/api/state', (req, res) => {
 });
 
 app.listen(PORT, () => {
-<<<<<<< HEAD
     console.log(`Housing Portal running on port ${PORT}`);
-=======
-    console.log(`Housing Portal running on port ${PORT} (Cloud In-Memory Mode)`);
->>>>>>> 312a167190675a00a5c825a99f825fd1421e36bd
 });
