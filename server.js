@@ -36,16 +36,30 @@ const defaultState = {
 
 let appState = JSON.parse(JSON.stringify(defaultState));
 
+// Load and robustly merge saved state with defaults
 if (fs.existsSync(DATA_FILE)) {
     try {
         const fileData = fs.readFileSync(DATA_FILE, 'utf8');
         const savedState = JSON.parse(fileData);
-        if (savedState && Array.isArray(savedState.camps) && savedState.camps.length > 0) {
+        
+        // Ensure camps always include defaults
+        if (savedState && Array.isArray(savedState.camps)) {
+            defaultState.camps.forEach(c => {
+                if (!savedState.camps.includes(c)) savedState.camps.push(c);
+            });
             appState.camps = savedState.camps;
         }
+
+        // Ensure camp_buildings always include defaults
         if (savedState && savedState.camp_buildings && typeof savedState.camp_buildings === 'object') {
+            Object.keys(defaultState.camp_buildings).forEach(camp => {
+                if (!savedState.camp_buildings[camp] || !Array.isArray(savedState.camp_buildings[camp]) || savedState.camp_buildings[camp].length === 0) {
+                    savedState.camp_buildings[camp] = defaultState.camp_buildings[camp];
+                }
+            });
             appState.camp_buildings = savedState.camp_buildings;
         }
+
         if (savedState && Array.isArray(savedState.purposes) && savedState.purposes.length > 0) {
             appState.purposes = savedState.purposes;
         }
