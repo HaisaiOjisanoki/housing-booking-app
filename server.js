@@ -36,7 +36,7 @@ const defaultState = {
 
 let appState = JSON.parse(JSON.stringify(defaultState));
 
-// Load and sanitize data.json safely
+// Load saved state if data.json exists
 if (fs.existsSync(DATA_FILE)) {
     try {
         const fileData = fs.readFileSync(DATA_FILE, 'utf8');
@@ -93,9 +93,9 @@ app.post('/api/state', (req, res) => {
         }
         
         try {
-            fs.writeFileSync(DATA_FILE, JSON.stringify(appState, null, 2));
+            fs.writeFileSync(DATA_FILE, JSON.stringify(appState, null, 2), 'utf8');
         } catch (err) {
-            console.error("Error writing data.json:", err);
+            console.error("Error writing data.json on Render:", err);
         }
         return res.json({ success: true, appState });
     }
