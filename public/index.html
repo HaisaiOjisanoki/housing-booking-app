@@ -30,7 +30,7 @@
                 <div class="card shadow border-0">
                     <div class="card-header bg-primary text-white py-3">
                         <h4 class="mb-0 fw-bold"><i class="bi bi-calendar-plus me-2"></i>Schedule Housing Appointment</h4>
-                        <p class="mb-0 small text-white-50">Select your preferred date, time, camp, and facility synced live with Superadmin.</p>
+                        <p class="mb-0 small text-white-50">Select your preferred date, time, and facility for in-processing or housing inquiries.</p>
                     </div>
                     <div class="card-body p-4">
                         
@@ -48,11 +48,11 @@
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label text-muted small">Branch</label>
                                     <select id="pubBranch" class="form-select form-select-sm" required>
-                                        <option value="USMC">USMC</option>
-                                        <option value="US Army">US Army</option>
-                                        <option value="US Navy">US Navy</option>
-                                        <option value="US Air Force">US Air Force</option>
-                                        <option value="US Space Force">US Space Force</option>
+                                        <option value="Marine Corps">Marine Corps</option>
+                                        <option value="Army">Army</option>
+                                        <option value="Navy">Navy</option>
+                                        <option value="Air Force">Air Force</option>
+                                        <option value="Space Force">Space Force</option>
                                         <option value="Civilian">Civilian</option>
                                     </select>
                                 </div>
@@ -74,7 +74,7 @@
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label text-muted small fw-bold text-primary">Building / Facility</label>
+                                    <label class="form-label text-muted small fw-bold text-primary">Assigned Building / Facility</label>
                                     <select id="pubBuilding" class="form-select form-select-sm border-primary" required>
                                         <option value="">-- Select Camp First --</option>
                                     </select>
@@ -140,7 +140,7 @@
             }
 
             await fetchServerState();
-            setInterval(() => fetchServerState(), 5000); // Live sync with Superadmin updates
+            setInterval(() => fetchServerState(), 5000);
         }
 
         async function fetchServerState() {
@@ -160,8 +160,8 @@
         }
 
         function populatePublicDropdowns() {
-            const camps = Array.isArray(appState.camps) ? appState.camps : ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"];
-            const purposes = Array.isArray(appState.purposes) ? appState.purposes : ["Initial Check-in", "Final Check-out / Clearance", "Room Maintenance Request", "Housing Inquiry"];
+            const camps = Array.isArray(appState.camps) && appState.camps.length > 0 ? appState.camps : ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"];
+            const purposes = Array.isArray(appState.purposes) && appState.purposes.length > 0 ? appState.purposes : ["Initial Check-in", "Final Check-out / Clearance", "Room Maintenance Request", "Housing Inquiry"];
 
             const campSelect = document.getElementById('pubCamp');
             if(campSelect) {
@@ -209,10 +209,11 @@
 
             buildingSelect.innerHTML = '<option value="">-- Select Building / Facility --</option>';
             bldgs.forEach(b => {
-                buildingSelect.innerHTML += `<option value="${b}">Bldg ${b}</option>`;
+                const bldgName = (typeof b === 'object' && b !== null) ? (b.name || b.building || JSON.stringify(b)) : b;
+                buildingSelect.innerHTML += `<option value="${bldgName}">Bldg ${bldgName}</option>`;
             });
 
-            if (currentBldg && bldgs.includes(currentBldg)) {
+            if (currentBldg) {
                 buildingSelect.value = currentBldg;
             }
         }

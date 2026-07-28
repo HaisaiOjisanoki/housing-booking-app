@@ -10,6 +10,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Flexible route for Staff Login page (checks multiple common filenames)
+app.get('/login', (req, res) => {
+    const possibleFiles = ['login.html', 'staff.html', 'admin.html'];
+    for (let file of possibleFiles) {
+        const filePath = path.join(__dirname, 'public', file);
+        if (fs.existsSync(filePath)) {
+            return res.sendFile(filePath);
+        }
+    }
+    res.status(404).send('Staff login page is missing from the public folder.');
+});
+
 const defaultState = {
     camps: ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"],
     camp_buildings: {
@@ -24,6 +36,15 @@ const defaultState = {
         "Room Maintenance Request",
         "Housing Inquiry"
     ],
+    availability: {
+        start: "08:00",
+        end: "17:00",
+        lunchStart: "12:00",
+        lunchEnd: "13:00",
+        publicBlockedCategory: "",
+        blockedStartTime: "",
+        blockedEndTime: ""
+    },
     staff_users: [
         { username: "superadmin", role: "superadmin", camp: "ALL", building: "ALL", name: "Master Superadmin" },
         { username: "hansen_admin", role: "camp_admin", camp: "Camp Hansen", building: "ALL", name: "Hansen Camp Admin" }
