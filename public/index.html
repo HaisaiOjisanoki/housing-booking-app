@@ -13,7 +13,7 @@
         .view-section.active { display: block; }
     </style>
 </head>
-<body onload="initializeApp()">
+<body>
 
     <!-- Navbar -->
     <nav class="navbar navbar-dark bg-dark px-4 shadow-sm">
@@ -199,21 +199,21 @@
     </div>
 
     <script>
-        // Guaranteed fallback data so UI renders immediately
-        let fallbackCamps = ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"];
-        let fallbackCampBuildings = {
+        // Guaranteed fallback data so dropdowns render instantly on load
+        const fallbackCamps = ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"];
+        const fallbackCampBuildings = {
             "Camp Hansen": ["1001", "1002", "1003"],
             "Camp Schwab": ["2001", "2002"],
             "Camp Foster": ["3001", "3002", "3003"],
             "MCAS Futenma": ["4001", "4002"]
         };
-        let fallbackPurposes = [
+        const fallbackPurposes = [
             "Initial Check-in",
             "Final Check-out / Clearance",
             "Room Maintenance Request",
             "Housing Inquiry"
         ];
-        let fallbackStaff = [
+        const fallbackStaff = [
             { username: "superadmin", role: "superadmin", camp: "ALL", building: "ALL", name: "Master Superadmin" },
             { username: "hansen_admin", role: "camp_admin", camp: "Camp Hansen", building: "ALL", name: "Hansen Camp Admin" },
             { username: "schwab_admin", role: "camp_admin", camp: "Camp Schwab", building: "ALL", name: "Schwab Camp Admin" },
@@ -230,11 +230,12 @@
         };
         let currentStaffUser = null;
 
-        // Populate immediately on load before async fetch happens
+        // Populate immediately on page load
         document.addEventListener("DOMContentLoaded", () => {
             populatePublicDropdowns();
             populateLoginButtons();
             document.getElementById('apptDate').min = new Date().toISOString().split('T')[0];
+            initializeApp();
         });
 
         async function initializeApp(showAlert = false) {
@@ -249,7 +250,7 @@
                 if (currentStaffUser) renderStaffDashboard();
                 if (showAlert) alert("Data synchronized successfully.");
             } catch (err) {
-                console.error("Sync error, keeping defaults:", err);
+                console.error("Sync error, using defaults:", err);
             }
         }
 
@@ -259,8 +260,8 @@
         }
 
         function populatePublicDropdowns() {
-            const campsList = appState.camps && appState.camps.length > 0 ? appState.camps : fallbackCamps;
-            const purposesList = appState.purposes && appState.purposes.length > 0 ? appState.purposes : fallbackPurposes;
+            const campsList = (appState.camps && appState.camps.length > 0) ? appState.camps : fallbackCamps;
+            const purposesList = (appState.purposes && appState.purposes.length > 0) ? appState.purposes : fallbackPurposes;
 
             const campSelect = document.getElementById('campSelect');
             campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
