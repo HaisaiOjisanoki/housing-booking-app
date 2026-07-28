@@ -1,87 +1,43 @@
 {
-  "camps": [
-    "Camp Hansen",
-    "Camp Schwab",
-    "Camp Foster",
-    "MCAS Futenma"
-  ],
-  "camp_buildings": {
-    "Camp Hansen": [
-      "1001",
-      "1002",
-      "1003"
+    "camps": [
+        "Camp Hansen",
+        "Camp Schwab",
+        "Camp Foster",
+        "MCAS Futenma"
     ],
-    "Camp Schwab": [
-      "2001",
-      "2002"
+    "camp_buildings": {
+        "Camp Hansen": ["1001", "1002", "1003"],
+        "Camp Schwab": ["2001", "2002"],
+        "Camp Foster": ["3001", "3002", "3003"],
+        "MCAS Futenma": ["4001", "4002"]
+    },
+    "purposes": [
+        "Initial Check-in",
+        "Final Check-out / Clearance",
+        "Room Maintenance Request",
+        "Housing Inquiry"
     ],
-    "Camp Foster": [
-      "3001",
-      "3002",
-      "3003"
+    "staff_users": [
+        { "username": "superadmin", "role": "superadmin", "camp": "ALL", "building": "ALL", "name": "Master Superadmin" },
+        { "username": "hansen_admin", "role": "camp_admin", "camp": "Camp Hansen", "building": "ALL", "name": "Hansen Camp Admin" },
+        { "username": "schwab_admin", "role": "camp_admin", "camp": "Camp Schwab", "building": "ALL", "name": "Schwab Camp Admin" },
+        { "username": "mgr_1001", "role": "building_manager", "camp": "Camp Hansen", "building": "1001", "name": "Bldg 1001 Manager" },
+        { "username": "mgr_2001", "role": "building_manager", "camp": "Camp Schwab", "building": "2001", "name": "Bldg 2001 Manager" }
     ],
-    "MCAS Futenma": [
-      "4001",
-      "4002"
+    "bookings": [
+        {
+            "id": 1774828800000,
+            "confirmationCode": "HSG-849201",
+            "firstName": "Marcus",
+            "lastName": "Vance",
+            "email": "marcus.vance@usmc.mil",
+            "branch": "USMC",
+            "camp": "Camp Hansen",
+            "building": "1001",
+            "purpose": "Initial Check-in",
+            "date": "2026-04-10",
+            "time": "09:00",
+            "status": "Pending"
+        }
     ]
-  },
-  "purposes": [
-    "Initial Check-in",
-    "Final Check-out / Clearance",
-    "Room Maintenance Request",
-    "Housing Inquiry"
-  ],
-  "staff_users": [
-    {
-      "username": "superadmin",
-      "role": "superadmin",
-      "camp": "ALL",
-      "building": "ALL",
-      "name": "Master Superadmin"
-    },
-    {
-      "username": "hansen_admin",
-      "role": "camp_admin",
-      "camp": "Camp Hansen",
-      "building": "ALL",
-      "name": "Hansen Camp Admin"
-    },
-    {
-      "username": "schwab_admin",
-      "role": "camp_admin",
-      "camp": "Camp Schwab",
-      "building": "ALL",
-      "name": "Schwab Camp Admin"
-    },
-    {
-      "username": "mgr_1001",
-      "role": "building_manager",
-      "camp": "Camp Hansen",
-      "building": "1001",
-      "name": "Bldg 1001 Manager"
-    },
-    {
-      "username": "mgr_2001",
-      "role": "building_manager",
-      "camp": "Camp Schwab",
-      "building": "2001",
-      "name": "Bldg 2001 Manager"
-    }
-  ],
-  "bookings": [
-    {
-      "id": 1774828800000,
-      "confirmationCode": "HSG-849201",
-      "firstName": "Marcus",
-      "lastName": "Vance",
-      "email": "marcus.vance@usmc.mil",
-      "branch": "USMC",
-      "camp": "Camp Hansen",
-      "building": "1001",
-      "purpose": "Initial Check-in",
-      "date": "2026-04-10",
-      "time": "09:00",
-      "status": "Pending"
-    }
-  ]
 }
