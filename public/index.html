@@ -34,7 +34,7 @@
                     </div>
                     <div class="card-body p-4">
                         
-                        <!-- Confirmation Code View (Hidden initially) -->
+                        <!-- Confirmation Code View -->
                         <div id="successAlert" class="alert alert-success d-none mb-4" role="alert">
                             <h5 class="fw-bold mb-1"><i class="bi bi-check-circle-fill me-2"></i>Booking Confirmed!</h5>
                             <p class="mb-1 small">Your confirmation code: <strong id="displayCode" class="fs-5 text-dark"></strong></p>
@@ -119,10 +119,19 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
+        const fallbackCamps = ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"];
+        const fallbackCampBuildings = {
+            "Camp Hansen": ["1001", "1002", "1003"],
+            "Camp Schwab": ["2001", "2002"],
+            "Camp Foster": ["3001", "3002", "3003"],
+            "MCAS Futenma": ["4001", "4002"]
+        };
+        const fallbackPurposes = ["Initial Check-in", "Final Check-out / Clearance", "Room Maintenance Request", "Housing Inquiry"];
+
         let appState = {
-            camps: [],
-            camp_buildings: {},
-            purposes: [],
+            camps: fallbackCamps,
+            camp_buildings: fallbackCampBuildings,
+            purposes: fallbackPurposes,
             staff_users: [],
             bookings: []
         };
@@ -136,8 +145,6 @@
             }
 
             await fetchServerState();
-            
-            // Auto-sync every 8 seconds with Superadmin updates
             setInterval(() => fetchServerState(), 8000);
         }
 
@@ -148,17 +155,18 @@
                     const data = await res.json();
                     if (data) {
                         appState = data;
-                        populatePublicDropdowns();
                     }
                 }
             } catch (err) {
-                console.warn("Could not connect to server backend.");
+                console.warn("Using local fallback state.");
+            } finally {
+                populatePublicDropdowns();
             }
         }
 
         function populatePublicDropdowns() {
-            const camps = Array.isArray(appState.camps) ? appState.camps : [];
-            const purposes = Array.isArray(appState.purposes) ? appState.purposes : [];
+            const camps = (Array.isArray(appState.camps) && appState.camps.length > 0) ? appState.camps : fallbackCamps;
+            const purposes = (Array.isArray(appState.purposes) && appState.purposes.length > 0) ? appState.purposes : fallbackPurposes;
 
             const campSelect = document.getElementById('pubCamp');
             if(!campSelect) return;
@@ -196,8 +204,8 @@
             buildingSelect.innerHTML = '<option value="">-- Select Camp First --</option>';
             if (!camp) return;
 
-            const buildingsMap = appState.camp_buildings || {};
-            const bldgs = buildingsMap[camp] || [];
+            const buildingsMap = appState.camp_buildings || fallbackCampBuildings;
+            const bldgs = buildingsMap[camp] || fallbackCampBuildings[camp] || [];
 
             if (bldgs.length === 0) {
                 buildingSelect.innerHTML = '<option value="" disabled>No buildings available for this camp</option>';
@@ -222,7 +230,7 @@
                 id: Date.now(),
                 confirmationCode: code,
                 branch: document.getElementById('pubBranch').value,
-                lastName: document.getElementById('pubLastName'].value.trim(),
+                lastName: document.getElementById('pubLastName').value.trim(),
                 firstName: document.getElementById('pubFirstName').value.trim(),
                 camp: document.getElementById('pubCamp').value,
                 building: document.getElementById('pubBuilding').value,
@@ -263,8 +271,7 @@
         }
 
         function openStaffPortal() {
-            // Redirect or load staff login view if you have it combined, or point to login route
-            window.location.href = '/login.html'; // Or adjust depending on your router
+            window.location.href = '/login.html';
         }
 
         function showPublicAlert(message, type) {

@@ -10,7 +10,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Default Master State
 const defaultState = {
     camps: ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"],
     camp_buildings: {
@@ -35,18 +34,22 @@ const defaultState = {
     bookings: []
 };
 
-// Load state from disk if available, otherwise use defaults
 let appState = defaultState;
 if (fs.existsSync(DATA_FILE)) {
     try {
         const fileData = fs.readFileSync(DATA_FILE, 'utf8');
-        appState = JSON.parse(fileData);
+        const savedState = JSON.parse(fileData);
+        appState = {
+            ...defaultState,
+            ...savedState,
+            camps: (savedState.camps && savedState.camps.length > 0) ? savedState.camps : defaultState.camps,
+            camp_buildings: { ...defaultState.camp_buildings, ...(savedState.camp_buildings || {}) }
+        };
     } catch (err) {
         console.error("Error reading data.json, falling back to defaults:", err);
     }
 }
 
-// Helper to save state to disk
 function saveStateToDisk() {
     try {
         fs.writeFileSync(DATA_FILE, JSON.stringify(appState, null, 2), 'utf8');
