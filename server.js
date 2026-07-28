@@ -36,6 +36,7 @@ const defaultState = {
 
 let appState = JSON.parse(JSON.stringify(defaultState));
 
+// Load and sanitize data.json safely
 if (fs.existsSync(DATA_FILE)) {
     try {
         const fileData = fs.readFileSync(DATA_FILE, 'utf8');
@@ -44,14 +45,15 @@ if (fs.existsSync(DATA_FILE)) {
             if (Array.isArray(savedState.camps) && savedState.camps.length > 0) {
                 appState.camps = savedState.camps;
             }
-            appState.camp_buildings = {};
-            appState.camps.forEach(camp => {
-                if (savedState.camp_buildings && Array.isArray(savedState.camp_buildings[camp]) && savedState.camp_buildings[camp].length > 0) {
-                    appState.camp_buildings[camp] = savedState.camp_buildings[camp];
-                } else {
-                    appState.camp_buildings[camp] = defaultState.camp_buildings[camp] || ["101", "102"];
-                }
-            });
+            if (savedState.camp_buildings && typeof savedState.camp_buildings === 'object') {
+                appState.camps.forEach(camp => {
+                    if (Array.isArray(savedState.camp_buildings[camp]) && savedState.camp_buildings[camp].length > 0) {
+                        appState.camp_buildings[camp] = savedState.camp_buildings[camp];
+                    } else if (!appState.camp_buildings[camp]) {
+                        appState.camp_buildings[camp] = defaultState.camp_buildings[camp] || ["101"];
+                    }
+                });
+            }
             if (Array.isArray(savedState.purposes) && savedState.purposes.length > 0) {
                 appState.purposes = savedState.purposes;
             }
@@ -63,7 +65,7 @@ if (fs.existsSync(DATA_FILE)) {
             }
         }
     } catch (err) {
-        console.error("Error reading data.json:", err);
+        console.error("Error reading data.json, falling back to defaults:", err);
     }
 }
 
@@ -74,16 +76,26 @@ app.get('/api/state', (req, res) => {
 app.post('/api/state', (req, res) => {
     const newState = req.body;
     if (newState) {
-        if (Array.isArray(newState.camps)) appState.camps = newState.camps;
-        if (newState.camp_buildings) appState.camp_buildings = newState.camp_buildings;
-        if (Array.isArray(newState.purposes)) appState.purposes = newState.purposes;
-        if (Array.isArray(newState.staff_users)) appState.staff_users = newState.staff_users;
-        if (Array.isArray(newState.bookings)) appState.bookings = newState.bookings;
+        if (Array.isArray(newState.camps) && newState.camps.length > 0) {
+            appState.camps = newState.camps;
+        }
+        if (newState.camp_buildings && typeof newState.camp_buildings === 'object') {
+            appState.camp_buildings = newState.camp_buildings;
+        }
+        if (Array.isArray(newState.purposes) && newState.purposes.length > 0) {
+            appState.purposes = newState.purposes;
+        }
+        if (Array.isArray(newState.staff_users)) {
+            appState.staff_users = newState.staff_users;
+        }
+        if (Array.isArray(newState.bookings)) {
+            appState.bookings = newState.bookings;
+        }
         
         try {
             fs.writeFileSync(DATA_FILE, JSON.stringify(appState, null, 2));
         } catch (err) {
-            console.error("Error saving data.json:", err);
+            console.error("Error writing data.json:", err);
         }
         return res.json({ success: true, appState });
     }

@@ -220,11 +220,11 @@
             if (dateInput) {
                 dateInput.min = new Date().toISOString().split('T')[0];
             }
-            // Populate immediately with defaults so dropdowns never show empty on load
+            // Render immediately using defaults
             populatePublicDropdowns();
             populateLoginButtons();
             
-            // Then fetch live state from server
+            // Sync with server in background
             initializeApp();
         });
 
@@ -238,7 +238,7 @@
                     }
                 }
             } catch (err) {
-                console.warn("Using default data state:", err);
+                console.warn("Using local fallback state:", err);
             } finally {
                 populatePublicDropdowns();
                 populateLoginButtons();
@@ -292,7 +292,6 @@
             const currentBldgVal = buildingSelect.value;
 
             buildingSelect.innerHTML = '<option value="">-- Select Camp First --</option>';
-
             if (!camp) return;
 
             const buildingsMap = (appState && appState.camp_buildings) ? appState.camp_buildings : fallbackCampBuildings;
