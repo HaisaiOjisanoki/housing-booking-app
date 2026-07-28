@@ -220,11 +220,8 @@
             if (dateInput) {
                 dateInput.min = new Date().toISOString().split('T')[0];
             }
-            // Render immediately using defaults
             populatePublicDropdowns();
             populateLoginButtons();
-            
-            // Sync with server in background
             initializeApp();
         });
 
