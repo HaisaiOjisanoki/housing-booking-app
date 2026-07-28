@@ -199,42 +199,57 @@
     </div>
 
     <script>
-        let appState = {};
-        let currentStaffUser = null;
-
-        const fallbackCamps = ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"];
-        const fallbackCampBuildings = {
+        // Guaranteed fallback data so UI renders immediately
+        let fallbackCamps = ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"];
+        let fallbackCampBuildings = {
             "Camp Hansen": ["1001", "1002", "1003"],
             "Camp Schwab": ["2001", "2002"],
             "Camp Foster": ["3001", "3002", "3003"],
             "MCAS Futenma": ["4001", "4002"]
         };
-        const fallbackPurposes = [
+        let fallbackPurposes = [
             "Initial Check-in",
             "Final Check-out / Clearance",
             "Room Maintenance Request",
             "Housing Inquiry"
         ];
+        let fallbackStaff = [
+            { username: "superadmin", role: "superadmin", camp: "ALL", building: "ALL", name: "Master Superadmin" },
+            { username: "hansen_admin", role: "camp_admin", camp: "Camp Hansen", building: "ALL", name: "Hansen Camp Admin" },
+            { username: "schwab_admin", role: "camp_admin", camp: "Camp Schwab", building: "ALL", name: "Schwab Camp Admin" },
+            { username: "mgr_1001", role: "building_manager", camp: "Camp Hansen", building: "1001", name: "Bldg 1001 Manager" },
+            { username: "mgr_2001", role: "building_manager", camp: "Camp Schwab", building: "2001", name: "Bldg 2001 Manager" }
+        ];
+
+        let appState = {
+            camps: fallbackCamps,
+            camp_buildings: fallbackCampBuildings,
+            purposes: fallbackPurposes,
+            staff_users: fallbackStaff,
+            bookings: []
+        };
+        let currentStaffUser = null;
+
+        // Populate immediately on load before async fetch happens
+        document.addEventListener("DOMContentLoaded", () => {
+            populatePublicDropdowns();
+            populateLoginButtons();
+            document.getElementById('apptDate').min = new Date().toISOString().split('T')[0];
+        });
 
         async function initializeApp(showAlert = false) {
             try {
                 const res = await fetch('/api/state');
-                appState = await res.json();
-                
-                // Ensure arrays are never empty
-                if (!appState.camps || appState.camps.length === 0) appState.camps = fallbackCamps;
-                if (!appState.camp_buildings || Object.keys(appState.camp_buildings).length === 0) appState.camp_buildings = fallbackCampBuildings;
-                if (!appState.purposes || appState.purposes.length === 0) appState.purposes = fallbackPurposes;
-
+                const data = await res.json();
+                if (data && data.camps && data.camps.length > 0) {
+                    appState = data;
+                }
                 populatePublicDropdowns();
                 populateLoginButtons();
-                document.getElementById('apptDate').min = new Date().toISOString().split('T')[0];
                 if (currentStaffUser) renderStaffDashboard();
                 if (showAlert) alert("Data synchronized successfully.");
             } catch (err) {
-                console.error("Sync error, using fallbacks:", err);
-                appState = { camps: fallbackCamps, camp_buildings: fallbackCampBuildings, purposes: fallbackPurposes, staff_users: [], bookings: [] };
-                populatePublicDropdowns();
+                console.error("Sync error, keeping defaults:", err);
             }
         }
 
@@ -244,8 +259,8 @@
         }
 
         function populatePublicDropdowns() {
-            const campsList = (appState.camps && appState.camps.length > 0) ? appState.camps : fallbackCamps;
-            const purposesList = (appState.purposes && appState.purposes.length > 0) ? appState.purposes : fallbackPurposes;
+            const campsList = appState.camps && appState.camps.length > 0 ? appState.camps : fallbackCamps;
+            const purposesList = appState.purposes && appState.purposes.length > 0 ? appState.purposes : fallbackPurposes;
 
             const campSelect = document.getElementById('campSelect');
             campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
@@ -274,9 +289,6 @@
 
         async function submitBooking(e) {
             e.preventDefault();
-            const res = await fetch('/api/state');
-            appState = await res.json();
-
             const code = 'HSG-' + Math.floor(100000 + Math.random() * 900000);
             const newBooking = {
                 id: Date.now(),
@@ -319,7 +331,7 @@
         function populateLoginButtons() {
             const container = document.getElementById('loginButtonsList');
             container.innerHTML = '';
-            const staffList = appState.staff_users || [];
+            const staffList = appState.staff_users || fallbackStaff;
             staffList.forEach(u => {
                 let badgeColor = u.role === 'superadmin' ? 'btn-dark' : (u.role === 'camp_admin' ? 'btn-secondary' : 'btn-outline-secondary');
                 container.innerHTML += `<button class="btn ${badgeColor} fw-bold text-start p-2" onclick="loginAs('${u.username}')">
@@ -329,7 +341,7 @@
         }
 
         function loginAs(username) {
-            currentStaffUser = (appState.staff_users || []).find(u => u.username === username);
+            currentStaffUser = (appState.staff_users || fallbackStaff).find(u => u.username === username);
             switchView('staffDashboardView');
             renderStaffDashboard();
         }
