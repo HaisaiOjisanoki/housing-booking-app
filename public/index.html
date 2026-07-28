@@ -230,8 +230,20 @@
         let currentStaffUser = null;
 
         document.addEventListener("DOMContentLoaded", () => {
-            document.getElementById('apptDate').min = new Date().toISOString().split('T')[0];
-            // Populate defaults instantly on load so dropdowns are never blank
+            const dateInput = document.getElementById('apptDate');
+            if (dateInput) {
+                dateInput.min = new Date().toISOString().split('T')[0];
+            }
+            // Load local storage cache immediately so dropdowns render before fetch completes
+            const localCache = localStorage.getItem('uh_portal_state');
+            if (localCache) {
+                try {
+                    const parsed = JSON.parse(localCache);
+                    if (parsed && Array.isArray(parsed.camps) && parsed.camps.length > 0) {
+                        appState = parsed;
+                    }
+                } catch(e) {}
+            }
             populatePublicDropdowns();
             populateLoginButtons();
             initializeApp();
@@ -242,19 +254,12 @@
                 const res = await fetch('/api/state');
                 if (res.ok) {
                     const data = await res.json();
-                    if (data && data.camps && data.camps.length > 0) {
+                    if (data && Array.isArray(data.camps) && data.camps.length > 0) {
                         appState = data;
                     }
                 }
             } catch (err) {
-                console.warn("Server unreachable, falling back to local storage cache:", err);
-                const localCache = localStorage.getItem('uh_portal_state');
-                if (localCache) {
-                    try { 
-                        const parsed = JSON.parse(localCache);
-                        if (parsed && parsed.camps) appState = parsed;
-                    } catch(e){}
-                }
+                console.warn("Server unreachable, operating on local browser storage cache:", err);
             } finally {
                 localStorage.setItem('uh_portal_state', JSON.stringify(appState));
                 populatePublicDropdowns();
@@ -272,10 +277,11 @@
         }
 
         function populatePublicDropdowns() {
-            const campsList = (appState.camps && appState.camps.length > 0) ? appState.camps : fallbackCamps;
-            const purposesList = (appState.purposes && appState.purposes.length > 0) ? appState.purposes : fallbackPurposes;
+            const campsList = (appState && Array.isArray(appState.camps) && appState.camps.length > 0) ? appState.camps : fallbackCamps;
+            const purposesList = (appState && Array.isArray(appState.purposes) && appState.purposes.length > 0) ? appState.purposes : fallbackPurposes;
 
             const campSelect = document.getElementById('campSelect');
+            if (!campSelect) return;
             const currentCampVal = campSelect.value;
             campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
             campsList.forEach(c => {
@@ -286,30 +292,46 @@
             }
 
             const purposeSelect = document.getElementById('purposeSelect');
-            const currentPurposeVal = purposeSelect.value;
-            purposeSelect.innerHTML = '<option value="">-- Select Purpose --</option>';
-            purposesList.forEach(p => {
-                purposeSelect.innerHTML += `<option value="${p}">${p}</option>`;
-            });
-            if (currentPurposeVal) purposeSelect.value = currentPurposeVal;
+            if (purposeSelect) {
+                const currentPurposeVal = purposeSelect.value;
+                purposeSelect.innerHTML = '<option value="">-- Select Purpose --</option>';
+                purposesList.forEach(p => {
+                    purposeSelect.innerHTML += `<option value="${p}">${p}</option>`;
+                });
+                if (currentPurposeVal) purposeSelect.value = currentPurposeVal;
+            }
 
             updateBuildingDropdown();
         }
 
         function updateBuildingDropdown() {
-            const camp = document.getElementById('campSelect').value;
+            const campSelect = document.getElementById('campSelect');
             const buildingSelect = document.getElementById('buildingSelect');
+            if (!campSelect || !buildingSelect) return;
+
+            const camp = campSelect.value;
             const currentBldgVal = buildingSelect.value;
-            buildingSelect.innerHTML = '<option value="">-- Select Camp First --</option>';
-
-            const buildingsMap = appState.camp_buildings || fallbackCampBuildings;
-            if (!camp || !buildingsMap[camp]) return;
-
+            
             buildingSelect.innerHTML = '<option value="">-- Select Building --</option>';
-            buildingsMap[camp].forEach(b => {
+
+            const buildingsMap = (appState && appState.camp_buildings) ? appState.camp_buildings : fallbackCampBuildings;
+            
+            if (!camp) {
+                buildingSelect.innerHTML = '<option value="">-- Select Camp First --</option>';
+                return;
+            }
+
+            const bldgs = buildingsMap[camp] || fallbackCampBuildings[camp] || [];
+            if (bldgs.length === 0) {
+                buildingSelect.innerHTML = '<option value="">-- No Buildings Available --</option>';
+                return;
+            }
+
+            bldgs.forEach(b => {
                 buildingSelect.innerHTML += `<option value="${b}">Bldg ${b}</option>`;
             });
-            if (currentBldgVal && buildingsMap[camp].includes(currentBldgVal)) {
+
+            if (currentBldgVal && bldgs.includes(currentBldgVal)) {
                 buildingSelect.value = currentBldgVal;
             }
         }
@@ -332,7 +354,7 @@
                 status: 'Pending'
             };
 
-            if (!appState.bookings) appState.bookings = [];
+            if (!Array.isArray(appState.bookings)) appState.bookings = [];
             appState.bookings.push(newBooking);
 
             await saveStateToServer();
@@ -350,8 +372,9 @@
 
         function populateLoginButtons() {
             const container = document.getElementById('loginButtonsList');
+            if (!container) return;
             container.innerHTML = '';
-            const staffList = appState.staff_users || fallbackStaff;
+            const staffList = (appState && Array.isArray(appState.staff_users)) ? appState.staff_users : fallbackStaff;
             staffList.forEach(u => {
                 let badgeColor = u.role === 'superadmin' ? 'btn-dark' : (u.role === 'camp_admin' ? 'btn-secondary' : 'btn-outline-secondary');
                 container.innerHTML += `<button class="btn ${badgeColor} fw-bold text-start p-2" onclick="loginAs('${u.username}')">
@@ -361,7 +384,8 @@
         }
 
         function loginAs(username) {
-            currentStaffUser = (appState.staff_users || fallbackStaff).find(u => u.username === username);
+            const staffList = (appState && Array.isArray(appState.staff_users)) ? appState.staff_users : fallbackStaff;
+            currentStaffUser = staffList.find(u => u.username === username);
             switchView('staffDashboardView');
             renderStaffDashboard();
         }
@@ -371,6 +395,8 @@
             const subEl = document.getElementById('dashSubtitle');
             const adminPanel = document.getElementById('adminControlPanel');
             const superCampBox = document.getElementById('superadminCampBox');
+
+            if (!currentStaffUser) return;
 
             if (currentStaffUser.role === 'superadmin') {
                 titleEl.textContent = "Superadmin Dashboard (Master View)";
@@ -395,9 +421,10 @@
 
         function setupAdminCampDropdowns() {
             const sel = document.getElementById('mgmtCampSelect');
+            if (!sel) return;
             const selectedVal = sel.value;
             sel.innerHTML = '';
-            const campsList = (appState.camps && appState.camps.length > 0) ? appState.camps : fallbackCamps;
+            const campsList = (appState && Array.isArray(appState.camps) && appState.camps.length > 0) ? appState.camps : fallbackCamps;
             campsList.forEach(c => {
                 sel.innerHTML += `<option value="${c}">${c}</option>`;
             });
@@ -409,15 +436,19 @@
 
         function setupAdminCampDropdownsForCampAdmin() {
             const sel = document.getElementById('mgmtCampSelect');
+            if (!sel) return;
             sel.innerHTML = `<option value="${currentStaffUser.camp}">${currentStaffUser.camp}</option>`;
             sel.disabled = true;
             renderBuildingManagementList();
         }
 
         function renderBuildingManagementList() {
-            const camp = document.getElementById('mgmtCampSelect').value;
+            const sel = document.getElementById('mgmtCampSelect');
             const tagContainer = document.getElementById('buildingTagList');
-            const buildingsMap = appState.camp_buildings || fallbackCampBuildings;
+            if (!sel || !tagContainer) return;
+
+            const camp = sel.value;
+            const buildingsMap = (appState && appState.camp_buildings) ? appState.camp_buildings : fallbackCampBuildings;
             const bldgs = buildingsMap[camp] || [];
             if (bldgs.length === 0) {
                 tagContainer.innerHTML = '<span class="text-muted">No buildings</span>';
@@ -427,17 +458,19 @@
         }
 
         async function addCamp() {
-            const name = document.getElementById('newCampName').value.trim();
+            const inputEl = document.getElementById('newCampName');
+            if (!inputEl) return;
+            const name = inputEl.value.trim();
             if (!name) return alert("Enter camp name.");
-            if (!appState.camps) appState.camps = [...fallbackCamps];
+            if (!Array.isArray(appState.camps)) appState.camps = [...fallbackCamps];
             if (appState.camps.includes(name)) return alert("Camp already exists.");
 
             appState.camps.push(name);
-            if (!appState.camp_buildings) appState.camp_buildings = {...fallbackCampBuildings};
+            if (!appState.camp_buildings || typeof appState.camp_buildings !== 'object') appState.camp_buildings = {...fallbackCampBuildings};
             appState.camp_buildings[name] = [];
             
             await saveStateToServer();
-            document.getElementById('newCampName').value = '';
+            inputEl.value = '';
             
             populatePublicDropdowns();
             setupAdminCampDropdowns();
@@ -445,18 +478,22 @@
         }
 
         async function addBuilding() {
-            const camp = document.getElementById('mgmtCampSelect').value;
-            const bldg = document.getElementById('newBldgNum').value.trim();
+            const campSel = document.getElementById('mgmtCampSelect');
+            const bldgInput = document.getElementById('newBldgNum');
+            if (!campSel || !bldgInput) return;
+
+            const camp = campSel.value;
+            const bldg = bldgInput.value.trim();
             if (!camp || !bldg) return alert("Enter building number.");
 
-            if (!appState.camp_buildings) appState.camp_buildings = {...fallbackCampBuildings};
-            if (!appState.camp_buildings[camp]) appState.camp_buildings[camp] = [];
+            if (!appState.camp_buildings || typeof appState.camp_buildings !== 'object') appState.camp_buildings = {...fallbackCampBuildings};
+            if (!Array.isArray(appState.camp_buildings[camp])) appState.camp_buildings[camp] = [];
             if (appState.camp_buildings[camp].includes(bldg)) return alert("Building already exists in this camp.");
 
             appState.camp_buildings[camp].push(bldg);
             
             await saveStateToServer();
-            document.getElementById('newBldgNum').value = '';
+            bldgInput.value = '';
             
             renderBuildingManagementList();
             populatePublicDropdowns();
@@ -465,10 +502,12 @@
 
         function renderBookingsTable() {
             const tbody = document.getElementById('bookingsTableBody');
+            if (!tbody) return;
             tbody.innerHTML = '';
 
-            const bookingsList = appState.bookings || [];
+            const bookingsList = Array.isArray(appState.bookings) ? appState.bookings : [];
             const filtered = bookingsList.filter(b => {
+                if (!currentStaffUser) return false;
                 if (currentStaffUser.role === 'superadmin') return true;
                 if (currentStaffUser.role === 'camp_admin') return b.camp === currentStaffUser.camp;
                 if (currentStaffUser.role === 'building_manager') {
@@ -507,7 +546,8 @@
         }
 
         async function updateBookingStatus(id, newStatus) {
-            const booking = (appState.bookings || []).find(b => b.id === id);
+            const bookings = Array.isArray(appState.bookings) ? appState.bookings : [];
+            const booking = bookings.find(b => b.id === id);
             if (booking) {
                 booking.status = newStatus;
                 await saveStateToServer();
@@ -516,7 +556,7 @@
 
         async function deleteBooking(id) {
             if (!confirm("Are you sure you want to delete this booking?")) return;
-            appState.bookings = (appState.bookings || []).filter(b => b.id !== id);
+            appState.bookings = (Array.isArray(appState.bookings) ? appState.bookings : []).filter(b => b.id !== id);
             await saveStateToServer();
             renderStaffDashboard();
         }
