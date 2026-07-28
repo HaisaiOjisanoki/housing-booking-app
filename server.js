@@ -4,58 +4,10 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Auto-generate the public directory and dashboard files at runtime
-const publicDir = path.join(__dirname, 'public');
-if (!fs.existsSync(publicDir)) {
-    fs.mkdirSync(publicDir, { recursive: true });
-}
-
-const superadminHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unaccompanied Housing - Superadmin Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <div class="container mt-5">
-        <div class="card shadow p-4">
-            <h1 class="text-primary mb-3">Unaccompanied Housing Superadmin Dashboard</h1>
-            <p class="text-muted">Server is running and operational on Render.</p>
-            <hr>
-            <div id="status-panel">
-                <span class="badge bg-success">Online & Synced</span>
-            </div>
-        </div>
-    </div>
-</body>
-</html>`;
-
-const staffHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unaccompanied Housing - Staff Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <div class="container mt-5">
-        <div class="card shadow p-4">
-            <h1 class="text-success mb-3">Unaccompanied Housing Staff Dashboard</h1>
-            <p class="text-muted">Staff portal active.</p>
-        </div>
-    </div>
-</body>
-</html>`;
-
-fs.writeFileSync(path.join(publicDir, 'superadmin_dashboard.html'), superadminHtml);
-fs.writeFileSync(path.join(publicDir, 'staff_dashboard.html'), staffHtml);
-
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+const publicDir = path.join(__dirname, 'public');
 app.use(express.static(publicDir));
 
 // In-Memory State Architecture
@@ -75,7 +27,22 @@ let appState = {
         "Maintenance Request",
         "Administrative Support"
     ],
-    bookings: [],
+    bookings: [
+        {
+            confirmationCode: "UH-9941",
+            firstName: "John",
+            lastName: "Doe",
+            branch: "USMC",
+            camp: "Camp Hansen",
+            building: "5701",
+            date: "2026-07-28",
+            time: "10:00",
+            purpose: "Check-in / In-processing",
+            status: "Confirmed",
+            email: "john.doe@usmc.mil",
+            staffNotes: ""
+        }
+    ],
     staff_users: [
         {
             username: "superadmin",
@@ -88,7 +55,7 @@ let appState = {
     ]
 };
 
-// API Endpoints
+// API Endpoints for State Synchronization
 app.get('/api/state', (req, res) => {
     res.json(appState);
 });
@@ -101,13 +68,23 @@ app.post('/api/state', (req, res) => {
     res.status(400).json({ success: false, error: "Invalid state payload" });
 });
 
-// Routes
+// Safe Route Handler: Serves real files if they exist, otherwise shows emergency notice
 app.get('/superadmin', (req, res) => {
-    res.sendFile(path.join(publicDir, 'superadmin_dashboard.html'));
+    const targetFile = path.join(publicDir, 'superadmin_dashboard.html');
+    if (fs.existsSync(targetFile)) {
+        res.sendFile(targetFile);
+    } else {
+        res.status(404).send("superadmin_dashboard.html not found in public folder.");
+    }
 });
 
 app.get('/staff', (req, res) => {
-    res.sendFile(path.join(publicDir, 'staff_dashboard.html'));
+    const targetFile = path.join(publicDir, 'staff_dashboard.html');
+    if (fs.existsSync(targetFile)) {
+        res.sendFile(targetFile);
+    } else {
+        res.status(404).send("staff_dashboard.html not found in public folder.");
+    }
 });
 
 app.get('/logout', (req, res) => {
@@ -115,7 +92,12 @@ app.get('/logout', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(publicDir, 'superadmin_dashboard.html'));
+    const targetFile = path.join(publicDir, 'superadmin_dashboard.html');
+    if (fs.existsSync(targetFile)) {
+        res.sendFile(targetFile);
+    } else {
+        res.sendFile(path.join(publicDir, 'index.html'));
+    }
 });
 
 app.listen(PORT, () => {
