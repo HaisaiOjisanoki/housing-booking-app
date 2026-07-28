@@ -343,36 +343,35 @@ const staffHtml = `<!DOCTYPE html>
                                 <option value="">-- Select Building --</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label small fw-bold">Day of Week</label>
-                            <select id="ruleDayOfWeek" class="form-select form-select-sm">
-                                <option value="">Specific Date Only</option>
-                                <option value="0">Sunday</option>
-                                <option value="1">Monday</option>
-                                <option value="2">Tuesday</option>
-                                <option value="3">Wednesday</option>
-                                <option value="4">Thursday</option>
-                                <option value="5">Friday</option>
-                                <option value="6">Saturday</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label small fw-bold">Specific Date</label>
-                            <input type="date" id="ruleSpecificDate" class="form-control form-control-sm">
-                        </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <label class="form-label small fw-bold">Slot Duration (Min)</label>
                             <input type="number" id="ruleDuration" class="form-control form-control-sm" value="30" min="10" max="120" required>
                         </div>
                         <div class="col-md-3">
+                            <label class="form-label small fw-bold">Specific Date (Optional)</label>
+                            <input type="date" id="ruleSpecificDate" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold">Days of the Week (Select applicable days)</label>
+                            <div class="d-flex flex-wrap gap-3 border p-2 bg-white rounded">
+                                <div class="form-check"><input class="form-check-input rule-day-chk" type="checkbox" value="0" id="day_sun"><label class="form-check-label small" for="day_sun">Sun</label></div>
+                                <div class="form-check"><input class="form-check-input rule-day-chk" type="checkbox" value="1" id="day_mon"><label class="form-check-label small" for="day_mon">Mon</label></div>
+                                <div class="form-check"><input class="form-check-input rule-day-chk" type="checkbox" value="2" id="day_tue"><label class="form-check-label small" for="day_tue">Tue</label></div>
+                                <div class="form-check"><input class="form-check-input rule-day-chk" type="checkbox" value="3" id="day_wed"><label class="form-check-label small" for="day_wed">Wed</label></div>
+                                <div class="form-check"><input class="form-check-input rule-day-chk" type="checkbox" value="4" id="day_thu"><label class="form-check-label small" for="day_thu">Thu</label></div>
+                                <div class="form-check"><input class="form-check-input rule-day-chk" type="checkbox" value="5" id="day_fri"><label class="form-check-label small" for="day_fri">Fri</label></div>
+                                <div class="form-check"><input class="form-check-input rule-day-chk" type="checkbox" value="6" id="day_sat"><label class="form-check-label small" for="day_sat">Sat</label></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label small fw-bold">Start Time</label>
                             <input type="time" id="ruleStartTime" class="form-control form-control-sm" value="08:00" required>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label class="form-label small fw-bold">End Time</label>
                             <input type="time" id="ruleEndTime" class="form-control form-control-sm" value="16:00" required>
                         </div>
-                        <div class="col-md-6 d-flex align-items-end">
+                        <div class="col-md-4 d-flex align-items-end">
                             <button type="submit" class="btn btn-primary btn-sm fw-bold w-100"><i class="bi bi-plus-circle me-1"></i> Add Availability Rule</button>
                         </div>
                     </form>
@@ -623,10 +622,11 @@ const staffHtml = `<!DOCTYPE html>
 
         async function saveAvailabilityRule(e) {
             e.preventDefault();
+            const checkedDays = Array.from(document.querySelectorAll('.rule-day-chk:checked')).map(chk => parseInt(chk.value, 10));
             const payload = {
                 campId: document.getElementById('ruleCamp').value,
                 buildingId: document.getElementById('ruleBuilding').value,
-                dayOfWeek: document.getElementById('ruleDayOfWeek').value,
+                daysOfWeek: checkedDays,
                 specificDate: document.getElementById('ruleSpecificDate').value,
                 startTime: document.getElementById('ruleStartTime').value,
                 endTime: document.getElementById('ruleEndTime').value,
@@ -678,9 +678,19 @@ const staffHtml = `<!DOCTYPE html>
                 container.innerHTML = 'No availability rules configured.';
                 return;
             }
+            const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
             let html = '<div class="list-group">';
             rules.forEach(r => {
-                const dayStr = r.dayOfWeek !== null && r.dayOfWeek !== undefined && r.dayOfWeek !== "" ? \`Day: \${r.dayOfWeek}\` : \`Date: \${r.specificDate}\`;
+                let dayStr = '';
+                if (r.specificDate) {
+                    dayStr = \`Date: \${r.specificDate}\`;
+                } else if (Array.isArray(r.daysOfWeek) && r.daysOfWeek.length > 0) {
+                    dayStr = \`Days: \${r.daysOfWeek.map(d => dayNames[d]).join(', ')}\`;
+                } else if (r.dayOfWeek !== null && r.dayOfWeek !== undefined && r.dayOfWeek !== "") {
+                    dayStr = \`Day: \${dayNames[r.dayOfWeek]}\`;
+                } else {
+                    dayStr = 'All Days';
+                }
                 html += \`<div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-1 px-2">
                     <span><strong>\${r.campId}</strong> Bldg \${r.buildingId} | \${dayStr} | \${r.startTime}-\${r.endTime} (\${r.slotDurationMinutes}m)</span>
                     <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="deleteAvailabilityRule(\${r.id})">&times;</button>
@@ -794,7 +804,7 @@ const staffHtml = `<!DOCTYPE html>
             if (!tbody) return;
             tbody.innerHTML = '';
             (appState.staff_users || []).forEach((u, idx) => {
-                tbody.innerHTML += \`<tr><td>\${u.username}</td><td>\${u.role}</td><td>\${u.camp}</td><td>\${u.buildings ? u.buildings.join(', ') : 'All'}</td><td class="text-end"><button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="superAdminDeleteUser(\&{idx})">&times;</button></td></tr>\`;
+                tbody.innerHTML += \`<tr><td>\${u.username}</td><td>\${u.role}</td><td>\${u.camp}</td><td>\${u.buildings ? u.buildings.join(', ') : 'All'}</td><td class="text-end"><button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="superAdminDeleteUser(\${idx})">&times;</button></td></tr>\`;
             });
         }
 
@@ -946,7 +956,7 @@ app.use((req, res, next) => {
     const match = cookieHeader.match(/session_token=([^;]+)/);
     if (match && activeSessions[match[1]]) {
         req.user = activeSessions[match[1]];
-        req.session = { user: req.user }; // Bridge session bridge for permission middleware
+        req.session = { user: req.user };
     }
     next();
 });
@@ -1034,11 +1044,18 @@ app.get('/api/availability', (req, res) => {
 });
 
 app.post('/api/availability', verifyAvailabilityPermission, (req, res) => {
-    const { campId, buildingId, camp, building, dayOfWeek, specificDate, startTime, endTime, slotDurationMinutes } = req.body;
+    const { campId, buildingId, camp, building, daysOfWeek, dayOfWeek, specificDate, startTime, endTime, slotDurationMinutes } = req.body;
     const user = req.session.user;
 
     const finalCamp = campId || camp || user.camp;
     const finalBuilding = buildingId || building;
+
+    let finalDays = [];
+    if (Array.isArray(daysOfWeek)) {
+        finalDays = daysOfWeek.map(d => parseInt(d, 10));
+    } else if (dayOfWeek !== undefined && dayOfWeek !== null && dayOfWeek !== "") {
+        finalDays = [parseInt(dayOfWeek, 10)];
+    }
 
     const newRule = {
         id: Date.now(),
@@ -1048,7 +1065,7 @@ app.post('/api/availability', verifyAvailabilityPermission, (req, res) => {
         camp: finalCamp ? String(finalCamp) : null,
         buildingId: finalBuilding ? String(finalBuilding) : null,
         building: finalBuilding ? String(finalBuilding) : null,
-        dayOfWeek: dayOfWeek !== undefined && dayOfWeek !== null && dayOfWeek !== "" ? parseInt(dayOfWeek, 10) : null,
+        daysOfWeek: finalDays,
         specificDate: specificDate || null,
         startTime: startTime || "08:00",
         endTime: endTime || "16:00",
@@ -1126,13 +1143,21 @@ app.get('/api/booking-slots', (req, res) => {
     );
 
     if (!matchingRule) {
-        matchingRule = rules.find(r => 
-            r.isActive !== false && 
-            String(r.campId || r.camp) === String(targetCamp) && 
-            String(r.buildingId || r.building) === String(targetBuilding) && 
-            r.dayOfWeek === dayOfWeek && 
-            !r.specificDate
-        );
+        matchingRule = rules.find(r => {
+            if (r.isActive !== false && 
+                String(r.campId || r.camp) === String(targetCamp) && 
+                String(r.buildingId || r.building) === String(targetBuilding) && 
+                !r.specificDate) {
+                
+                if (Array.isArray(r.daysOfWeek) && r.daysOfWeek.includes(dayOfWeek)) {
+                    return true;
+                }
+                if (r.dayOfWeek !== undefined && r.dayOfWeek !== null && Number(r.dayOfWeek) === dayOfWeek) {
+                    return true;
+                }
+            }
+            return false;
+        });
     }
 
     if (!matchingRule) {
