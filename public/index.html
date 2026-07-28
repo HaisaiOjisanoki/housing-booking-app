@@ -190,22 +190,27 @@
     </div>
 
     <script>
+        const fallbackCamps = ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"];
+        const fallbackCampBuildings = {
+            "Camp Hansen": ["1001", "1002", "1003"],
+            "Camp Schwab": ["2001", "2002"],
+            "Camp Foster": ["3001", "3002", "3003"],
+            "MCAS Futenma": ["4001", "4002"]
+        };
+        const fallbackPurposes = ["Initial Check-in", "Final Check-out / Clearance", "Room Maintenance Request", "Housing Inquiry"];
+        const fallbackStaff = [
+            { username: "superadmin", role: "superadmin", camp: "ALL", building: "ALL", name: "Master Superadmin" },
+            { username: "hansen_admin", role: "camp_admin", camp: "Camp Hansen", building: "ALL", name: "Hansen Camp Admin" },
+            { username: "schwab_admin", role: "camp_admin", camp: "Camp Schwab", building: "ALL", name: "Schwab Camp Admin" },
+            { username: "mgr_1001", role: "building_manager", camp: "Camp Hansen", building: "1001", name: "Bldg 1001 Manager" },
+            { username: "mgr_2001", role: "building_manager", camp: "Camp Schwab", building: "2001", name: "Bldg 2001 Manager" }
+        ];
+
         let appState = {
-            camps: ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"],
-            camp_buildings: {
-                "Camp Hansen": ["1001", "1002", "1003"],
-                "Camp Schwab": ["2001", "2002"],
-                "Camp Foster": ["3001", "3002", "3003"],
-                "MCAS Futenma": ["4001", "4002"]
-            },
-            purposes: ["Initial Check-in", "Final Check-out / Clearance", "Room Maintenance Request", "Housing Inquiry"],
-            staff_users: [
-                { username: "superadmin", role: "superadmin", camp: "ALL", building: "ALL", name: "Master Superadmin" },
-                { username: "hansen_admin", role: "camp_admin", camp: "Camp Hansen", building: "ALL", name: "Hansen Camp Admin" },
-                { username: "schwab_admin", role: "camp_admin", camp: "Camp Schwab", building: "ALL", name: "Schwab Camp Admin" },
-                { username: "mgr_1001", role: "building_manager", camp: "Camp Hansen", building: "1001", name: "Bldg 1001 Manager" },
-                { username: "mgr_2001", role: "building_manager", camp: "Camp Schwab", building: "2001", name: "Bldg 2001 Manager" }
-            ],
+            camps: fallbackCamps,
+            camp_buildings: fallbackCampBuildings,
+            purposes: fallbackPurposes,
+            staff_users: fallbackStaff,
             bookings: []
         };
         let currentStaffUser = null;
@@ -215,6 +220,11 @@
             if (dateInput) {
                 dateInput.min = new Date().toISOString().split('T')[0];
             }
+            // Populate immediately with defaults so dropdowns never show empty on load
+            populatePublicDropdowns();
+            populateLoginButtons();
+            
+            // Then fetch live state from server
             initializeApp();
         });
 
@@ -245,15 +255,18 @@
         }
 
         function populatePublicDropdowns() {
+            const campsList = (appState && Array.isArray(appState.camps) && appState.camps.length > 0) ? appState.camps : fallbackCamps;
+            const purposesList = (appState && Array.isArray(appState.purposes) && appState.purposes.length > 0) ? appState.purposes : fallbackPurposes;
+
             const campSelect = document.getElementById('campSelect');
             if (!campSelect) return;
 
             const currentCampVal = campSelect.value;
             campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
-            (appState.camps || []).forEach(c => {
+            campsList.forEach(c => {
                 campSelect.innerHTML += `<option value="${c}">${c}</option>`;
             });
-            if (currentCampVal && appState.camps.includes(currentCampVal)) {
+            if (currentCampVal && campsList.includes(currentCampVal)) {
                 campSelect.value = currentCampVal;
             }
 
@@ -261,7 +274,7 @@
             if (purposeSelect) {
                 const currentPurposeVal = purposeSelect.value;
                 purposeSelect.innerHTML = '<option value="">-- Select Purpose --</option>';
-                (appState.purposes || []).forEach(p => {
+                purposesList.forEach(p => {
                     purposeSelect.innerHTML += `<option value="${p}">${p}</option>`;
                 });
                 if (currentPurposeVal) purposeSelect.value = currentPurposeVal;
@@ -282,7 +295,8 @@
 
             if (!camp) return;
 
-            const bldgs = (appState.camp_buildings && appState.camp_buildings[camp]) ? appState.camp_buildings[camp] : [];
+            const buildingsMap = (appState && appState.camp_buildings) ? appState.camp_buildings : fallbackCampBuildings;
+            const bldgs = buildingsMap[camp] || fallbackCampBuildings[camp] || [];
 
             if (bldgs.length === 0) {
                 buildingSelect.innerHTML = '<option value="">-- No Buildings Available --</option>';
@@ -337,7 +351,8 @@
             const container = document.getElementById('loginButtonsList');
             if (!container) return;
             container.innerHTML = '';
-            (appState.staff_users || []).forEach(u => {
+            const staffList = (appState && Array.isArray(appState.staff_users)) ? appState.staff_users : fallbackStaff;
+            staffList.forEach(u => {
                 let badgeColor = u.role === 'superadmin' ? 'btn-dark' : (u.role === 'camp_admin' ? 'btn-secondary' : 'btn-outline-secondary');
                 container.innerHTML += `<button class="btn ${badgeColor} fw-bold text-start p-2" onclick="loginAs('${u.username}')">
                     <i class="bi bi-person-badge me-2"></i>${u.name} <span class="badge bg-light text-dark float-end">${u.role.toUpperCase()}</span>
@@ -346,7 +361,8 @@
         }
 
         function loginAs(username) {
-            currentStaffUser = (appState.staff_users || []).find(u => u.username === username);
+            const staffList = (appState && Array.isArray(appState.staff_users)) ? appState.staff_users : fallbackStaff;
+            currentStaffUser = staffList.find(u => u.username === username);
             switchView('staffDashboardView');
             renderStaffDashboard();
         }
@@ -385,10 +401,11 @@
             if (!sel) return;
             const selectedVal = sel.value;
             sel.innerHTML = '';
-            (appState.camps || []).forEach(c => {
+            const campsList = (appState && Array.isArray(appState.camps) && appState.camps.length > 0) ? appState.camps : fallbackCamps;
+            campsList.forEach(c => {
                 sel.innerHTML += `<option value="${c}">${c}</option>`;
             });
-            if (selectedVal && appState.camps.includes(selectedVal)) {
+            if (selectedVal && campsList.includes(selectedVal)) {
                 sel.value = selectedVal;
             }
             renderBuildingManagementList();
@@ -408,11 +425,12 @@
             if (!sel || !tagContainer) return;
 
             const camp = sel.value;
-            const bldgs = (appState.camp_buildings && appState.camp_buildings[camp]) ? appState.camp_buildings[camp] : [];
+            const buildingsMap = (appState && appState.camp_buildings) ? appState.camp_buildings : fallbackCampBuildings;
+            const bldgs = buildingsMap[camp] || fallbackCampBuildings[camp] || [];
             if (bldgs.length === 0) {
                 tagContainer.innerHTML = '<span class="text-muted">No buildings</span>';
             } else {
-                tagContainer.innerHTML = bldgs.map(b => '<span class="badge bg-secondary me-1">Bldg ' + b + '</span>').join(' ');
+                tagContainer.innerHTML = bldgs.map(b => `<span class="badge bg-secondary me-1">Bldg ${b}</span>`).join(' ');
             }
         }
 
@@ -421,14 +439,16 @@
             if (!inputEl) return;
             const name = inputEl.value.trim();
             if (!name) return alert("Enter camp name.");
-            if (!appState.camps.includes(name)) {
-                appState.camps.push(name);
-            }
-            if (!appState.camp_buildings[name]) {
-                appState.camp_buildings[name] = [];
-            }
+            if (!Array.isArray(appState.camps)) appState.camps = [...fallbackCamps];
+            if (appState.camps.includes(name)) return alert("Camp already exists.");
+
+            appState.camps.push(name);
+            if (!appState.camp_buildings || typeof appState.camp_buildings !== 'object') appState.camp_buildings = {...fallbackCampBuildings};
+            appState.camp_buildings[name] = [];
+            
             await saveStateToServer();
             inputEl.value = '';
+            
             populatePublicDropdowns();
             setupAdminCampDropdowns();
             alert("Camp added successfully.");
@@ -443,14 +463,15 @@
             const bldg = bldgInput.value.trim();
             if (!camp || !bldg) return alert("Enter building number.");
 
-            if (!appState.camp_buildings[camp]) {
-                appState.camp_buildings[camp] = [];
-            }
-            if (!appState.camp_buildings[camp].includes(bldg)) {
-                appState.camp_buildings[camp].push(bldg);
-            }
+            if (!appState.camp_buildings || typeof appState.camp_buildings !== 'object') appState.camp_buildings = {...fallbackCampBuildings};
+            if (!Array.isArray(appState.camp_buildings[camp])) appState.camp_buildings[camp] = [];
+            if (appState.camp_buildings[camp].includes(bldg)) return alert("Building already exists in this camp.");
+
+            appState.camp_buildings[camp].push(bldg);
+            
             await saveStateToServer();
             bldgInput.value = '';
+            
             renderBuildingManagementList();
             populatePublicDropdowns();
             alert("Building added successfully.");
@@ -502,7 +523,7 @@
         }
 
         async function updateBookingStatus(id, newStatus) {
-            const booking = (appState.bookings || []).find(b => b.id === id);
+            const booking = (Array.isArray(appState.bookings) ? appState.bookings : []).find(b => b.id === id);
             if (booking) {
                 booking.status = newStatus;
                 await saveStateToServer();
@@ -511,7 +532,7 @@
 
         async function deleteBooking(id) {
             if (!confirm("Are you sure?")) return;
-            appState.bookings = (appState.bookings || []).filter(b => b.id !== id);
+            appState.bookings = (Array.isArray(appState.bookings) ? appState.bookings : []).filter(b => b.id !== id);
             await saveStateToServer();
             renderStaffDashboard();
         }

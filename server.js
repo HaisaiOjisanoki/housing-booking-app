@@ -41,13 +41,15 @@ if (fs.existsSync(DATA_FILE)) {
         const fileData = fs.readFileSync(DATA_FILE, 'utf8');
         const savedState = JSON.parse(fileData);
         if (savedState) {
-            appState.camps = (Array.isArray(savedState.camps) && savedState.camps.length > 0) ? savedState.camps : defaultState.camps;
+            if (Array.isArray(savedState.camps) && savedState.camps.length > 0) {
+                appState.camps = savedState.camps;
+            }
             appState.camp_buildings = {};
             appState.camps.forEach(camp => {
                 if (savedState.camp_buildings && Array.isArray(savedState.camp_buildings[camp]) && savedState.camp_buildings[camp].length > 0) {
                     appState.camp_buildings[camp] = savedState.camp_buildings[camp];
                 } else {
-                    appState.camp_buildings[camp] = defaultState.camp_buildings[camp] || [];
+                    appState.camp_buildings[camp] = defaultState.camp_buildings[camp] || ["101", "102"];
                 }
             });
             if (Array.isArray(savedState.purposes) && savedState.purposes.length > 0) {
