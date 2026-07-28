@@ -4,13 +4,115 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// 1. Auto-generate public directory and dashboard files at runtime
+const publicDir = path.join(__dirname, 'public');
+if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+}
+
+const superadminHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unaccompanied Housing - Superadmin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Unaccompanied Housing - Superadmin Dashboard</h2>
+            <div>
+                <a href="/staff" class="btn btn-outline-primary me-2">Staff Portal</a>
+                <a href="/logout" class="btn btn-danger">Logout</a>
+            </div>
+        </div>
+        <div class="card shadow p-4 mb-4">
+            <h4>System Bookings & Management</h4>
+            <div id="booking-container" class="table-responsive mt-3">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Confirmation</th>
+                            <th>Name</th>
+                            <th>Branch</th>
+                            <th>Camp / Bldg</th>
+                            <th>Date & Time</th>
+                            <th>Purpose</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookings-table-body">
+                        <tr><td colspan="7" class="text-center">Loading bookings...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        async function loadState() {
+            try {
+                const res = await fetch('/api/state');
+                const data = await res.json();
+                const tbody = document.getElementById('bookings-table-body');
+                if (data.bookings && data.bookings.length > 0) {
+                    tbody.innerHTML = data.bookings.map(b => \`
+                        <tr>
+                            <td>\${b.confirmationCode}</td>
+                            <td>\${b.firstName} \${b.lastName}</td>
+                            <td>\${b.branch}</td>
+                            <td>\${b.camp} (\${b.building})</td>
+                            <td>\${b.date} \${b.time}</td>
+                            <td>\${b.purpose}</td>
+                            <td><span class="badge bg-success">\${b.status}</span></td>
+                        </tr>
+                    \`).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No active bookings found.</td></tr>';
+                }
+            } catch (err) {
+                console.error('Failed to load state', err);
+            }
+        }
+        loadState();
+    </script>
+</body>
+</html>`;
+
+const staffHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unaccompanied Housing - Staff Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Unaccompanied Housing - Staff Portal</h2>
+            <div>
+                <a href="/superadmin" class="btn btn-outline-secondary me-2">Superadmin View</a>
+                <a href="/logout" class="btn btn-danger">Logout</a>
+            </div>
+        </div>
+        <div class="card shadow p-4">
+            <h4>Staff Login & Management</h4>
+            <p class="text-muted">Manage camp assignments and room check-ins.</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+fs.writeFileSync(path.join(publicDir, 'superadmin_dashboard.html'), superadminHtml);
+fs.writeFileSync(path.join(publicDir, 'staff_dashboard.html'), staffHtml);
+
+// 2. Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-const publicDir = path.join(__dirname, 'public');
 app.use(express.static(publicDir));
 
-// In-Memory State Architecture
+// 3. In-Memory State Architecture
 let appState = {
     camps: ["Camp Hansen", "Camp Schwab", "Camp Foster", "McNair", "Courtney"],
     camp_buildings: {
@@ -55,7 +157,7 @@ let appState = {
     ]
 };
 
-// API Endpoints for State Synchronization
+// 4. API Endpoints
 app.get('/api/state', (req, res) => {
     res.json(appState);
 });
@@ -68,23 +170,13 @@ app.post('/api/state', (req, res) => {
     res.status(400).json({ success: false, error: "Invalid state payload" });
 });
 
-// Safe Route Handler: Serves real files if they exist, otherwise shows emergency notice
+// 5. Route Handlers
 app.get('/superadmin', (req, res) => {
-    const targetFile = path.join(publicDir, 'superadmin_dashboard.html');
-    if (fs.existsSync(targetFile)) {
-        res.sendFile(targetFile);
-    } else {
-        res.status(404).send("superadmin_dashboard.html not found in public folder.");
-    }
+    res.sendFile(path.join(publicDir, 'superadmin_dashboard.html'));
 });
 
 app.get('/staff', (req, res) => {
-    const targetFile = path.join(publicDir, 'staff_dashboard.html');
-    if (fs.existsSync(targetFile)) {
-        res.sendFile(targetFile);
-    } else {
-        res.status(404).send("staff_dashboard.html not found in public folder.");
-    }
+    res.sendFile(path.join(publicDir, 'staff_dashboard.html'));
 });
 
 app.get('/logout', (req, res) => {
@@ -92,12 +184,7 @@ app.get('/logout', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-    const targetFile = path.join(publicDir, 'superadmin_dashboard.html');
-    if (fs.existsSync(targetFile)) {
-        res.sendFile(targetFile);
-    } else {
-        res.sendFile(path.join(publicDir, 'index.html'));
-    }
+    res.sendFile(path.join(publicDir, 'superadmin_dashboard.html'));
 });
 
 app.listen(PORT, () => {
