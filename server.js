@@ -6,7 +6,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // In-Memory State Architecture for Render and local runtime
 let appState = {
@@ -84,13 +84,12 @@ app.post('/api/state', (req, res) => {
 
 // Route for Superadmin Dashboard
 app.get('/superadmin', (req, res) => {
-    res.sendFile(path.join(__dirname, 'superadmin_dashboard.html'));
+    res.sendFile(path.join(__dirname, 'public', 'superadmin_dashboard.html'));
 });
 
 // Route for Staff / Camp Admin Dashboard
 app.get('/staff', (req, res) => {
-    // In a full session implementation, query parameters or session variables load specific staff views
-    res.sendFile(path.join(__dirname, 'staff_dashboard.html'));
+    res.sendFile(path.join(__dirname, 'public', 'staff_dashboard.html'));
 });
 
 // Logout endpoint redirect
@@ -98,9 +97,9 @@ app.get('/logout', (req, res) => {
     res.redirect('/');
 });
 
-// Default fallback route to index or public page if available
+// Default fallback route
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'superadmin_dashboard.html'));
+    res.sendFile(path.join(__dirname, 'public', 'superadmin_dashboard.html'));
 });
 
 app.listen(PORT, () => {
