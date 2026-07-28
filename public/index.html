@@ -231,6 +231,9 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             document.getElementById('apptDate').min = new Date().toISOString().split('T')[0];
+            // Populate defaults instantly on load so dropdowns are never blank
+            populatePublicDropdowns();
+            populateLoginButtons();
             initializeApp();
         });
 
@@ -244,8 +247,16 @@
                     }
                 }
             } catch (err) {
-                console.warn("Using local state fallback:", err);
+                console.warn("Server unreachable, falling back to local storage cache:", err);
+                const localCache = localStorage.getItem('uh_portal_state');
+                if (localCache) {
+                    try { 
+                        const parsed = JSON.parse(localCache);
+                        if (parsed && parsed.camps) appState = parsed;
+                    } catch(e){}
+                }
             } finally {
+                localStorage.setItem('uh_portal_state', JSON.stringify(appState));
                 populatePublicDropdowns();
                 populateLoginButtons();
                 if (currentStaffUser) {
@@ -270,7 +281,9 @@
             campsList.forEach(c => {
                 campSelect.innerHTML += `<option value="${c}">${c}</option>`;
             });
-            if (currentCampVal) campSelect.value = currentCampVal;
+            if (currentCampVal && campsList.includes(currentCampVal)) {
+                campSelect.value = currentCampVal;
+            }
 
             const purposeSelect = document.getElementById('purposeSelect');
             const currentPurposeVal = purposeSelect.value;
@@ -279,20 +292,26 @@
                 purposeSelect.innerHTML += `<option value="${p}">${p}</option>`;
             });
             if (currentPurposeVal) purposeSelect.value = currentPurposeVal;
+
+            updateBuildingDropdown();
         }
 
         function updateBuildingDropdown() {
             const camp = document.getElementById('campSelect').value;
             const buildingSelect = document.getElementById('buildingSelect');
             const currentBldgVal = buildingSelect.value;
-            buildingSelect.innerHTML = '<option value="">-- Select Building --</option>';
+            buildingSelect.innerHTML = '<option value="">-- Select Camp First --</option>';
 
             const buildingsMap = appState.camp_buildings || fallbackCampBuildings;
             if (!camp || !buildingsMap[camp]) return;
+
+            buildingSelect.innerHTML = '<option value="">-- Select Building --</option>';
             buildingsMap[camp].forEach(b => {
                 buildingSelect.innerHTML += `<option value="${b}">Bldg ${b}</option>`;
             });
-            if (currentBldgVal) buildingSelect.value = currentBldgVal;
+            if (currentBldgVal && buildingsMap[camp].includes(currentBldgVal)) {
+                buildingSelect.value = currentBldgVal;
+            }
         }
 
         async function submitBooking(e) {
@@ -378,7 +397,7 @@
             const sel = document.getElementById('mgmtCampSelect');
             const selectedVal = sel.value;
             sel.innerHTML = '';
-            const campsList = appState.camps || fallbackCamps;
+            const campsList = (appState.camps && appState.camps.length > 0) ? appState.camps : fallbackCamps;
             campsList.forEach(c => {
                 sel.innerHTML += `<option value="${c}">${c}</option>`;
             });
@@ -420,7 +439,6 @@
             await saveStateToServer();
             document.getElementById('newCampName').value = '';
             
-            // Re-render everything immediately
             populatePublicDropdowns();
             setupAdminCampDropdowns();
             alert("Camp added and synchronized across all views.");
@@ -440,9 +458,8 @@
             await saveStateToServer();
             document.getElementById('newBldgNum').value = '';
             
-            // Re-render everything immediately
             renderBuildingManagementList();
-            updateBuildingDropdown();
+            populatePublicDropdowns();
             alert("Building added and synchronized across all views.");
         }
 
@@ -505,6 +522,7 @@
         }
 
         async function saveStateToServer() {
+            localStorage.setItem('uh_portal_state', JSON.stringify(appState));
             try {
                 const res = await fetch('/api/state', {
                     method: 'POST',
@@ -518,7 +536,7 @@
                     }
                 }
             } catch (err) {
-                console.warn("Network restricted sync, operating on local session state.");
+                console.warn("Network restricted sync, operating on local browser storage cache.");
             }
         }
     </script>

@@ -34,23 +34,19 @@ const defaultState = {
     bookings: []
 };
 
-let appState = defaultState;
+let appState = JSON.parse(JSON.stringify(defaultState));
 
 if (fs.existsSync(DATA_FILE)) {
     try {
         const fileData = fs.readFileSync(DATA_FILE, 'utf8');
         const savedState = JSON.parse(fileData);
-        appState = {
-            ...defaultState,
-            ...savedState,
-            camps: (savedState.camps && savedState.camps.length > 0) ? savedState.camps : defaultState.camps,
-            camp_buildings: savedState.camp_buildings || defaultState.camp_buildings,
-            purposes: (savedState.purposes && savedState.purposes.length > 0) ? savedState.purposes : defaultState.purposes,
-            staff_users: (savedState.staff_users && savedState.staff_users.length > 0) ? savedState.staff_users : defaultState.staff_users,
-            bookings: savedState.bookings || defaultState.bookings
-        };
+        appState.camps = (savedState.camps && savedState.camps.length > 0) ? savedState.camps : defaultState.camps;
+        appState.camp_buildings = savedState.camp_buildings || defaultState.camp_buildings;
+        appState.purposes = savedState.purposes || defaultState.purposes;
+        appState.staff_users = savedState.staff_users || defaultState.staff_users;
+        appState.bookings = savedState.bookings || [];
     } catch (err) {
-        console.error("Error reading data.json, using defaults:", err);
+        console.error("Error reading data.json:", err);
     }
 } else {
     try {
@@ -75,15 +71,11 @@ app.get('/api/state', (req, res) => {
 app.post('/api/state', (req, res) => {
     const newState = req.body;
     if (newState) {
-        appState = {
-            ...defaultState,
-            ...newState,
-            camps: newState.camps || defaultState.camps,
-            camp_buildings: newState.camp_buildings || defaultState.camp_buildings,
-            purposes: newState.purposes || defaultState.purposes,
-            staff_users: newState.staff_users || defaultState.staff_users,
-            bookings: newState.bookings || defaultState.bookings
-        };
+        appState.camps = (newState.camps && newState.camps.length > 0) ? newState.camps : defaultState.camps;
+        appState.camp_buildings = newState.camp_buildings || defaultState.camp_buildings;
+        appState.purposes = newState.purposes || defaultState.purposes;
+        appState.staff_users = newState.staff_users || defaultState.staff_users;
+        appState.bookings = newState.bookings || [];
         saveState();
         return res.json({ success: true, appState });
     }
