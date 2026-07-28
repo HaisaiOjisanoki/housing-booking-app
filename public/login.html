@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Login - Housing Portal</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light d-flex align-items-center py-5" style="min-height: 100vh;" onload="initLogin()">
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                
+                <div id="loginAlert" class="alert d-none mb-4" role="alert"></div>
+
+                <div class="card shadow border-0">
+                    <div class="card-header bg-dark text-white py-3 text-center">
+                        <h4 class="mb-0 fw-bold"><i class="bi bi-shield-lock-fill me-2"></i>Staff Portal Sign In</h4>
+                        <p class="mb-0 small text-white-50">Enter your assigned username to access management tools.</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <form id="loginForm" onsubmit="handleStaffLogin(event)">
+                            <div class="mb-3">
+                                <label class="form-label text-muted small fw-bold">Username</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                                    <input type="text" id="loginUsername" class="form-control" required placeholder="e.g. superadmin or hansen_admin">
+                                </div>
+                                <div class="form-text small text-muted mt-1">Default test accounts: <code>superadmin</code> or <code>hansen_admin</code></div>
+                            </div>
+
+                            <div class="d-grid mt-4">
+                                <button type="submit" class="btn btn-dark btn-lg"><i class="bi bi-box-arrow-in-right me-2"></i>Sign In</button>
+                            </div>
+                        </form>
+
+                        <div class="text-center mt-3">
+                            <a href="/" class="text-decoration-none small text-muted"><i class="bi bi-arrow-left me-1"></i>Back to Public Booking Portal</a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let serverState = null;
+
+        async function initLogin() {
+            try {
+                const res = await fetch('/api/state');
+                if (res.ok) {
+                    serverState = await res.json();
+                }
+            } catch (err) {
+                console.warn("Could not fetch server state.");
+            }
+        }
+
+        async function handleStaffLogin(event) {
+            event.preventDefault();
+            const usernameInput = document.getElementById('loginUsername').value.trim().toLowerCase();
+
+            if (!usernameInput) {
+                showAlert("Please enter a valid username.", "danger");
+                return;
+            }
+
+            // Fetch latest state to verify staff user
+            try {
+                const res = await fetch('/api/state');
+                if (res.ok) {
+                    serverState = await res.json();
+                }
+            } catch (err) {}
+
+            const staffList = serverState && Array.isArray(serverState.staff_users) ? serverState.staff_users : [
+                { username: "superadmin", role: "superadmin", camp: "ALL", building: "ALL", name: "Master Superadmin" },
+                { username: "hansen_admin", role: "camp_admin", camp: "Camp Hansen", building: "ALL", name: "Hansen Camp Admin" }
+            ];
+
+            const matchedUser = staffList.find(s => s.username.toLowerCase() === usernameInput);
+
+            if (matchedUser) {
+                localStorage.setItem('housing_logged_user', JSON.stringify(matchedUser));
+                showAlert("Login successful! Redirecting to dashboard...", "success");
+                setTimeout(() => {
+                    window.location.href = '/dashboard.html';
+                }, 1000);
+            } else {
+                showAlert("Staff username not found. Please check your credentials.", "danger");
+            }
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('loginAlert');
+            alert.className = `alert alert-${type} mb-4`;
+            alert.textContent = message;
+            alert.classList.remove('d-none');
+        }
+    </script>
+</body>
+</html>
