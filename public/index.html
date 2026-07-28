@@ -3,343 +3,459 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Public Appointment Booking - Housing Portal</title>
-    <!-- Bootstrap CSS -->
+    <title>Unaccompanied Housing Appointment Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f6f9;
+        }
+        .card {
+            border: none;
+            border-radius: 0.5rem;
+        }
+        .navbar-brand {
+            letter-spacing: 0.5px;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+        }
+    </style>
 </head>
-<body class="bg-light" onload="initPublicForm()">
+<body onload="initPublicPortal()">
 
-    <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="#"><i class="bi bi-house-door-fill me-2"></i>Housing Portal - Public Booking</a>
-            <a href="/login" class="btn btn-outline-light btn-sm"><i class="bi bi-shield-lock me-1"></i>Staff Sign In</a>
+    <nav class="navbar navbar-dark bg-dark shadow-sm">
+        <div class="container px-4">
+            <span class="navbar-brand fw-bold">
+                <i class="bi bi-building me-2"></i>Unaccompanied Housing Appointment Portal
+            </span>
+            <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-shield-lock me-1"></i>Staff Sign In
+            </a>
         </div>
     </nav>
 
-    <!-- Main Container -->
     <div class="container py-5">
         <div class="row justify-content-center">
-            <div class="col-lg-7">
+            <div class="col-lg-8">
                 
-                <!-- Status Alert Notification -->
-                <div id="publicAlert" class="alert d-none mb-4" role="alert"></div>
-
-                <div class="card shadow border-0">
-                    <div class="card-header bg-primary text-white py-3">
-                        <h4 class="mb-0 fw-bold"><i class="bi bi-calendar-plus me-2"></i>Schedule Housing Appointment</h4>
-                        <p class="mb-0 small text-white-50">Select your preferred date, time, and facility for in-processing or housing inquiries.</p>
-                    </div>
-                    <div class="card-body p-4">
-                        
-                        <!-- Dynamic Availability & Restrictions Notice Box -->
-                        <div class="alert alert-secondary mb-4 small" id="availabilityNoticeBox">
-                            <div class="fw-bold text-dark mb-1"><i class="bi bi-clock me-1 text-primary"></i>Current Facility Schedule & Restrictions:</div>
-                            <ul class="mb-0 ps-3" id="availabilityRulesList">
-                                <li>Operating Hours: Loading...</li>
-                                <li>Lunch Block: Loading...</li>
-                            </ul>
-                        </div>
-
-                        <form id="publicBookingForm" onsubmit="submitPublicBooking(event)">
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label text-muted small">Branch</label>
-                                    <select id="pubBranch" class="form-select form-select-sm" required>
-                                        <option value="Marine Corps">Marine Corps</option>
-                                        <option value="Army">Army</option>
-                                        <option value="Navy">Navy</option>
-                                        <option value="Air Force">Air Force</option>
-                                        <option value="Space Force">Space Force</option>
-                                        <option value="Civilian">Civilian</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label text-muted small">Last Name</label>
-                                    <input type="text" id="pubLastName" class="form-control form-control-sm" required placeholder="Miller">
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label text-muted small">First Name</label>
-                                    <input type="text" id="pubFirstName" class="form-control form-control-sm" required placeholder="John">
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label text-muted small fw-bold text-primary">Camp Location</label>
-                                    <select id="pubCamp" class="form-select form-select-sm border-primary" required onchange="updatePublicBuildingDropdown()">
-                                        <option value="">-- Select Camp --</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label text-muted small fw-bold text-primary">Assigned Building / Facility</label>
-                                    <select id="pubBuilding" class="form-select form-select-sm border-primary" required>
-                                        <option value="">-- Select Camp First --</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label text-muted small fw-bold text-primary">Purpose of Visit</label>
-                                <select id="pubPurpose" class="form-select form-select-sm border-primary" required>
-                                    <option value="">-- Select Purpose --</option>
-                                </select>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label text-muted small">Appointment Date</label>
-                                    <input type="date" id="pubDate" class="form-control form-control-sm" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label text-muted small">Appointment Time</label>
-                                    <input type="time" id="pubTime" class="form-control form-control-sm" required>
-                                    <div class="form-text small text-danger" id="timeRestrictionHelp">Bookings outside operating hours or during lunch/blocked windows are restricted.</div>
-                                </div>
-                            </div>
-
-                            <div class="d-grid mt-4">
-                                <button type="submit" class="btn btn-primary btn-lg"><i class="bi bi-check-circle me-2"></i>Submit Appointment Request</button>
-                            </div>
-                        </form>
+                <!-- Notice Banner -->
+                <div class="alert alert-info shadow-sm mb-4 border-0 d-flex align-items-center">
+                    <i class="bi bi-info-circle-fill fs-4 me-3 text-primary"></i>
+                    <div>
+                        <strong>Appointment Scheduling Notice:</strong> Please select your assigned camp and building number below. All appointments are reviewed and managed by your respective building managers.
                     </div>
                 </div>
 
+                <!-- Mode Switcher Tabs -->
+                <ul class="nav nav-pills justify-content-center mb-4 bg-white p-2 rounded shadow-sm" id="portalTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold px-4" id="book-tab" data-bs-toggle="pill" data-bs-target="#bookSection" type="button" role="tab">
+                            <i class="bi bi-calendar-plus me-1"></i> Schedule Appointment
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold px-4" id="manage-tab" data-bs-toggle="pill" data-bs-target="#manageSection" type="button" role="tab">
+                            <i class="bi bi-calendar-check me-1"></i> Manage Appointment
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="portalTabContent">
+                    
+                    <!-- SECTION 1: SCHEDULE APPOINTMENT -->
+                    <div class="tab-pane fade show active" id="bookSection" role="tabpanel">
+                        <div class="card shadow">
+                            <div class="card-header bg-primary text-white py-3">
+                                <h4 class="mb-0 fw-bold"><i class="bi bi-calendar-plus me-2"></i>Schedule Housing Appointment</h4>
+                            </div>
+                            <div class="card-body p-4">
+                                <form id="bookingForm" onsubmit="submitBooking(event)">
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold text-muted">First Name *</label>
+                                            <input type="text" id="firstName" class="form-control" required placeholder="Enter first name">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold text-muted">Last Name *</label>
+                                            <input type="text" id="lastName" class="form-control" required placeholder="Enter last name">
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold text-muted">Branch of Service *</label>
+                                            <select id="branch" class="form-select" required>
+                                                <option value="">-- Select Branch --</option>
+                                                <option value="Army">Army</option>
+                                                <option value="Marine Corps">Marine Corps</option>
+                                                <option value="Navy">Navy</option>
+                                                <option value="Air Force">Air Force</option>
+                                                <option value="Coast Guard">Coast Guard</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold text-muted">Email Address *</label>
+                                            <input type="email" id="email" class="form-control" required placeholder="name@example.com">
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold text-muted">Select Camp *</label>
+                                            <select id="campSelect" class="form-select" required onchange="updateBuildingDropdown()">
+                                                <option value="">-- Select Camp --</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold text-muted">Building Number *</label>
+                                            <select id="buildingSelect" class="form-select" required>
+                                                <option value="">-- Select Building --</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold text-muted">Appointment Date *</label>
+                                            <input type="date" id="bookingDate" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold text-muted">Appointment Time *</label>
+                                            <input type="time" id="bookingTime" class="form-control" required onchange="validateTimeSlot()">
+                                            <div id="timeWarning" class="form-text text-danger d-none small">Appointments are restricted during lunch hours (11:30 - 13:00).</div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="form-label small fw-bold text-muted">Purpose of Visit *</label>
+                                        <select id="purposeSelect" class="form-select" required>
+                                            <option value="">-- Select Purpose of Visit --</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" id="submitBtn" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">
+                                        <i class="bi bi-check-circle me-1"></i>Submit Appointment
+                                    </button>
+                                </form>
+
+                                <!-- Success Confirmation View -->
+                                <div id="successCard" class="text-center py-4 d-none">
+                                    <div class="mb-3">
+                                        <i class="bi bi-check-circle-fill text-success" style="font-size: 3.5rem;"></i>
+                                    </div>
+                                    <h3 class="fw-bold text-dark mb-2">Appointment Booked Successfully!</h3>
+                                    <p class="text-muted mb-4">Your appointment has been logged and sent to the assigned building managers.</p>
+                                    
+                                    <div class="bg-light border rounded p-3 mb-4 d-inline-block px-5">
+                                        <span class="small text-muted d-block uppercase fw-bold">Confirmation Code</span>
+                                        <span id="assignedConfirmationCode" class="text-primary fw-bold fs-3"></span>
+                                    </div>
+
+                                    <div class="d-grid gap-2 col-md-6 mx-auto">
+                                        <button class="btn btn-outline-primary btn-sm fw-bold" onclick="resetForm()">
+                                            <i class="bi bi-arrow-clockwise me-1"></i>Book Another Appointment
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 2: MANAGE APPOINTMENT (LOOKUP / RESCHEDULE / CANCEL) -->
+                    <div class="tab-pane fade" id="manageSection" role="tabpanel">
+                        <div class="card shadow">
+                            <div class="card-header bg-dark text-white py-3">
+                                <h4 class="mb-0 fw-bold"><i class="bi bi-search me-2"></i>Find & Manage Existing Appointment</h4>
+                            </div>
+                            <div class="card-body p-4">
+                                <div class="input-group mb-4">
+                                    <input type="text" id="lookupCode" class="form-control" placeholder="Enter Confirmation Code (e.g., HSG-123456)">
+                                    <button class="btn btn-dark fw-bold px-4" onclick="lookupBooking()"><i class="bi bi-search me-1"></i> Lookup</button>
+                                </div>
+
+                                <div id="lookupError" class="alert alert-danger d-none">
+                                    No appointment found with that confirmation code. Please check your code and try again.
+                                </div>
+
+                                <div id="lookupResultCard" class="d-none">
+                                    <div class="card border bg-light p-3 mb-3">
+                                        <h5 class="fw-bold text-primary mb-3"><i class="bi bi-info-circle me-1"></i> Appointment Details</h5>
+                                        <div class="row mb-2">
+                                            <div class="col-sm-6"><strong>Name:</strong> <span id="resName"></span></div>
+                                            <div class="col-sm-6"><strong>Branch:</strong> <span id="resBranch"></span></div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <div class="col-sm-6"><strong>Camp:</strong> <span id="resCamp"></span></div>
+                                            <div class="col-sm-6"><strong>Building:</strong> <span id="resBuilding"></span></div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <div class="col-sm-6"><strong>Purpose:</strong> <span id="resPurpose"></span></div>
+                                            <div class="col-sm-6"><strong>Status:</strong> <span id="resStatus" class="badge bg-secondary"></span></div>
+                                        </div>
+                                        <hr>
+                                        <form id="rescheduleForm" onsubmit="saveReschedule(event)">
+                                            <h6 class="fw-bold mb-3 text-secondary"><i class="bi bi-calendar-event me-1"></i> Reschedule Appointment</h6>
+                                            <div class="row mb-3">
+                                                <div class="col-md-6">
+                                                    <label class="form-label small fw-bold">New Date *</label>
+                                                    <input type="date" id="newDate" class="form-control" required>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small fw-bold">New Time *</label>
+                                                    <input type="time" id="newTime" class="form-control" required>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex gap-2">
+                                                <button type="submit" class="btn btn-warning fw-bold flex-grow-1">
+                                                    <i class="bi bi-clock-history me-1"></i> Save Reschedule
+                                                </button>
+                                                <button type="button" class="btn btn-danger fw-bold" onclick="cancelBooking()">
+                                                    <i class="bi bi-x-circle me-1"></i> Cancel Appointment
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
     <script>
-        let appState = {
-            camps: [],
-            camp_buildings: {},
-            purposes: [],
-            availability: {
-                start: "08:00",
-                end: "17:00",
-                lunchStart: "12:00",
-                lunchEnd: "13:00",
-                publicBlockedCategory: "",
-                blockedStartTime: "",
-                blockedEndTime: ""
-            },
-            bookings: []
-        };
+        let appState = {};
+        let activeLookupBooking = null;
 
-        async function initPublicForm() {
-            const today = new Date().toISOString().split('T')[0];
-            const dateInput = document.getElementById('pubDate');
-            if(dateInput) {
-                dateInput.min = today;
-                dateInput.value = today;
-            }
-
-            await fetchServerState();
-            setInterval(() => fetchServerState(), 5000);
-        }
-
-        async function fetchServerState() {
+        async function initPublicPortal() {
             try {
                 const res = await fetch('/api/state');
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data) {
-                        appState = data;
-                        populatePublicDropdowns();
-                        loadAndDisplayAvailabilityRules();
-                    }
+                appState = await res.json();
+                if (!appState.camps) appState.camps = [];
+                if (!appState.camp_buildings) appState.camp_buildings = {};
+                if (!appState.bookings) appState.bookings = [];
+                if (!appState.purposes) {
+                    appState.purposes = [
+                        'Check-in / In-processing',
+                        'Out-processing Inspection',
+                        'Maintenance Request',
+                        'Room Change Inquiry'
+                    ];
                 }
-            } catch (err) {
-                console.warn("Could not connect to server backend.");
-            }
-        }
 
-        function populatePublicDropdowns() {
-            const camps = Array.isArray(appState.camps) && appState.camps.length > 0 ? appState.camps : ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"];
-            const purposes = Array.isArray(appState.purposes) && appState.purposes.length > 0 ? appState.purposes : ["Initial Check-in", "Final Check-out / Clearance", "Room Maintenance Request", "Housing Inquiry"];
-
-            const campSelect = document.getElementById('pubCamp');
-            if(campSelect) {
-                const currentCamp = campSelect.value;
+                // Populate Camps
+                const campSelect = document.getElementById('campSelect');
                 campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
-                camps.forEach(c => {
+                appState.camps.forEach(c => {
                     campSelect.innerHTML += `<option value="${c}">${c}</option>`;
                 });
-                if (currentCamp && camps.includes(currentCamp)) {
-                    campSelect.value = currentCamp;
-                }
-            }
 
-            const purposeSelect = document.getElementById('pubPurpose');
-            if(purposeSelect) {
-                const currentPurpose = purposeSelect.value;
-                purposeSelect.innerHTML = '<option value="">-- Select Purpose --</option>';
-                purposes.forEach(p => {
+                // Populate Purpose of Visit Dropdown from Superadmin state
+                const purposeSelect = document.getElementById('purposeSelect');
+                purposeSelect.innerHTML = '<option value="">-- Select Purpose of Visit --</option>';
+                appState.purposes.forEach(p => {
                     purposeSelect.innerHTML += `<option value="${p}">${p}</option>`;
                 });
-                if (currentPurpose) purposeSelect.value = currentPurpose;
+            } catch (err) {
+                console.error("Error loading application state:", err);
             }
-
-            updatePublicBuildingDropdown();
         }
 
-        function updatePublicBuildingDropdown() {
-            const campSelect = document.getElementById('pubCamp');
-            const buildingSelect = document.getElementById('pubBuilding');
-            if (!campSelect || !buildingSelect) return;
+        function updateBuildingDropdown() {
+            const camp = document.getElementById('campSelect').value;
+            const buildingSelect = document.getElementById('buildingSelect');
+            buildingSelect.innerHTML = '<option value="">-- Select Building --</option>';
 
-            const camp = campSelect.value;
-            const currentBldg = buildingSelect.value;
+            if (camp && appState.camp_buildings && appState.camp_buildings[camp]) {
+                appState.camp_buildings[camp].forEach(b => {
+                    buildingSelect.innerHTML += `<option value="${b}">${b}</option>`;
+                });
+            }
+        }
 
-            buildingSelect.innerHTML = '<option value="">-- Select Camp First --</option>';
-            if (!camp) return;
+        function validateTimeSlot() {
+            const timeVal = document.getElementById('bookingTime').value;
+            const warningEl = document.getElementById('timeWarning');
+            const submitBtn = document.getElementById('submitBtn');
 
-            const buildingsMap = appState.camp_buildings || {};
-            const bldgs = buildingsMap[camp] || [];
-
-            if (bldgs.length === 0) {
-                buildingSelect.innerHTML = '<option value="" disabled>No buildings configured for this camp</option>';
+            if (!timeVal) {
+                warningEl.classList.add('d-none');
+                submitBtn.disabled = false;
                 return;
             }
 
-            buildingSelect.innerHTML = '<option value="">-- Select Building / Facility --</option>';
-            bldgs.forEach(b => {
-                const bldgName = (typeof b === 'object' && b !== null) ? (b.name || b.building || JSON.stringify(b)) : b;
-                buildingSelect.innerHTML += `<option value="${bldgName}">Bldg ${bldgName}</option>`;
-            });
-
-            if (currentBldg) {
-                buildingSelect.value = currentBldg;
+            // Lunch restriction check (11:30 - 13:00)
+            if (timeVal >= '11:30' && timeVal <= '13:00') {
+                warningEl.classList.remove('d-none');
+                submitBtn.disabled = true;
+            } else {
+                warningEl.classList.add('d-none');
+                submitBtn.disabled = false;
             }
         }
 
-        function loadAndDisplayAvailabilityRules() {
-            const avail = appState.availability || {
-                start: "08:00",
-                end: "17:00",
-                lunchStart: "12:00",
-                lunchEnd: "13:00",
-                publicBlockedCategory: "",
-                blockedStartTime: "",
-                blockedEndTime: ""
-            };
+        async function submitBooking(e) {
+            e.preventDefault();
 
-            const rulesList = document.getElementById('availabilityRulesList');
-            if(!rulesList) return;
-
-            let html = `
-                <li><strong>Operating Hours:</strong> ${formatTime12hr(avail.start)} – ${formatTime12hr(avail.end)}</li>
-                <li><strong>Lunch Block:</strong> <span class="text-danger fw-bold">${formatTime12hr(avail.lunchStart)} – ${formatTime12hr(avail.lunchEnd)} (Restricted)</span></li>
-            `;
-
-            if (avail.publicBlockedCategory && avail.blockedStartTime && avail.blockedEndTime) {
-                html += `
-                    <li><strong>Blocked Window (${avail.publicBlockedCategory}):</strong> <span class="text-danger fw-bold">${formatTime12hr(avail.blockedStartTime)} – ${formatTime12hr(avail.blockedEndTime)} (Restricted)</span></li>
-                `;
+            try {
+                const res = await fetch('/api/state');
+                appState = await res.json();
+            } catch (err) {
+                console.error("Error syncing state:", err);
             }
 
-            rulesList.innerHTML = html;
-        }
-
-        function formatTime12hr(timeStr) {
-            if (!timeStr) return '';
-            const [hour, minute] = timeStr.split(':');
-            let h = parseInt(hour, 10);
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            h = h % 12 || 12;
-            return `${h}:${minute} ${ampm}`;
-        }
-
-        async function submitPublicBooking(event) {
-            event.preventDefault();
-
-            const branch = document.getElementById('pubBranch').value;
-            const lastName = document.getElementById('pubLastName').value.trim();
-            const firstName = document.getElementById('pubFirstName').value.trim();
-            const camp = document.getElementById('pubCamp').value;
-            const building = document.getElementById('pubBuilding').value;
-            const purpose = document.getElementById('pubPurpose').value;
-            const date = document.getElementById('pubDate').value;
-            const time = document.getElementById('pubTime').value;
-
-            if (!lastName || !firstName || !camp || !building || !purpose || !date || !time) {
-                showPublicAlert("Please complete all required booking fields.", "danger");
-                return;
-            }
-
-            const avail = appState.availability;
-            if (avail) {
-                if (time < avail.start || time > avail.end) {
-                    showPublicAlert(`Selected time (${formatTime12hr(time)}) is outside operating hours (${formatTime12hr(avail.start)} – ${formatTime12hr(avail.end)}).`, "danger");
-                    return;
-                }
-
-                if (avail.lunchStart && avail.lunchEnd) {
-                    if (time >= avail.lunchStart && time <= avail.lunchEnd) {
-                        showPublicAlert(`Selected time falls within the designated lunch block (${formatTime12hr(avail.lunchStart)} – ${formatTime12hr(avail.lunchEnd)}). Bookings are restricted.`, "danger");
-                        return;
-                    }
-                }
-
-                if (avail.publicBlockedCategory && avail.blockedStartTime && avail.blockedEndTime) {
-                    if (time >= avail.blockedStartTime && time <= avail.blockedEndTime) {
-                        showPublicAlert(`Selected time falls within the restricted window for "${avail.publicBlockedCategory}" (${formatTime12hr(avail.blockedStartTime)} – ${formatTime12hr(avail.blockedEndTime)}).`, "danger");
-                        return;
-                    }
-                }
-            }
+            if (!appState.bookings) appState.bookings = [];
 
             const code = 'HSG-' + Math.floor(100000 + Math.random() * 900000);
+
             const newBooking = {
                 id: Date.now(),
                 confirmationCode: code,
-                branch: branch,
-                lastName: lastName,
-                firstName: firstName,
-                camp: camp,
-                building: building,
-                purpose: purpose,
-                date: date,
-                time: time,
-                status: "Pending",
-                internalNote: "Submitted via Public Booking Portal.",
-                username: "public_user"
+                firstName: document.getElementById('firstName').value.trim(),
+                lastName: document.getElementById('lastName').value.trim(),
+                branch: document.getElementById('branch').value,
+                email: document.getElementById('email').value.trim(),
+                camp: document.getElementById('campSelect').value,
+                building: document.getElementById('buildingSelect').value,
+                date: document.getElementById('bookingDate').value,
+                time: document.getElementById('bookingTime').value,
+                purpose: document.getElementById('purposeSelect').value,
+                status: 'Pending',
+                staffNotes: ''
             };
 
-            if (!Array.isArray(appState.bookings)) appState.bookings = [];
             appState.bookings.push(newBooking);
 
+            const saveRes = await fetch('/api/state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(appState)
+            });
+
+            if (saveRes.ok) {
+                document.getElementById('bookingForm').classList.add('d-none');
+                document.getElementById('assignedConfirmationCode').textContent = code;
+                document.getElementById('successCard').classList.remove('d-none');
+            } else {
+                alert('Error submitting appointment. Please try again.');
+            }
+        }
+
+        async function lookupBooking() {
+            const codeInput = document.getElementById('lookupCode').value.trim().toUpperCase();
+            const errorEl = document.getElementById('lookupError');
+            const resultCard = document.getElementById('lookupResultCard');
+
+            if (!codeInput) return;
+
             try {
-                const res = await fetch('/api/state', {
+                const res = await fetch('/api/state');
+                appState = await res.json();
+            } catch (err) {
+                console.error("Error fetching state:", err);
+            }
+
+            if (!appState.bookings) appState.bookings = [];
+
+            const found = appState.bookings.find(b => b.confirmationCode && b.confirmationCode.toUpperCase() === codeInput);
+
+            if (!found) {
+                errorEl.classList.remove('d-none');
+                resultCard.classList.add('d-none');
+                activeLookupBooking = null;
+                return;
+            }
+
+            errorEl.classList.add('d-none');
+            activeLookupBooking = found;
+
+            document.getElementById('resName').textContent = found.firstName + ' ' + found.lastName;
+            document.getElementById('resBranch').textContent = found.branch;
+            document.getElementById('resCamp').textContent = found.camp;
+            document.getElementById('resBuilding').textContent = found.building;
+            document.getElementById('resPurpose').textContent = found.purpose;
+            
+            const statusBadge = document.getElementById('resStatus');
+            statusBadge.textContent = found.status || 'Pending';
+            statusBadge.className = 'badge ' + (found.status === 'Cancelled' ? 'bg-danger' : found.status === 'Confirmed' ? 'bg-success' : found.status === 'Rescheduled' ? 'bg-info text-dark' : 'bg-warning text-dark');
+
+            document.getElementById('newDate').value = found.date;
+            document.getElementById('newTime').value = found.time;
+
+            resultCard.classList.remove('d-none');
+        }
+
+        async function saveReschedule(e) {
+            e.preventDefault();
+            if (!activeLookupBooking) return;
+
+            const newDate = document.getElementById('newDate').value;
+            const newTime = document.getElementById('newTime').value;
+
+            try {
+                const res = await fetch('/api/state');
+                appState = await res.json();
+            } catch (err) {
+                console.error("Error syncing state:", err);
+            }
+
+            const target = appState.bookings.find(b => b.id === activeLookupBooking.id || b.confirmationCode === activeLookupBooking.confirmationCode);
+            if (target) {
+                target.date = newDate;
+                target.time = newTime;
+                target.status = 'Rescheduled';
+
+                const saveRes = await fetch('/api/state', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(appState)
                 });
-                if (res.ok) {
-                    showPublicAlert(`Appointment request successfully submitted! Confirmation Code: <strong>${code}</strong>`, "success");
-                    document.getElementById('publicBookingForm').reset();
-                    document.getElementById('pubDate').value = new Date().toISOString().split('T')[0];
-                    updatePublicBuildingDropdown();
+
+                if (saveRes.ok) {
+                    alert('Appointment successfully rescheduled!');
+                    lookupBooking();
                 } else {
-                    showPublicAlert("Failed to save booking to server.", "danger");
+                    alert('Error saving changes.');
                 }
-            } catch (err) {
-                showPublicAlert("Network connection error.", "danger");
             }
         }
 
-        function showPublicAlert(message, type) {
-            const alert = document.getElementById('publicAlert');
-            alert.className = `alert alert-${type} mb-4`;
-            alert.innerHTML = message;
-            alert.classList.remove('d-none');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => alert.classList.add('d-none'), 6000);
+        async function cancelBooking() {
+            if (!activeLookupBooking) return;
+            if (!confirm('Are you sure you want to cancel this appointment?')) return;
+
+            try {
+                const res = await fetch('/api/state');
+                appState = await res.json();
+            } catch (err) {
+                console.error("Error syncing state:", err);
+            }
+
+            const target = appState.bookings.find(b => b.id === activeLookupBooking.id || b.confirmationCode === activeLookupBooking.confirmationCode);
+            if (target) {
+                target.status = 'Cancelled';
+
+                const saveRes = await fetch('/api/state', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(appState)
+                });
+
+                if (saveRes.ok) {
+                    alert('Appointment has been cancelled.');
+                    lookupBooking();
+                } else {
+                    alert('Error cancelling appointment.');
+                }
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('bookingForm').reset();
+            document.getElementById('buildingSelect').innerHTML = '<option value="">-- Select Building --</option>';
+            document.getElementById('bookingForm').classList.remove('d-none');
+            document.getElementById('successCard').classList.add('d-none');
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('timeWarning').classList.add('d-none');
         }
     </script>
 </body>

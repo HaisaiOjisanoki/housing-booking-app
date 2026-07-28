@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Unaccompanied Housing Portal</title>
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body { background-color: #f4f6f9; min-height: 100vh; }
@@ -22,16 +20,18 @@
             <p class="text-muted small">Sign in to manage service member bookings</p>
         </div>
 
-        <div id="loginAlert" class="alert d-none py-2 small text-center" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-1"></i> <span id="alertMessage"></span>
+        {% if error %}
+        <div class="alert alert-danger py-2 small text-center" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ error }}
         </div>
+        {% endif %}
 
-        <form id="loginForm" onsubmit="handleStaffLogin(event)">
+        <form action="{{ url_for('login') }}" method="POST">
             <div class="mb-3">
                 <label class="form-label small fw-bold text-secondary">Username</label>
                 <div class="input-group">
                     <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
-                    <input type="text" id="loginUsername" name="username" class="form-control" placeholder="Enter username (e.g. superadmin)" required autofocus>
+                    <input type="text" name="username" class="form-control" placeholder="Enter username" required autofocus>
                 </div>
             </div>
             
@@ -39,7 +39,7 @@
                 <label class="form-label small fw-bold text-secondary">Password</label>
                 <div class="input-group">
                     <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
-                    <input type="password" id="loginPassword" name="password" class="form-control" placeholder="Enter password">
+                    <input type="password" name="password" class="form-control" placeholder="Enter password" required>
                 </div>
             </div>
 
@@ -49,61 +49,11 @@
         </form>
         
         <div class="text-center mt-3">
-            <a href="/" class="text-decoration-none small text-muted">
+            <a href="{{ url_for('index') }}" class="text-decoration-none small text-muted">
                 <i class="bi bi-arrow-left me-1"></i> Back to Public Booking Portal
             </a>
         </div>
     </div>
 
-    <!-- Bootstrap JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <script>
-        let serverState = null;
-
-        async function handleStaffLogin(event) {
-            event.preventDefault();
-            const usernameInput = document.getElementById('loginUsername').value.trim().toLowerCase();
-
-            if (!usernameInput) {
-                showAlert("Please enter a valid username.", "danger");
-                return;
-            }
-
-            try {
-                const res = await fetch('/api/state');
-                if (res.ok) {
-                    serverState = await res.json();
-                }
-            } catch (err) {
-                console.warn("Could not fetch server state.");
-            }
-
-            const staffList = serverState && Array.isArray(serverState.staff_users) ? serverState.staff_users : [
-                { username: "superadmin", role: "superadmin", camp: "ALL", building: "ALL", name: "Master Superadmin" },
-                { username: "hansen_admin", role: "camp_admin", camp: "Camp Hansen", building: "ALL", name: "Hansen Camp Admin" }
-            ];
-
-            const matchedUser = staffList.find(s => s.username.toLowerCase() === usernameInput);
-
-            if (matchedUser) {
-                localStorage.setItem('housing_logged_user', JSON.stringify(matchedUser));
-                showAlert("Sign in successful! Redirecting...", "success");
-                setTimeout(() => {
-                    window.location.href = '/dashboard.html';
-                }, 800);
-            } else {
-                showAlert("Invalid username or credentials.", "danger");
-            }
-        }
-
-        function showAlert(message, type) {
-            const alert = document.getElementById('loginAlert');
-            const alertMsg = document.getElementById('alertMessage');
-            alert.className = `alert alert-${type} py-2 small text-center mb-3`;
-            alertMsg.textContent = message;
-            alert.classList.remove('d-none');
-        }
-    </script>
 </body>
 </html>
