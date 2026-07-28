@@ -1,0 +1,13 @@
+{
+  "name": "housing-portal",
+  "version": "1.0.0",
+  "description": "Unaccompanied Housing Management Portal",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.6",
+    "express": "^4.22.2"
+  }
+}
