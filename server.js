@@ -50,21 +50,30 @@ const defaultState = {
     ]
 };
 
-// Load state from data.json and merge with defaults to prevent missing properties
+// Load state from data.json with deep fallbacks for empty arrays
 let appState = defaultState;
 if (fs.existsSync(DATA_FILE)) {
     try {
         const fileData = fs.readFileSync(DATA_FILE, 'utf8');
         const savedState = JSON.parse(fileData);
+        
         appState = {
             ...defaultState,
             ...savedState,
-            camps: savedState.camps && savedState.camps.length > 0 ? savedState.camps : defaultState.camps,
-            camp_buildings: { ...defaultState.camp_buildings, ...(savedState.camp_buildings || {}) },
-            purposes: savedState.purposes && savedState.purposes.length > 0 ? savedState.purposes : defaultState.purposes,
-            staff_users: savedState.staff_users && savedState.staff_users.length > 0 ? savedState.staff_users : defaultState.staff_users,
+            camps: (savedState.camps && savedState.camps.length > 0) ? savedState.camps : defaultState.camps,
+            camp_buildings: savedState.camp_buildings || defaultState.camp_buildings,
+            purposes: (savedState.purposes && savedState.purposes.length > 0) ? savedState.purposes : defaultState.purposes,
+            staff_users: (savedState.staff_users && savedState.staff_users.length > 0) ? savedState.staff_users : defaultState.staff_users,
             bookings: savedState.bookings || defaultState.bookings
         };
+
+        // Guarantee every camp has its default buildings if they were left empty
+        Object.keys(defaultState.camp_buildings).forEach(camp => {
+            if (!appState.camp_buildings[camp] || appState.camp_buildings[camp].length === 0) {
+                appState.camp_buildings[camp] = defaultState.camp_buildings[camp];
+            }
+        });
+
     } catch (err) {
         console.error("Error reading data.json, using defaults:", err);
     }
@@ -72,7 +81,7 @@ if (fs.existsSync(DATA_FILE)) {
     fs.writeFileSync(DATA_FILE, JSON.stringify(defaultState, null, 2));
 }
 
-// Helper function to save state to data.json
+// Helper function to save state
 function saveState() {
     try {
         fs.writeFileSync(DATA_FILE, JSON.stringify(appState, null, 2));
@@ -86,7 +95,7 @@ app.get('/api/state', (req, res) => {
     res.json(appState);
 });
 
-// API: Update synchronized state and save to file
+// API: Update synchronized state
 app.post('/api/state', (req, res) => {
     const newState = req.body;
     if (newState) {
