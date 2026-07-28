@@ -320,7 +320,7 @@
                 setupAdminCampDropdowns();
             } else if (currentStaffUser.role === 'camp_admin') {
                 titleEl.textContent = `Camp Admin Dashboard (${currentStaffUser.camp})`;
-                subEl.textContent = `Managing inventory and viewing bookings exclusively for ${currentStaffUser.camp}.`;
+                subEl.textContent = `Managing inventory and updating booking statuses exclusively for ${currentStaffUser.camp}.`;
                 adminPanel.classList.remove('d-none');
                 superCampBox.classList.add('d-none'); 
                 setupAdminCampDropdownsForCampAdmin();
