@@ -575,6 +575,7 @@
             renderOverviewMetrics(getFormattedDate(new Date()));
         }
 
+        // --- CAMPS & BUILDINGS MANAGEMENT ---
         function renderCampsManagement() {
             const container = document.getElementById('campsManagementContainer');
             const camps = appState.camps || [];
@@ -666,6 +667,7 @@
             populateExportFilters();
         }
 
+        // --- STAFF ACCOUNTS MANAGEMENT & MULTI-BUILDING ASSIGNMENTS ---
         function renderStaffAccounts() {
             const tbody = document.getElementById('staffAccountsTableBody');
             const staffUsers = appState.staff_users || [];
@@ -691,6 +693,7 @@
                 `;
             });
 
+            // Populate modal camp dropdown for creation
             const campSelect = document.getElementById('newStaffCamp');
             campSelect.innerHTML = '';
             (appState.camps || []).forEach(c => {
@@ -720,7 +723,10 @@
             modal.show();
         }
 
-        function toggleEditStaffBuildingSelection() {}
+        function toggleEditStaffBuildingSelection() {
+            const container = document.getElementById('editStaffBuildingsContainer');
+            container.style.display = 'block'; // Always available for both roles
+        }
 
         function updateEditStaffBuildingCheckboxes(selectedBuildings = []) {
             const selectedCamp = document.getElementById('editStaffCamp').value;
@@ -787,7 +793,10 @@
             renderStaffAccounts();
         }
 
-        function toggleStaffBuildingSelection() {}
+        function toggleStaffBuildingSelection() {
+            const container = document.getElementById('staffBuildingsContainer');
+            container.style.display = 'block'; // Always available for both roles
+        }
 
         function updateStaffBuildingCheckboxes() {
             const selectedCamp = document.getElementById('newStaffCamp').value;
@@ -840,6 +849,7 @@
             renderStaffAccounts();
         }
 
+        // --- DATA EXPORT SETUP ---
         function populateExportFilters() {
             const campSelect = document.getElementById('exportCampSelect');
             campSelect.innerHTML = `<option value="ALL">All Camps (System-wide)</option>`;
