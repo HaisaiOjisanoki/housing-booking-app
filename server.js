@@ -178,7 +178,7 @@ const indexHtml = `<!DOCTYPE html>
                         timeSelect.innerHTML += \`<option value="\${slot.startTime}">\${slot.startTime} - \${slot.endTime}</option>\`;
                     });
                 } else {
-                    timeSelect.innerHTML = '<option value="">No available slots for this date</option>';
+                    timeSelect.innerHTML = '<option value="">No staff-configured slots for this date</option>';
                 }
             } catch (err) {
                 console.error("Error fetching slots:", err);
@@ -363,15 +363,23 @@ const staffHtml = `<!DOCTYPE html>
                                 <div class="form-check"><input class="form-check-input rule-day-chk" type="checkbox" value="6" id="day_sat"><label class="form-check-label small" for="day_sat">Sat</label></div>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label small fw-bold">Start Time</label>
                             <input type="time" id="ruleStartTime" class="form-control form-control-sm" value="08:00" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label small fw-bold">End Time</label>
                             <input type="time" id="ruleEndTime" class="form-control form-control-sm" value="16:00" required>
                         </div>
-                        <div class="col-md-4 d-flex align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Lunch Start</label>
+                            <input type="time" id="ruleLunchStart" class="form-control form-control-sm" value="12:00">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Lunch End</label>
+                            <input type="time" id="ruleLunchEnd" class="form-control form-control-sm" value="13:00">
+                        </div>
+                        <div class="col-md-12">
                             <button type="submit" class="btn btn-primary btn-sm fw-bold w-100"><i class="bi bi-plus-circle me-1"></i> Add Availability Rule</button>
                         </div>
                     </form>
@@ -630,6 +638,8 @@ const staffHtml = `<!DOCTYPE html>
                 specificDate: document.getElementById('ruleSpecificDate').value,
                 startTime: document.getElementById('ruleStartTime').value,
                 endTime: document.getElementById('ruleEndTime').value,
+                lunchStartTime: document.getElementById('ruleLunchStart').value,
+                lunchEndTime: document.getElementById('ruleLunchEnd').value,
                 slotDurationMinutes: document.getElementById('ruleDuration').value
             };
 
@@ -691,8 +701,9 @@ const staffHtml = `<!DOCTYPE html>
                 } else {
                     dayStr = 'All Days';
                 }
+                let lunchStr = (r.lunchStartTime && r.lunchEndTime) ? \` | Lunch: \${r.lunchStartTime}-\${r.lunchEndTime}\` : '';
                 html += \`<div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-1 px-2">
-                    <span><strong>\${r.campId}</strong> Bldg \${r.buildingId} | \${dayStr} | \${r.startTime}-\${r.endTime} (\${r.slotDurationMinutes}m)</span>
+                    <span><strong>\${r.campId}</strong> Bldg \${r.buildingId} | \${dayStr} | \${r.startTime}-\${r.endTime}\${lunchStr} (\${r.slotDurationMinutes}m)</span>
                     <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="deleteAvailabilityRule(\${r.id})">&times;</button>
                 </div>\`;
             });
@@ -1044,7 +1055,7 @@ app.get('/api/availability', (req, res) => {
 });
 
 app.post('/api/availability', verifyAvailabilityPermission, (req, res) => {
-    const { campId, buildingId, camp, building, daysOfWeek, dayOfWeek, specificDate, startTime, endTime, slotDurationMinutes } = req.body;
+    const { campId, buildingId, camp, building, daysOfWeek, dayOfWeek, specificDate, startTime, endTime, lunchStartTime, lunchEndTime, slotDurationMinutes } = req.body;
     const user = req.session.user;
 
     const finalCamp = campId || camp || user.camp;
@@ -1069,6 +1080,8 @@ app.post('/api/availability', verifyAvailabilityPermission, (req, res) => {
         specificDate: specificDate || null,
         startTime: startTime || "08:00",
         endTime: endTime || "16:00",
+        lunchStartTime: lunchStartTime || null,
+        lunchEndTime: lunchEndTime || null,
         slotDurationMinutes: slotDurationMinutes ? parseInt(slotDurationMinutes, 10) : 30,
         isActive: true
     };
@@ -1135,6 +1148,7 @@ app.get('/api/booking-slots', (req, res) => {
     const dayOfWeek = targetDateObj.getDay();
     const rules = appState.availabilityRules || [];
 
+    // Strictly find matching rule inputted by staff for this specific camp and building
     let matchingRule = rules.find(r => 
         r.isActive !== false && 
         String(r.campId || r.camp) === String(targetCamp) && 
@@ -1160,11 +1174,32 @@ app.get('/api/booking-slots', (req, res) => {
         });
     }
 
+    // If no staff rule exists for this specific building, return zero slots
     if (!matchingRule) {
-        return res.json({ availableSlots: [], message: "No active availability configured for this building and date." });
+        return res.json({ availableSlots: [], message: "No active availability configured by staff for this building and date." });
     }
 
     let slots = generateTimeSlots(matchingRule.startTime, matchingRule.endTime, matchingRule.slotDurationMinutes || 30);
+
+    // Filter out lunch window slots inputted by staff
+    if (matchingRule.lunchStartTime && matchingRule.lunchEndTime) {
+        const [lStartH, lStartM] = matchingRule.lunchStartTime.split(':').map(Number);
+        const [lEndH, lEndM] = matchingRule.lunchEndTime.split(':').map(Number);
+        const lunchStartMin = lStartH * 60 + lStartM;
+        const lunchEndMin = lEndH * 60 + lEndM;
+
+        slots = slots.filter(slot => {
+            const [sH, sM] = slot.startTime.split(':').map(Number);
+            const [eH, eM] = slot.endTime.split(':').map(Number);
+            const slotStartMin = sH * 60 + sM;
+            const slotEndMin = eH * 60 + eM;
+
+            if (slotStartMin >= lunchStartMin && slotStartMin < lunchEndMin) return false;
+            if (slotEndMin > lunchStartMin && slotEndMin <= lunchEndMin) return false;
+            if (slotStartMin <= lunchStartMin && slotEndMin >= lunchEndMin) return false;
+            return true;
+        });
+    }
 
     const bookedSlotsForDate = (appState.bookings || []).filter(b => 
         String(b.camp) === String(targetCamp) && 
