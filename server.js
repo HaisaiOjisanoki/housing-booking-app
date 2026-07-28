@@ -40,13 +40,23 @@ if (fs.existsSync(DATA_FILE)) {
     try {
         const fileData = fs.readFileSync(DATA_FILE, 'utf8');
         const savedState = JSON.parse(fileData);
-        appState.camps = (Array.isArray(savedState.camps) && savedState.camps.length > 0) ? savedState.camps : defaultState.camps;
-        appState.camp_buildings = (savedState.camp_buildings && typeof savedState.camp_buildings === 'object') ? savedState.camp_buildings : defaultState.camp_buildings;
-        appState.purposes = (Array.isArray(savedState.purposes) && savedState.purposes.length > 0) ? savedState.purposes : defaultState.purposes;
-        appState.staff_users = (Array.isArray(savedState.staff_users) && savedState.staff_users.length > 0) ? savedState.staff_users : defaultState.staff_users;
-        appState.bookings = Array.isArray(savedState.bookings) ? savedState.bookings : [];
+        if (savedState && Array.isArray(savedState.camps) && savedState.camps.length > 0) {
+            appState.camps = savedState.camps;
+        }
+        if (savedState && savedState.camp_buildings && typeof savedState.camp_buildings === 'object') {
+            appState.camp_buildings = savedState.camp_buildings;
+        }
+        if (savedState && Array.isArray(savedState.purposes) && savedState.purposes.length > 0) {
+            appState.purposes = savedState.purposes;
+        }
+        if (savedState && Array.isArray(savedState.staff_users) && savedState.staff_users.length > 0) {
+            appState.staff_users = savedState.staff_users;
+        }
+        if (savedState && Array.isArray(savedState.bookings)) {
+            appState.bookings = savedState.bookings;
+        }
     } catch (err) {
-        console.error("Error reading data.json:", err);
+        console.error("Error reading data.json, using defaults:", err);
     }
 } else {
     try {
@@ -71,11 +81,21 @@ app.get('/api/state', (req, res) => {
 app.post('/api/state', (req, res) => {
     const newState = req.body;
     if (newState) {
-        appState.camps = (Array.isArray(newState.camps) && newState.camps.length > 0) ? newState.camps : defaultState.camps;
-        appState.camp_buildings = (newState.camp_buildings && typeof newState.camp_buildings === 'object') ? newState.camp_buildings : defaultState.camp_buildings;
-        appState.purposes = (Array.isArray(newState.purposes) && newState.purposes.length > 0) ? newState.purposes : defaultState.purposes;
-        appState.staff_users = (Array.isArray(newState.staff_users) && newState.staff_users.length > 0) ? newState.staff_users : defaultState.staff_users;
-        appState.bookings = Array.isArray(newState.bookings) ? newState.bookings : [];
+        if (Array.isArray(newState.camps) && newState.camps.length > 0) {
+            appState.camps = newState.camps;
+        }
+        if (newState.camp_buildings && typeof newState.camp_buildings === 'object') {
+            appState.camp_buildings = newState.camp_buildings;
+        }
+        if (Array.isArray(newState.purposes) && newState.purposes.length > 0) {
+            appState.purposes = newState.purposes;
+        }
+        if (Array.isArray(newState.staff_users) && newState.staff_users.length > 0) {
+            appState.staff_users = newState.staff_users;
+        }
+        if (Array.isArray(newState.bookings)) {
+            appState.bookings = newState.bookings;
+        }
         saveState();
         return res.json({ success: true, appState });
     }

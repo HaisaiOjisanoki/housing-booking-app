@@ -234,7 +234,8 @@
             if (dateInput) {
                 dateInput.min = new Date().toISOString().split('T')[0];
             }
-            // Load local storage cache immediately so dropdowns render before fetch completes
+
+            // Immediately populate dropdowns using defaults/local storage before server fetch
             const localCache = localStorage.getItem('uh_portal_state');
             if (localCache) {
                 try {
@@ -244,6 +245,7 @@
                     }
                 } catch(e) {}
             }
+
             populatePublicDropdowns();
             populateLoginButtons();
             initializeApp();
@@ -259,7 +261,7 @@
                     }
                 }
             } catch (err) {
-                console.warn("Server unreachable, operating on local browser storage cache:", err);
+                console.warn("Server unreachable, running on cached state:", err);
             } finally {
                 localStorage.setItem('uh_portal_state', JSON.stringify(appState));
                 populatePublicDropdowns();
@@ -282,6 +284,7 @@
 
             const campSelect = document.getElementById('campSelect');
             if (!campSelect) return;
+
             const currentCampVal = campSelect.value;
             campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
             campsList.forEach(c => {
@@ -311,22 +314,20 @@
 
             const camp = campSelect.value;
             const currentBldgVal = buildingSelect.value;
-            
-            buildingSelect.innerHTML = '<option value="">-- Select Building --</option>';
+
+            buildingSelect.innerHTML = '<option value="">-- Select Camp First --</option>';
+
+            if (!camp) return;
 
             const buildingsMap = (appState && appState.camp_buildings) ? appState.camp_buildings : fallbackCampBuildings;
-            
-            if (!camp) {
-                buildingSelect.innerHTML = '<option value="">-- Select Camp First --</option>';
-                return;
-            }
-
             const bldgs = buildingsMap[camp] || fallbackCampBuildings[camp] || [];
+
             if (bldgs.length === 0) {
                 buildingSelect.innerHTML = '<option value="">-- No Buildings Available --</option>';
                 return;
             }
 
+            buildingSelect.innerHTML = '<option value="">-- Select Building --</option>';
             bldgs.forEach(b => {
                 buildingSelect.innerHTML += `<option value="${b}">Bldg ${b}</option>`;
             });
