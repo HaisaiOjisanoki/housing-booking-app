@@ -15,7 +15,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container-fluid">
             <a class="navbar-brand fw-bold" href="#"><i class="bi bi-house-door-fill me-2"></i>Housing Portal - Public Booking</a>
-            <button class="btn btn-outline-light btn-sm" onclick="openStaffPortal()"><i class="bi bi-shield-lock me-1"></i>Staff Sign In</button>
+            <a href="/login" class="btn btn-outline-light btn-sm"><i class="bi bi-shield-lock me-1"></i>Staff Sign In</a>
         </div>
     </nav>
 
@@ -30,15 +30,17 @@
                 <div class="card shadow border-0">
                     <div class="card-header bg-primary text-white py-3">
                         <h4 class="mb-0 fw-bold"><i class="bi bi-calendar-plus me-2"></i>Schedule Housing Appointment</h4>
-                        <p class="mb-0 small text-white-50">Select your camp and building synced live with Superadmin records.</p>
+                        <p class="mb-0 small text-white-50">Select your preferred date, time, camp, and facility synced live with Superadmin.</p>
                     </div>
                     <div class="card-body p-4">
                         
-                        <!-- Confirmation Code View -->
-                        <div id="successAlert" class="alert alert-success d-none mb-4" role="alert">
-                            <h5 class="fw-bold mb-1"><i class="bi bi-check-circle-fill me-2"></i>Booking Confirmed!</h5>
-                            <p class="mb-1 small">Your confirmation code: <strong id="displayCode" class="fs-5 text-dark"></strong></p>
-                            <button class="btn btn-sm btn-outline-success mt-2 w-100 fw-bold" onclick="resetPublicForm()">Book Another Appointment</button>
+                        <!-- Dynamic Availability & Restrictions Notice Box -->
+                        <div class="alert alert-secondary mb-4 small" id="availabilityNoticeBox">
+                            <div class="fw-bold text-dark mb-1"><i class="bi bi-clock me-1 text-primary"></i>Current Facility Schedule & Restrictions:</div>
+                            <ul class="mb-0 ps-3" id="availabilityRulesList">
+                                <li>Operating Hours: Loading...</li>
+                                <li>Lunch Block: Loading...</li>
+                            </ul>
                         </div>
 
                         <form id="publicBookingForm" onsubmit="submitPublicBooking(event)">
@@ -72,7 +74,7 @@
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label text-muted small fw-bold text-primary">Building Number</label>
+                                    <label class="form-label text-muted small fw-bold text-primary">Building / Facility</label>
                                     <select id="pubBuilding" class="form-select form-select-sm border-primary" required>
                                         <option value="">-- Select Camp First --</option>
                                     </select>
@@ -93,14 +95,8 @@
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label text-muted small">Appointment Time</label>
-                                    <select id="pubTime" class="form-select form-select-sm" required>
-                                        <option value="">-- Select Time --</option>
-                                        <option value="08:00">08:00 AM</option>
-                                        <option value="09:00">09:00 AM</option>
-                                        <option value="10:00">10:00 AM</option>
-                                        <option value="13:00">01:00 PM</option>
-                                        <option value="14:00">02:00 PM</option>
-                                    </select>
+                                    <input type="time" id="pubTime" class="form-control form-control-sm" required>
+                                    <div class="form-text small text-danger" id="timeRestrictionHelp">Bookings outside operating hours or during lunch/blocked windows are restricted.</div>
                                 </div>
                             </div>
 
@@ -123,7 +119,15 @@
             camps: [],
             camp_buildings: {},
             purposes: [],
-            staff_users: [],
+            availability: {
+                start: "08:00",
+                end: "17:00",
+                lunchStart: "12:00",
+                lunchEnd: "13:00",
+                publicBlockedCategory: "",
+                blockedStartTime: "",
+                blockedEndTime: ""
+            },
             bookings: []
         };
 
@@ -136,7 +140,7 @@
             }
 
             await fetchServerState();
-            setInterval(() => fetchServerState(), 5000); // Live-sync loop
+            setInterval(() => fetchServerState(), 5000); // Live sync with Superadmin updates
         }
 
         async function fetchServerState() {
@@ -146,28 +150,29 @@
                     const data = await res.json();
                     if (data) {
                         appState = data;
-                        populatePublicCampsAndPurposes();
+                        populatePublicDropdowns();
+                        loadAndDisplayAvailabilityRules();
                     }
                 }
             } catch (err) {
-                console.warn("Could not sync with server state.");
+                console.warn("Could not connect to server backend.");
             }
         }
 
-        function populatePublicCampsAndPurposes() {
-            const camps = Array.isArray(appState.camps) ? appState.camps : [];
-            const purposes = Array.isArray(appState.purposes) ? appState.purposes : [];
+        function populatePublicDropdowns() {
+            const camps = Array.isArray(appState.camps) ? appState.camps : ["Camp Hansen", "Camp Schwab", "Camp Foster", "MCAS Futenma"];
+            const purposes = Array.isArray(appState.purposes) ? appState.purposes : ["Initial Check-in", "Final Check-out / Clearance", "Room Maintenance Request", "Housing Inquiry"];
 
             const campSelect = document.getElementById('pubCamp');
-            if(!campSelect) return;
-            const currentCamp = campSelect.value;
-            
-            campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
-            camps.forEach(c => {
-                campSelect.innerHTML += `<option value="${c}">${c}</option>`;
-            });
-            if (currentCamp && camps.includes(currentCamp)) {
-                campSelect.value = currentCamp;
+            if(campSelect) {
+                const currentCamp = campSelect.value;
+                campSelect.innerHTML = '<option value="">-- Select Camp --</option>';
+                camps.forEach(c => {
+                    campSelect.innerHTML += `<option value="${c}">${c}</option>`;
+                });
+                if (currentCamp && camps.includes(currentCamp)) {
+                    campSelect.value = currentCamp;
+                }
             }
 
             const purposeSelect = document.getElementById('pubPurpose');
@@ -202,7 +207,7 @@
                 return;
             }
 
-            buildingSelect.innerHTML = '<option value="">-- Select Building --</option>';
+            buildingSelect.innerHTML = '<option value="">-- Select Building / Facility --</option>';
             bldgs.forEach(b => {
                 buildingSelect.innerHTML += `<option value="${b}">Bldg ${b}</option>`;
             });
@@ -212,22 +217,96 @@
             }
         }
 
+        function loadAndDisplayAvailabilityRules() {
+            const avail = appState.availability || {
+                start: "08:00",
+                end: "17:00",
+                lunchStart: "12:00",
+                lunchEnd: "13:00",
+                publicBlockedCategory: "",
+                blockedStartTime: "",
+                blockedEndTime: ""
+            };
+
+            const rulesList = document.getElementById('availabilityRulesList');
+            if(!rulesList) return;
+
+            let html = `
+                <li><strong>Operating Hours:</strong> ${formatTime12hr(avail.start)} – ${formatTime12hr(avail.end)}</li>
+                <li><strong>Lunch Block:</strong> <span class="text-danger fw-bold">${formatTime12hr(avail.lunchStart)} – ${formatTime12hr(avail.lunchEnd)} (Restricted)</span></li>
+            `;
+
+            if (avail.publicBlockedCategory && avail.blockedStartTime && avail.blockedEndTime) {
+                html += `
+                    <li><strong>Blocked Window (${avail.publicBlockedCategory}):</strong> <span class="text-danger fw-bold">${formatTime12hr(avail.blockedStartTime)} – ${formatTime12hr(avail.blockedEndTime)} (Restricted)</span></li>
+                `;
+            }
+
+            rulesList.innerHTML = html;
+        }
+
+        function formatTime12hr(timeStr) {
+            if (!timeStr) return '';
+            const [hour, minute] = timeStr.split(':');
+            let h = parseInt(hour, 10);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12 || 12;
+            return `${h}:${minute} ${ampm}`;
+        }
+
         async function submitPublicBooking(event) {
             event.preventDefault();
+
+            const branch = document.getElementById('pubBranch').value;
+            const lastName = document.getElementById('pubLastName').value.trim();
+            const firstName = document.getElementById('pubFirstName').value.trim();
+            const camp = document.getElementById('pubCamp').value;
+            const building = document.getElementById('pubBuilding').value;
+            const purpose = document.getElementById('pubPurpose').value;
+            const date = document.getElementById('pubDate').value;
+            const time = document.getElementById('pubTime').value;
+
+            if (!lastName || !firstName || !camp || !building || !purpose || !date || !time) {
+                showPublicAlert("Please complete all required booking fields.", "danger");
+                return;
+            }
+
+            const avail = appState.availability;
+            if (avail) {
+                if (time < avail.start || time > avail.end) {
+                    showPublicAlert(`Selected time (${formatTime12hr(time)}) is outside operating hours (${formatTime12hr(avail.start)} – ${formatTime12hr(avail.end)}).`, "danger");
+                    return;
+                }
+
+                if (avail.lunchStart && avail.lunchEnd) {
+                    if (time >= avail.lunchStart && time <= avail.lunchEnd) {
+                        showPublicAlert(`Selected time falls within the designated lunch block (${formatTime12hr(avail.lunchStart)} – ${formatTime12hr(avail.lunchEnd)}). Bookings are restricted.`, "danger");
+                        return;
+                    }
+                }
+
+                if (avail.publicBlockedCategory && avail.blockedStartTime && avail.blockedEndTime) {
+                    if (time >= avail.blockedStartTime && time <= avail.blockedEndTime) {
+                        showPublicAlert(`Selected time falls within the restricted window for "${avail.publicBlockedCategory}" (${formatTime12hr(avail.blockedStartTime)} – ${formatTime12hr(avail.blockedEndTime)}).`, "danger");
+                        return;
+                    }
+                }
+            }
 
             const code = 'HSG-' + Math.floor(100000 + Math.random() * 900000);
             const newBooking = {
                 id: Date.now(),
                 confirmationCode: code,
-                branch: document.getElementById('pubBranch').value,
-                lastName: document.getElementById('pubLastName').value.trim(),
-                firstName: document.getElementById('pubFirstName').value.trim(),
-                camp: document.getElementById('pubCamp').value,
-                building: document.getElementById('pubBuilding').value,
-                purpose: document.getElementById('pubPurpose').value,
-                date: document.getElementById('pubDate').value,
-                time: document.getElementById('pubTime').value,
+                branch: branch,
+                lastName: lastName,
+                firstName: firstName,
+                camp: camp,
+                building: building,
+                purpose: purpose,
+                date: date,
+                time: time,
                 status: "Pending",
+                internalNote: "Submitted via Public Booking Portal.",
                 username: "public_user"
             };
 
@@ -241,9 +320,10 @@
                     body: JSON.stringify(appState)
                 });
                 if (res.ok) {
-                    document.getElementById('publicBookingForm').classList.add('d-none');
-                    document.getElementById('displayCode').textContent = code;
-                    document.getElementById('successAlert').classList.remove('d-none');
+                    showPublicAlert(`Appointment request successfully submitted! Confirmation Code: <strong>${code}</strong>`, "success");
+                    document.getElementById('publicBookingForm').reset();
+                    document.getElementById('pubDate').value = new Date().toISOString().split('T')[0];
+                    updatePublicBuildingDropdown();
                 } else {
                     showPublicAlert("Failed to save booking to server.", "danger");
                 }
@@ -252,22 +332,10 @@
             }
         }
 
-        function resetPublicForm() {
-            document.getElementById('publicBookingForm').reset();
-            document.getElementById('pubBuilding').innerHTML = '<option value="">-- Select Camp First --</option>';
-            document.getElementById('successAlert').classList.add('d-none');
-            document.getElementById('publicBookingForm').classList.remove('d-none');
-            document.getElementById('pubDate').value = new Date().toISOString().split('T')[0];
-        }
-
-        function openStaffPortal() {
-            window.location.href = '/login.html';
-        }
-
         function showPublicAlert(message, type) {
             const alert = document.getElementById('publicAlert');
             alert.className = `alert alert-${type} mb-4`;
-            alert.textContent = message;
+            alert.innerHTML = message;
             alert.classList.remove('d-none');
             window.scrollTo({ top: 0, behavior: 'smooth' });
             setTimeout(() => alert.classList.add('d-none'), 6000);
